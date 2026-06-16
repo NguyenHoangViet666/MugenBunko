@@ -56,6 +56,7 @@ export default function ChapterReader({
     const [isTocOpen, setIsTocOpen] = useState(false);
     const [chapterContent, setChapterContent] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
+    const [isZenMode, setIsZenMode] = useState<boolean>(false);
 
     // Group published chapters by volume_name
     const volumes: VolumeGroup = {};
@@ -170,9 +171,33 @@ export default function ChapterReader({
                 </div>
             </div>
 
-            <div className="page-view active" style={{paddingTop:0}}>
+            <div className={`page-view active ${isZenMode ? 'zen-active' : ''}`} style={{paddingTop: isZenMode ? '60px' : 0}}>
+                {isZenMode && (
+                    <style>{`
+                        .reader-toolbar.zen-mode {
+                            position: fixed !important;
+                            top: 0; left: 0; right: 0;
+                            transform: translateY(-100%);
+                            transition: transform 0.3s ease;
+                        }
+                        .reader-toolbar-hit-area {
+                            position: fixed;
+                            top: 0; left: 0; right: 0; height: 40px;
+                            z-index: 99;
+                        }
+                        .reader-toolbar-hit-area:hover + .reader-toolbar.zen-mode,
+                        .reader-toolbar.zen-mode:hover {
+                            transform: translateY(0);
+                        }
+                        .reader-container-layout.zen-mode {
+                            max-width: 900px !important;
+                            padding: 0 40px !important;
+                        }
+                    `}</style>
+                )}
+                {isZenMode && <div className="reader-toolbar-hit-area" />}
                 {/* Reader Settings Toolbar */}
-                <div className="reader-toolbar" style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 24px', background:'var(--bg-card)', borderBottom:'1px solid var(--border-color)', position:'sticky', top:0, zIndex:100}}>
+                <div className={`reader-toolbar ${isZenMode ? 'zen-mode' : ''}`} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 24px', background:'var(--bg-card)', borderBottom:'1px solid var(--border-color)', position:'sticky', top:0, zIndex:100}}>
                     <div className="toolbar-left" style={{display:'flex', alignItems:'center', gap:'12px'}}>
                         <button className="back-btn-reader outline-btn small" onClick={() => { setCurrentView('detail'); if (activeNovelId !== null) openNovelDetail(activeNovelId); }}>
                             ← Thoát Đọc
@@ -210,6 +235,15 @@ export default function ChapterReader({
                             }}>+</button>
                         </div>
 
+                        <button 
+                            className={`outline-btn small ${isZenMode ? 'active' : ''}`} 
+                            onClick={() => setIsZenMode(!isZenMode)}
+                            style={{padding:'4px 12px', background: isZenMode ? 'var(--sakura-pink)' : 'transparent', color: isZenMode ? 'white' : 'var(--text-main)', border: isZenMode ? 'none' : '1px solid var(--border-color)'}}
+                            title="Chế độ Zen (Ẩn xao nhãng)"
+                        >
+                            🧘 Zen Mode
+                        </button>
+
                         <div className="reader-themes" style={{display:'flex', gap:'8px'}}>
                             {['washi', 'sepia', 'charcoal'].map(t => (
                                 <button 
@@ -224,7 +258,7 @@ export default function ChapterReader({
                     </div>
                 </div>
 
-                <div className="reader-container-layout" style={{maxWidth:'1200px', margin:'40px auto 100px auto', padding:'0 24px'}}>
+                <div className={`reader-container-layout ${isZenMode ? 'zen-mode' : ''}`} style={{maxWidth:'1200px', margin:'40px auto 100px auto', padding:'0 24px'}}>
                     {loading ? (
                         <div className="reader-loading-spinner" style={{textAlign: 'center', padding: '100px 0', color: 'var(--sakura-pink)'}}>
                             <style>{`

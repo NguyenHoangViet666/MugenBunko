@@ -1,5 +1,6 @@
 import React from 'react';
 import { Novel, User, ForumPost, SystemEvent } from '../types';
+import { calculateUserLevel } from '../utils/levelHelper';
 
 interface ReadingHistoryItem {
     novelId: number;
@@ -47,6 +48,7 @@ interface HomeProps {
     latestReviews: any[];
     events: SystemEvent[];
     setActiveEventId: (id: number | null) => void;
+    wibuRanking: any[];
 }
 
 export default function Home({
@@ -81,7 +83,8 @@ export default function Home({
     latestComments,
     latestReviews,
     events,
-    setActiveEventId
+    setActiveEventId,
+    wibuRanking
 }: HomeProps) {
     const [readingHistory, setReadingHistory] = React.useState<ReadingHistoryItem[]>([]);
     const activeEvents = React.useMemo(() => {
@@ -369,6 +372,26 @@ export default function Home({
                                             }} title={item.chapterTitle}>
                                                 {item.chapterTitle}
                                             </span>
+                                            {(() => {
+                                                const n = novels.find(x => x.id === item.novelId);
+                                                const pubChs = n?.chapters?.filter(ch => ch.status === 'published') || [];
+                                                const total = pubChs.length || 1;
+                                                let readCount = item.chapterIndex + 1;
+                                                if (currentUser) {
+                                                    try {
+                                                        const key = `mugen_readprogress_${currentUser.username}_${item.novelId}`;
+                                                        const raw = localStorage.getItem(key);
+                                                        const saved = raw ? JSON.parse(raw) : null;
+                                                        if (saved && saved.readChaptersList) readCount = saved.readChaptersList.length;
+                                                    } catch(e) {}
+                                                }
+                                                const pct = Math.min(100, Math.round((readCount / total) * 100));
+                                                return (
+                                                    <div style={{ width: '100%', height: '4px', background: 'var(--border-color)', borderRadius: '2px', marginTop: '4px', overflow: 'hidden' }}>
+                                                        <div style={{ width: `${pct}%`, height: '100%', background: 'var(--sakura-pink)', transition: 'width 0.3s ease' }} title={`Đã đọc ${pct}%`}></div>
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                         <button
                                             onClick={(e) => deleteHistoryItem(e, item.novelId)}
@@ -710,27 +733,59 @@ export default function Home({
                             🏆 Cao Thủ Wibu Tuần
                         </h3>
                         <ul className="ranking-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: 0, margin: 0, listStyle: 'none' }}>
-                            <li style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed var(--border-color)', paddingBottom: '8px' }}>
-                                <span style={{ background: '#ffd700', color: '#fff', width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0 }}>1</span>
-                                <div style={{ flexGrow: 1 }}>
-                                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)' }}>@kirito_kun</div>
-                                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Cấp bậc: SSR • 680,500 XP</div>
-                                </div>
-                            </li>
-                            <li style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed var(--border-color)', paddingBottom: '8px' }}>
-                                <span style={{ background: '#c0c0c0', color: '#fff', width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0 }}>2</span>
-                                <div style={{ flexGrow: 1 }}>
-                                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)' }}>@megumin_explosion</div>
-                                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Cấp bậc: SR • 78,200 XP</div>
-                                </div>
-                            </li>
-                            <li style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '4px' }}>
-                                <span style={{ background: '#cd7f32', color: '#fff', width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0 }}>3</span>
-                                <div style={{ flexGrow: 1 }}>
-                                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)' }}>@senpai_reader</div>
-                                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Cấp bậc: R • 15,400 XP</div>
-                                </div>
-                            </li>
+                            {(() => {
+                                const getMedalColor = (idx: number) => {
+                                    if (idx === 0) return '#ffd700';
+                                    if (idx === 1) return '#c0c0c0';
+                                    if (idx === 2) return '#cd7f32';
+                                    return 'var(--text-muted)';
+                                };
+                                
+                                if (!wibuRanking || wibuRanking.length === 0) {
+                                    return <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Chưa có cao thủ nào.</div>;
+                                }
+                                
+                                return wibuRanking.map((user, index) => {
+                                    const lvlInfo = calculateUserLevel(user.xp || 0);
+                                    const isLast = index === wibuRanking.length - 1;
+                                    return (
+                                        <li 
+                                            key={user.id} 
+                                            style={{ 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                gap: '12px', 
+                                                borderBottom: isLast ? 'none' : '1px dashed var(--border-color)', 
+                                                paddingBottom: isLast ? '4px' : '8px',
+                                                cursor: 'pointer'
+                                            }}
+                                            onClick={() => {
+                                                window.location.hash = `#/profile/${encodeURIComponent(user.username)}`;
+                                            }}
+                                        >
+                                            <span style={{ 
+                                                background: getMedalColor(index), 
+                                                color: '#fff', 
+                                                width: '22px', 
+                                                height: '22px', 
+                                                borderRadius: '50%', 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                justifyContent: 'center', 
+                                                fontSize: '0.75rem', 
+                                                fontWeight: 700, 
+                                                flexShrink: 0 
+                                            }}>
+                                                {index + 1}
+                                            </span>
+                                            <div style={{ flexGrow: 1 }}>
+                                                <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)' }}>@{user.username}</div>
+                                                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Cấp bậc: {lvlInfo.tierName} • {Number(user.xp).toLocaleString()} XP</div>
+                                            </div>
+                                        </li>
+                                    );
+                                });
+                            })()}
                         </ul>
                     </div>
 

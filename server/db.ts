@@ -4,13 +4,22 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-dotenv.config();
+const envPath = fs.existsSync(path.join(process.cwd(), '.env'))
+    ? path.join(process.cwd(), '.env')
+    : path.join(process.cwd(), 'server', '.env');
+dotenv.config({ path: envPath });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const isDocker = fs.existsSync('/.dockerenv');
+let dbHost = process.env.DB_HOST || 'localhost';
+if (isDocker && (dbHost === 'localhost' || dbHost === '127.0.0.1')) {
+    dbHost = 'host.docker.internal';
+}
+
 const dbConfig = {
-    host: process.env.DB_HOST || 'localhost',
+    host: dbHost,
     port: parseInt(process.env.DB_PORT || '3306'),
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
@@ -36,7 +45,13 @@ export async function initializeDbConnection(): Promise<void> {
         const [tables] = await connectionWithDb.query<any[]>(`SHOW TABLES LIKE 'users'`);
         if (tables.length === 0) {
             console.log("No tables found. Loading schema.sql...");
-            const schemaSqlPath = path.join(__dirname, 'schema.sql');
+            const possibleSchemaPaths = [
+                path.join(process.cwd(), 'schema.sql'),
+                path.join(process.cwd(), 'server', 'schema.sql'),
+                path.join(__dirname, 'schema.sql'),
+                path.join(__dirname, '../schema.sql')
+            ];
+            const schemaSqlPath = possibleSchemaPaths.find(p => fs.existsSync(p)) || path.join(__dirname, 'schema.sql');
             if (fs.existsSync(schemaSqlPath)) {
                 const schemaSql = fs.readFileSync(schemaSqlPath, 'utf8');
                 await connectionWithDb.query(schemaSql);

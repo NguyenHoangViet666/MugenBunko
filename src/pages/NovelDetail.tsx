@@ -414,7 +414,12 @@ export default function NovelDetail({
                                             </div>
                                         ) : (
                                             <div className="alert-box info" style={{background:'var(--sakura-pink-light)', padding:'10px 16px', borderRadius:'4px', fontSize:'0.82rem', borderLeft:'3px solid var(--sakura-pink)', marginBottom:'16px'}}>
-                                                💡 Bạn cần đọc tối thiểu <strong>{minRequired} chương</strong> để gửi đánh giá. Lịch sử đọc hiện tại: <strong>{readCount}</strong> chương.
+                                                <div style={{ marginBottom: '12px' }}>
+                                                    💡 Bạn cần đọc tối thiểu <strong>{minRequired} chương</strong> để gửi đánh giá. Lịch sử đọc hiện tại: <strong>{readCount}</strong> chương.
+                                                </div>
+                                                <button className="primary-btn small" onClick={() => startReading(novel.id, readCount > 0 ? readCount : 0)}>
+                                                    {readCount > 0 ? `Đọc tiếp Chương ${readCount + 1} ngay` : 'Đọc chương 1 ngay'}
+                                                </button>
                                             </div>
                                         )
                                     ) : (

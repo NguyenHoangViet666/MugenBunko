@@ -50,6 +50,22 @@ export default function RegisterModal({
                     <div className="input-field mb-4">
                         <label>Mật khẩu</label>
                         <input type="password" placeholder="Nhập mật khẩu..." value={regPassword} onChange={(e) => setRegPassword(e.target.value)} />
+                        {regPassword.length > 0 && (
+                            <div style={{ marginTop: '8px', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <span style={{ color: regPassword.length >= 8 ? '#2e7d32' : 'var(--text-muted)' }}>
+                                    {regPassword.length >= 8 ? '✓' : '○'} Tối thiểu 8 ký tự
+                                </span>
+                                <span style={{ color: /[A-Z]/.test(regPassword) ? '#2e7d32' : 'var(--text-muted)' }}>
+                                    {/[A-Z]/.test(regPassword) ? '✓' : '○'} Chứa ít nhất 1 chữ hoa
+                                </span>
+                                <span style={{ color: /\d/.test(regPassword) ? '#2e7d32' : 'var(--text-muted)' }}>
+                                    {/\d/.test(regPassword) ? '✓' : '○'} Chứa ít nhất 1 chữ số
+                                </span>
+                                <span style={{ color: /[@$!%*?&]/.test(regPassword) ? '#2e7d32' : 'var(--text-muted)' }}>
+                                    {/[@$!%*?&]/.test(regPassword) ? '✓' : '○'} Chứa ít nhất 1 ký tự đặc biệt (@$!%*?&)
+                                </span>
+                            </div>
+                        )}
                     </div>
                     <button className="primary-btn w-100" onClick={handleRegisterSubmit}>Đăng Ký Tài Khoản</button>
                     <p style={{ textAlign: 'center', fontSize: '0.82rem', marginTop: '16px', color: 'var(--text-muted)' }}>

@@ -262,7 +262,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 -- Seed Single Admin account (ID: 1)
 INSERT INTO `users` (`id`, `username`, `password`, `displayname`, `coins`, `level`, `xp`, `bio`, `avatar_seed`, `status`) 
-VALUES (1, 'admin', '$2b$10$.9dah9/i2l0mhVM5TIR5Xu7e/eVyCKQJIFIolf4lvc26bE3m./RXu', 'Nguyễn Hoàng Việt', 1000, 1, 0, 'Nhà sáng lập tối cao của thư viện điện tử MugenBunko.', 'adminUser', 'active');
+VALUES (1, 'MugenBunko', '$2b$10$lejcU/gpgZ7KjK9ZLBac4etcyiaTCWowsOrN9Pt/qvEsipLAlx/Sq', 'Nguyễn Hoàng Việt', 1000, 1, 0, 'Nhà sáng lập tối cao của thư viện điện tử MugenBunko.', 'adminUser', 'active');
 
 -- Add roles for the admin user (Inherits reader and admin)
 INSERT INTO `user_roles` (`user_id`, `role`) VALUES (1, 'reader');

@@ -110,9 +110,9 @@ export default function Explore({
                     <div className="explore-filter-bar" style={{
                         display: 'flex', 
                         flexWrap: 'wrap', 
-                        gap: '20px', 
+                        gap: '24px', 
                         alignItems: 'center', 
-                        justifyContent: 'space-between',
+                        justifyContent: 'flex-start',
                         padding: '16px 20px',
                         background: 'var(--bg-base)',
                         border: '1px solid var(--border-color)',
@@ -120,70 +120,91 @@ export default function Explore({
                         marginBottom: '24px',
                         marginTop: '10px'
                     }}>
-                        {/* Left side: Genre Dropdown & Format Pills */}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'center' }}>
-                            {/* Genre Dropdown */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}>Thể loại:</span>
-                                <select
-                                    value={exploreGenre}
-                                    onChange={(e) => setExploreGenre(e.target.value)}
+                        {/* Keyword Search */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}>Từ khóa:</span>
+                            <div style={{ position: 'relative' }}>
+                                <input 
+                                    type="text"
+                                    placeholder="Tên truyện, tác giả..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
                                     style={{
-                                        padding: '6px 12px',
+                                        padding: '6px 12px 6px 30px',
                                         borderRadius: '20px',
                                         fontSize: '0.78rem',
                                         border: '1px solid var(--border-color)',
                                         background: 'var(--bg-card)',
                                         color: 'var(--text-main)',
-                                        cursor: 'pointer',
                                         outline: 'none',
-                                        fontWeight: 500,
-                                        transition: 'all 0.2s',
-                                        borderColor: exploreGenre !== 'Tất cả' ? 'var(--sakura-pink)' : 'var(--border-color)',
-                                        boxShadow: exploreGenre !== 'Tất cả' ? '0 0 0 1px var(--sakura-pink)' : 'none'
+                                        width: '180px'
                                     }}
-                                >
-                                    <option value="Tất cả">Tất cả thể loại</option>
-                                    {genres.map(g => (
-                                        <option key={g} value={g}>{g}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Format pills */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}>Định dạng:</span>
-                                <div style={{ display: 'flex', gap: '6px' }}>
-                                    {[
-                                        { id: 'all', name: 'Tất cả' },
-                                        { id: 'series', name: 'Series' },
-                                        { id: 'oneshot', name: 'Oneshot' }
-                                    ].map(opt => (
-                                        <button
-                                            key={opt.id}
-                                            onClick={() => setExploreType(opt.id)}
-                                            style={{
-                                                padding: '4px 12px',
-                                                borderRadius: '20px',
-                                                fontSize: '0.78rem',
-                                                border: '1px solid',
-                                                cursor: 'pointer',
-                                                fontWeight: 500,
-                                                transition: 'all 0.2s',
-                                                background: exploreType === opt.id ? 'var(--sakura-pink)' : 'transparent',
-                                                color: exploreType === opt.id ? 'white' : 'var(--text-main)',
-                                                borderColor: exploreType === opt.id ? 'var(--sakura-pink)' : 'var(--border-color)'
-                                            }}
-                                        >
-                                            {opt.name}
-                                        </button>
-                                    ))}
-                                </div>
+                                />
+                                <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>🔍</span>
                             </div>
                         </div>
 
-                        {/* Right side: Sort Pills */}
+                        {/* Genre Dropdown */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}>Thể loại:</span>
+                            <select
+                                value={exploreGenre}
+                                onChange={(e) => setExploreGenre(e.target.value)}
+                                style={{
+                                    padding: '6px 12px',
+                                    borderRadius: '20px',
+                                    fontSize: '0.78rem',
+                                    border: '1px solid var(--border-color)',
+                                    background: 'var(--bg-card)',
+                                    color: 'var(--text-main)',
+                                    cursor: 'pointer',
+                                    outline: 'none',
+                                    fontWeight: 500,
+                                    transition: 'all 0.2s',
+                                    borderColor: exploreGenre !== 'Tất cả' ? 'var(--sakura-pink)' : 'var(--border-color)',
+                                    boxShadow: exploreGenre !== 'Tất cả' ? '0 0 0 1px var(--sakura-pink)' : 'none'
+                                }}
+                            >
+                                <option value="Tất cả">Tất cả thể loại</option>
+                                {genres.map(g => (
+                                    <option key={g} value={g}>{g}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Format pills */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}>Định dạng:</span>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                                {[
+                                    { id: 'all', name: 'Tất cả' },
+                                    { id: 'series', name: 'Series' },
+                                    { id: 'oneshot', name: 'Oneshot' }
+                                ].map(opt => (
+                                    <button
+                                        key={opt.id}
+                                        onClick={() => setExploreType(opt.id)}
+                                        style={{
+                                            padding: '4px 12px',
+                                            borderRadius: '20px',
+                                            fontSize: '0.78rem',
+                                            border: '1px solid',
+                                            cursor: 'pointer',
+                                            fontWeight: 500,
+                                            transition: 'all 0.2s',
+                                            background: exploreType === opt.id ? 'var(--sakura-pink)' : 'transparent',
+                                            color: exploreType === opt.id ? 'white' : 'var(--text-main)',
+                                            borderColor: exploreType === opt.id ? 'var(--sakura-pink)' : 'var(--border-color)'
+                                        }}
+                                    >
+                                        {opt.name}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Sort Pills */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
                             <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}>Sắp xếp:</span>
                             <div style={{ display: 'flex', gap: '6px' }}>
                                 {[

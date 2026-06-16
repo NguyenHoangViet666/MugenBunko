@@ -37,9 +37,10 @@ RUN npm install --only=production --prefix server
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server/dist ./server/dist
 
-# Copy non-compiled JS utility files, DB schema and migration scripts
+# Copy non-compiled JS utility files, DB schema, migration scripts and config
 COPY --from=builder /app/server/*.js ./server/
 COPY --from=builder /app/server/*.sql ./server/
+COPY --from=builder /app/server/.env* ./server/
 
 # Expose backend port
 EXPOSE 5000

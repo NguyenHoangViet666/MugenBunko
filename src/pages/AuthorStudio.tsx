@@ -496,8 +496,8 @@ export default function AuthorStudio({
                                         </div>
 
                                         <div className="editor-toolbar-actions" style={{display:'flex', alignItems:'center', gap:'8px', background:'var(--bg-base)', padding:'6px', borderRadius:'4px', border:'1px solid var(--border-color)'}}>
-                                            <button className="toolbar-icon-btn outline-btn small" style={{padding:'4px 8px'}} onClick={() => formatDoc('bold')}><strong>B</strong></button>
-                                            <button className="toolbar-icon-btn outline-btn small" style={{padding:'4px 8px'}} onClick={() => formatDoc('italic')}><em>I</em></button>
+                                            <button className="toolbar-icon-btn outline-btn small" style={{padding:'4px 8px'}} onClick={() => formatDoc('bold')} title="In đậm (Ctrl + B)"><strong>B</strong></button>
+                                            <button className="toolbar-icon-btn outline-btn small" style={{padding:'4px 8px'}} onClick={() => formatDoc('italic')} title="In nghiêng (Ctrl + I)"><em>I</em></button>
                                             <button className="toolbar-icon-btn outline-btn small" style={{padding:'4px 8px'}} onClick={() => formatDoc('justifyLeft')}>L-Align</button>
                                             <button className="toolbar-icon-btn outline-btn small" style={{padding:'4px 8px'}} onClick={() => formatDoc('justifyCenter')}>C-Align</button>
                                             <button className="toolbar-icon-btn outline-btn small" style={{padding:'4px 8px'}} onClick={insertStaticIllustration}>Chèn Ảnh</button>
@@ -514,6 +514,15 @@ export default function AuthorStudio({
                                             className="editor-body-textarea font-serif" 
                                             style={{flexGrow:1, minHeight:'300px', border:'1.5px solid var(--border-color)', borderRadius:'4px', padding:'16px', outline:'none', background:'var(--reader-bg)', overflowY:'auto'}}
                                             onInput={() => { setAutosaveText("Thay đổi chưa được lưu"); setAutosaveColor("red"); }}
+                                            onKeyDown={(e) => {
+                                                if (e.ctrlKey && e.key === 'b') {
+                                                    e.preventDefault();
+                                                    formatDoc('bold');
+                                                } else if (e.ctrlKey && e.key === 'i') {
+                                                    e.preventDefault();
+                                                    formatDoc('italic');
+                                                }
+                                            }}
                                         />
 
                                          <div className="editor-footer-actions" style={{display:'flex', gap:'12px', justifyContent:'flex-end', marginTop:'16px'}}>

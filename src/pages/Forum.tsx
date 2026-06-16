@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { calculateUserLevel } from '../utils/levelHelper';
 import { User, ForumPost, ForumComment, Message } from '../types';
 import { compressImage } from '../utils/imageCompressor';
+import RichTextEditor, { parseFormattedContent, extractAndCleanImages, ForumImageGrid } from '../components/RichTextEditor';
+import { io } from 'socket.io-client';
 
 const CATEGORIES = [
     { id: 'all', name: 'Tất cả chủ đề', emoji: '🌟' },
@@ -51,9 +53,21 @@ export default function Forum({
     viewPublicProfile
 }: ForumProps) {
     const [posts, setPosts] = useState<ForumPost[]>([]);
+    
+    const showAlert = (msg: string) => {
+        if (showToast) {
+            showToast(msg);
+        } else {
+            alert(msg);
+        }
+    };
     const isAdmin = currentUser && currentUser.roles && currentUser.roles.includes('admin');
     const isStaff = currentUser && currentUser.roles && (currentUser.roles.includes('admin') || currentUser.roles.includes('moderator'));
     const [activeCategory, setActiveCategory] = useState('all');
+    
+    // Socket.io states
+    const [socket, setSocket] = useState<any>(null);
+    const [onlineUsers, setOnlineUsers] = useState<Record<number, boolean>>({});
     
     // Subviews: 'list' | 'detail' | 'create'
     const [subView, setSubView] = useState<'list' | 'detail' | 'create'>('list');
@@ -65,25 +79,12 @@ export default function Forum({
     const [lightboxZoom, setLightboxZoom] = useState(1);
     const [lightboxRotation, setLightboxRotation] = useState(0);
 
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (!lightboxImage) return;
-            if (e.key === 'Escape') {
-                setLightboxImage(null);
-                setLightboxZoom(1);
-                setLightboxRotation(0);
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [lightboxImage]);
- 
     // Form inputs for creating post (Standard Page View)
     const [newTitle, setNewTitle] = useState('');
     const [newCategory, setNewCategory] = useState('general');
     const [newContent, setNewContent] = useState('');
-    const [newImageUrl, setNewImageUrl] = useState('');
-    const [newImageFile, setNewImageFile] = useState<File | null>(null);
+    const [newImageUrls, setNewImageUrls] = useState<string[]>([]);
+    const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
  
     // Form inputs for commenting (Detail View)
     const [commentText, setCommentText] = useState('');
@@ -97,8 +98,18 @@ export default function Forum({
     const [quickTitle, setQuickTitle] = useState('');
     const [quickContent, setQuickContent] = useState('');
     const [quickCategory, setQuickCategory] = useState('general');
-    const [quickImageUrl, setQuickImageUrl] = useState('');
-    const [quickImageFile, setQuickImageFile] = useState<File | null>(null);
+    const [quickImageUrls, setQuickImageUrls] = useState<string[]>([]);
+    const [quickImageFiles, setQuickImageFiles] = useState<File[]>([]);
+
+    const removeNewImage = (index: number) => {
+        setNewImageUrls(prev => prev.filter((_, i) => i !== index));
+        setNewImageFiles(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const removeQuickImage = (index: number) => {
+        setQuickImageUrls(prev => prev.filter((_, i) => i !== index));
+        setQuickImageFiles(prev => prev.filter((_, i) => i !== index));
+    };
 
     const [expandedPostComments, setExpandedPostComments] = useState<{ [postId: number]: boolean }>({});
     const [quickCommentTexts, setQuickCommentTexts] = useState<{ [postId: number]: string }>({});
@@ -108,6 +119,92 @@ export default function Forum({
     const [activeChatFriend, setActiveChatFriend] = useState<SocialUser | null>(null);
     const [chatMessages, setChatMessages] = useState<Message[]>([]);
     const [chatInputText, setChatInputText] = useState('');
+
+    // Socket.io Connection & Listeners Effect
+    useEffect(() => {
+        if (!currentUser) {
+            if (socket) {
+                socket.disconnect();
+                setSocket(null);
+            }
+            return;
+        }
+
+        const token = localStorage.getItem('mugen_token');
+        if (!token) return;
+
+        const socketUrl = API_BASE.replace('/api', '');
+        const newSocket = io(socketUrl, {
+            auth: { token }
+        });
+
+        newSocket.on('connect', () => {
+            console.log("[Socket] Connected to MUGENBUNKO Socket Server.");
+            setSocket(newSocket);
+            
+            // Check initial online statuses of friends
+            if (forumFriends.length > 0) {
+                const friendIds = forumFriends.map(f => f.id);
+                newSocket.emit('check_online_status', friendIds, (statuses: Record<number, boolean>) => {
+                    setOnlineUsers(statuses);
+                });
+            }
+        });
+
+        newSocket.on('connect_error', (err) => {
+            console.error("[Socket] Connection error:", err.message);
+        });
+
+        newSocket.on('receive_message', (message: Message) => {
+            setActiveChatFriend(currentFriend => {
+                if (currentFriend && (currentFriend.id === message.sender_id || currentFriend.id === message.receiver_id)) {
+                    setChatMessages(prev => {
+                        if (prev.some(m => m.id === message.id)) return prev;
+                        return [...prev, message];
+                    });
+                    setTimeout(() => {
+                        const chatBoxBody = document.getElementById("fb-chat-body-container");
+                        if (chatBoxBody) chatBoxBody.scrollTop = chatBoxBody.scrollHeight;
+                    }, 100);
+                }
+                return currentFriend;
+            });
+        });
+
+        newSocket.on('friend_status_change', (data: { userId: number, status: 'online' | 'offline' }) => {
+            setOnlineUsers(prev => ({
+                ...prev,
+                [data.userId]: data.status === 'online'
+            }));
+        });
+
+        return () => {
+            newSocket.disconnect();
+        };
+    }, [currentUser]);
+
+    // Check friends status when list loads or changes
+    useEffect(() => {
+        if (socket && forumFriends.length > 0) {
+            const friendIds = forumFriends.map(f => f.id);
+            socket.emit('check_online_status', friendIds, (statuses: Record<number, boolean>) => {
+                setOnlineUsers(statuses);
+            });
+        }
+    }, [forumFriends, socket]);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!lightboxImage) return;
+            if (e.key === 'Escape') {
+                setLightboxImage(null);
+                setLightboxZoom(1);
+                setLightboxRotation(0);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [lightboxImage]);
  
     useEffect(() => {
         fetchPosts();
@@ -134,7 +231,7 @@ export default function Forum({
         fetchForumFriends();
     }, [currentUser]);
 
-    // Polling messages for popup chat
+    // Load initial chat history when chat friend opens
     useEffect(() => {
         if (!activeChatFriend) return;
 
@@ -144,6 +241,12 @@ export default function Forum({
                 if (res.ok) {
                     const data = await res.json();
                     setChatMessages(data);
+                    
+                    // Cuộn chat sau 150ms
+                    setTimeout(() => {
+                        const chatBoxBody = document.getElementById("fb-chat-body-container");
+                        if (chatBoxBody) chatBoxBody.scrollTop = chatBoxBody.scrollHeight;
+                    }, 150);
                 }
             } catch (err) {
                 console.error("Error loading chat messages:", err);
@@ -151,9 +254,6 @@ export default function Forum({
         };
 
         fetchChatMessages();
-        const interval = setInterval(fetchChatMessages, 5000);
-
-        return () => clearInterval(interval);
     }, [activeChatFriend]);
 
     const fetchPosts = async () => {
@@ -180,7 +280,7 @@ export default function Forum({
                 setSelectedPost(data);
                 setSubView('detail');
             } else {
-                alert(data.error || "Không thể tải chi tiết bài viết.");
+                showAlert(data.error || "Không thể tải chi tiết bài viết.");
             }
         } catch (err) {
             console.error("Error loading post details:", err);
@@ -213,19 +313,28 @@ export default function Forum({
     const handleCreatePost = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!currentUser) {
-            alert("Bạn cần đăng nhập để đăng bài viết!");
+            showAlert("Bạn cần đăng nhập để đăng bài viết!");
             return;
         }
         if (!newTitle.trim() || !newContent.trim()) {
-            alert("Vui lòng nhập đầy đủ tiêu đề và nội dung!");
+            showAlert("Vui lòng nhập đầy đủ tiêu đề và nội dung!");
             return;
         }
 
         try {
-            let imageUrl: string | null = newImageUrl.trim() || null;
-            if (newImageFile) {
-                if (showToast) showToast("Đang tải ảnh bài đăng lên...");
-                imageUrl = await uploadImageFile(newImageFile, 'post');
+            let imageUrl: string | null = null;
+            let finalContent = newContent;
+
+            if (newImageFiles.length > 0) {
+                if (showToast) showToast(`Đang tải ${newImageFiles.length} ảnh bài đăng lên...`);
+                const uploadPromises = newImageFiles.map(file => uploadImageFile(file, 'post'));
+                const urls = await Promise.all(uploadPromises);
+                
+                imageUrl = urls[0];
+                if (urls.length > 1) {
+                    const extraImageTags = urls.slice(1).map(url => `[img]${url}[/img]`).join('\n');
+                    finalContent = `${finalContent}\n\n${extraImageTags}`;
+                }
             }
 
             const res = await fetchWithAuth(`${API_BASE}/forum/posts`, {
@@ -233,7 +342,7 @@ export default function Forum({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     title: newTitle,
-                    content: newContent,
+                    content: finalContent,
                     category: newCategory,
                     imageUrl
                 })
@@ -244,19 +353,19 @@ export default function Forum({
                 setNewTitle('');
                 setNewContent('');
                 setNewCategory('general');
-                setNewImageUrl('');
-                setNewImageFile(null);
+                setNewImageUrls([]);
+                setNewImageFiles([]);
                 await fetchPosts();
                 setSubView('list');
                 if (refreshSession && currentUser) {
                     refreshSession(currentUser.id);
                 }
             } else {
-                alert(data.error || "Lỗi đăng bài viết.");
+                showAlert(data.error || "Lỗi đăng bài viết.");
             }
         } catch (err) {
             console.error("Error creating post:", err);
-            alert((err as string) || "Lỗi khi đăng bài viết.");
+            showAlert((err as string) || "Lỗi khi đăng bài viết.");
         }
     };
 
@@ -264,19 +373,28 @@ export default function Forum({
     const handleQuickCreatePost = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!currentUser) {
-            alert("Bạn cần đăng nhập để đăng bài viết!");
+            showAlert("Bạn cần đăng nhập để đăng bài viết!");
             return;
         }
         if (!quickTitle.trim() || !quickContent.trim()) {
-            alert("Vui lòng nhập đầy đủ tiêu đề và nội dung!");
+            showAlert("Vui lòng nhập đầy đủ tiêu đề và nội dung!");
             return;
         }
 
         try {
-            let imageUrl: string | null = quickImageUrl.trim() || null;
-            if (quickImageFile) {
-                if (showToast) showToast("Đang tải ảnh bài đăng lên...");
-                imageUrl = await uploadImageFile(quickImageFile, 'post');
+            let imageUrl: string | null = null;
+            let finalContent = quickContent;
+
+            if (quickImageFiles.length > 0) {
+                if (showToast) showToast(`Đang tải ${quickImageFiles.length} ảnh bài đăng lên...`);
+                const uploadPromises = quickImageFiles.map(file => uploadImageFile(file, 'post'));
+                const urls = await Promise.all(uploadPromises);
+                
+                imageUrl = urls[0];
+                if (urls.length > 1) {
+                    const extraImageTags = urls.slice(1).map(url => `[img]${url}[/img]`).join('\n');
+                    finalContent = `${finalContent}\n\n${extraImageTags}`;
+                }
             }
 
             const res = await fetchWithAuth(`${API_BASE}/forum/posts`, {
@@ -284,7 +402,7 @@ export default function Forum({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     title: quickTitle,
-                    content: quickContent,
+                    content: finalContent,
                     category: quickCategory,
                     imageUrl
                 })
@@ -295,26 +413,26 @@ export default function Forum({
                 setQuickTitle('');
                 setQuickContent('');
                 setQuickCategory('general');
-                setQuickImageUrl('');
-                setQuickImageFile(null);
+                setQuickImageUrls([]);
+                setQuickImageFiles([]);
                 setIsQuickCreateExpanded(false);
                 await fetchPosts();
                 if (refreshSession && currentUser) {
                     refreshSession(currentUser.id);
                 }
             } else {
-                alert(data.error || "Lỗi đăng bài viết.");
+                showAlert(data.error || "Lỗi đăng bài viết.");
             }
         } catch (err) {
             console.error("Error creating quick post:", err);
-            alert((err as string) || "Lỗi khi đăng bài viết.");
+            showAlert((err as string) || "Lỗi khi đăng bài viết.");
         }
     };
 
     const handleAddComment = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!currentUser) {
-            alert("Bạn cần đăng nhập để bình luận!");
+            showAlert("Bạn cần đăng nhập để bình luận!");
             return;
         }
         if (!selectedPost) return;
@@ -343,7 +461,7 @@ export default function Forum({
     const handleQuickCommentSubmit = async (postId: number, e?: React.FormEvent) => {
         if (e) e.preventDefault();
         if (!currentUser) {
-            alert("Bạn cần đăng nhập để bình luận!");
+            showAlert("Bạn cần đăng nhập để bình luận!");
             return;
         }
 
@@ -405,7 +523,7 @@ export default function Forum({
     // Submit reply to a comment in Detail View
     const handleSubmitReply = async (parentCommentId: number) => {
         if (!currentUser) {
-            alert("Bạn cần đăng nhập để bình luận!");
+            showAlert("Bạn cần đăng nhập để bình luận!");
             return;
         }
         if (!selectedPost) return;
@@ -466,7 +584,7 @@ export default function Forum({
     const handleLikePost = async (postId: number, e: React.MouseEvent) => {
         if (e) e.stopPropagation();
         if (!currentUser) {
-            alert("Bạn cần đăng nhập để thả tim bài viết!");
+            showAlert("Bạn cần đăng nhập để thả tim bài viết!");
             return;
         }
 
@@ -511,7 +629,7 @@ export default function Forum({
                     }
                     await fetchPosts();
                 } else {
-                    alert(data.error || "Lỗi khi xóa bài viết.");
+                    showAlert(data.error || "Lỗi khi xóa bài viết.");
                 }
             } catch (err) {
                 console.error("Error deleting post:", err);
@@ -546,28 +664,52 @@ export default function Forum({
         const text = chatInputText.trim();
         setChatInputText('');
 
-        try {
-            const res = await fetchWithAuth(`${API_BASE}/social/messages/send`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    receiverId: activeChatFriend.id,
-                    messageText: text
-                })
+        if (socket && socket.connected) {
+            socket.emit('send_message', {
+                receiverId: activeChatFriend.id,
+                messageText: text
+            }, (response: any) => {
+                if (response && response.success && response.message) {
+                    setChatMessages(prev => {
+                        if (prev.some(m => m.id === response.message.id)) return prev;
+                        return [...prev, response.message];
+                    });
+                    
+                    setTimeout(() => {
+                        const chatBoxBody = document.getElementById("fb-chat-body-container");
+                        if (chatBoxBody) chatBoxBody.scrollTop = chatBoxBody.scrollHeight;
+                    }, 100);
+                } else {
+                    showAlert(response?.error || "Không thể gửi tin nhắn qua Socket.");
+                }
             });
+        } else {
+            // Fallback to HTTP POST
+            try {
+                const res = await fetchWithAuth(`${API_BASE}/social/messages/send`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        receiverId: activeChatFriend.id,
+                        messageText: text
+                    })
+                });
 
-            if (res.ok) {
-                const data = await res.json();
-                setChatMessages(prev => [...prev, data.message]);
-                
-                // Cuộn xuống
-                setTimeout(() => {
-                    const chatBoxBody = document.getElementById("fb-chat-body-container");
-                    if (chatBoxBody) chatBoxBody.scrollTop = chatBoxBody.scrollHeight;
-                }, 100);
+                if (res.ok) {
+                    const data = await res.json();
+                    setChatMessages(prev => {
+                        if (prev.some(m => m.id === data.message.id)) return prev;
+                        return [...prev, data.message];
+                    });
+                    
+                    setTimeout(() => {
+                        const chatBoxBody = document.getElementById("fb-chat-body-container");
+                        if (chatBoxBody) chatBoxBody.scrollTop = chatBoxBody.scrollHeight;
+                    }, 100);
+                }
+            } catch (err) {
+                console.error("Error sending message via HTTP:", err);
             }
-        } catch (err) {
-            console.error("Error sending message:", err);
         }
     };
 
@@ -605,6 +747,12 @@ export default function Forum({
     return (
         <div className="page-view active">
             <style>{`
+                .sidebar-column {
+                    position: sticky;
+                    top: 92px;
+                    align-self: start;
+                    height: fit-content;
+                }
                 .social-feed-card {
                     background: var(--bg-card);
                     border: 1px solid var(--border-color);
@@ -713,17 +861,15 @@ export default function Forum({
                     color: var(--text-muted);
                     font-weight: 600;
                     padding: 6px 12px;
-                    border-radius: var(--border-radius-sm);
+                    border-radius: var(--border-radius-md);
                     transition: var(--transition-smooth);
                 }
                 .interaction-btn:hover {
-                    background: var(--bg-base);
-                }
-                .interaction-btn.liked {
+                    background: var(--sakura-pink-light);
                     color: var(--sakura-pink);
                 }
-                .interaction-btn.liked svg {
-                    fill: var(--sakura-pink);
+                .theme-charcoal .interaction-btn:hover {
+                    background: rgba(224, 82, 117, 0.15);
                 }
                 .interaction-btn svg {
                     width: 18px;
@@ -731,6 +877,106 @@ export default function Forum({
                     fill: none;
                     stroke: currentColor;
                     stroke-width: 2px;
+                    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                }
+                .interaction-btn:hover svg {
+                    transform: scale(1.18);
+                    stroke: var(--sakura-pink);
+                }
+                .interaction-btn.liked {
+                    color: var(--sakura-pink);
+                }
+                .interaction-btn.liked svg {
+                    fill: var(--sakura-pink);
+                    stroke: var(--sakura-pink);
+                    animation: pulseHeart 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) 1;
+                }
+                .interaction-btn.liked:hover {
+                    color: var(--sakura-pink-hover);
+                }
+                .interaction-btn.liked:hover svg {
+                    fill: var(--sakura-pink-hover);
+                    stroke: var(--sakura-pink-hover);
+                }
+
+                @keyframes pulseHeart {
+                    0% { transform: scale(1); }
+                    50% { transform: scale(1.25); }
+                    100% { transform: scale(1); }
+                }
+
+                /* Premium Image preview container - centered & 3D Pop */
+                .forum-image-wrapper {
+                    margin: 16px auto 0 auto;
+                    border-radius: 12px;
+                    overflow: hidden;
+                    border: 1px solid var(--border-color);
+                    background: rgba(0,0,0,0.015);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    width: fit-content;
+                    max-width: 100%;
+                    box-shadow: var(--shadow-sm);
+                    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+                }
+                .forum-image-wrapper:hover {
+                    box-shadow: 0 12px 28px rgba(224, 82, 117, 0.18);
+                    transform: scale(1.02);
+                }
+                .forum-image-preview {
+                    max-width: 100%;
+                    max-height: 500px;
+                    object-fit: contain;
+                    display: block;
+                    cursor: zoom-in;
+                    border-radius: 12px;
+                    transition: opacity 0.2s ease;
+                }
+                .forum-image-preview:hover {
+                    opacity: 0.95;
+                }
+
+                .grid-image-item {
+                    position: relative;
+                    overflow: hidden;
+                }
+                .grid-image-item img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+                }
+                .grid-image-item:hover img {
+                    transform: scale(1.05);
+                }
+
+                /* Spoiler and formatting tags styles */
+                .spoiler-text {
+                    background-color: var(--text-main);
+                    color: var(--text-main);
+                    cursor: pointer;
+                    border-radius: 4px;
+                    padding: 0 6px;
+                    user-select: none;
+                    transition: background-color 0.2s ease, color 0.2s ease;
+                    font-weight: normal;
+                }
+                .spoiler-text.revealed {
+                    background-color: var(--sakura-pink-light);
+                    color: var(--text-main);
+                    user-select: auto;
+                }
+                .theme-charcoal .spoiler-text.revealed {
+                    background-color: rgba(224, 82, 117, 0.2);
+                }
+                .forum-link {
+                    color: var(--sakura-pink);
+                    text-decoration: underline;
+                    font-weight: 500;
+                }
+                .forum-link:hover {
+                    color: var(--sakura-pink-hover);
                 }
                 .quick-comments-section {
                     background: var(--bg-base);
@@ -1089,8 +1335,8 @@ export default function Forum({
                                                     setIsQuickCreateExpanded(false);
                                                     setQuickTitle('');
                                                     setQuickContent('');
-                                                    setQuickImageUrl('');
-                                                    setQuickImageFile(null);
+                                                    setQuickImageUrls([]);
+                                                    setQuickImageFiles([]);
                                                 }}
                                             >
                                                 ✕
@@ -1119,14 +1365,14 @@ export default function Forum({
                                             </select>
                                             <span style={{ flex: '0.6' }}></span>
                                         </div>
-                                        <textarea 
+                                        <RichTextEditor 
                                             placeholder="Hãy viết nội dung thảo luận chia sẻ..." 
                                             value={quickContent} 
-                                            onChange={(e) => setQuickContent(e.target.value)} 
+                                            onChange={setQuickContent} 
                                             required
-                                            style={{ width: '100%', minHeight: '100px', padding: '10px', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-sm)', background: 'var(--bg-base)', color: 'var(--text-main)', outline: 'none', fontFamily: 'inherit', fontSize: '0.85rem', resize: 'vertical' }}
+                                            minHeight="100px"
                                         />
-
+ 
                                         {/* Image attachments selection */}
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px dashed var(--border-color)', paddingTop: '10px', marginTop: '4px' }}>
                                             <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Thêm hình ảnh bài đăng (Tùy chọn)</label>
@@ -1136,48 +1382,42 @@ export default function Forum({
                                                     <input 
                                                         type="file" 
                                                         accept="image/*" 
+                                                        multiple
                                                         style={{ display: 'none' }}
                                                         onChange={(e) => {
-                                                            const file = e.target.files?.[0];
-                                                            if (file) {
-                                                                setQuickImageFile(file);
-                                                                setQuickImageUrl(URL.createObjectURL(file)); // use temp local URL for preview
+                                                            const files = Array.from(e.target.files || []);
+                                                            if (files.length > 0) {
+                                                                setQuickImageFiles(prev => [...prev, ...files]);
+                                                                setQuickImageUrls(prev => [...prev, ...files.map(f => URL.createObjectURL(f))]);
                                                             }
                                                         }}
                                                     />
                                                 </label>
-                                                <input 
-                                                    type="text" 
-                                                    placeholder="Hoặc dán URL ảnh trực tuyến..." 
-                                                    value={quickImageFile ? "" : quickImageUrl} 
-                                                    disabled={!!quickImageFile}
-                                                    onChange={(e) => setQuickImageUrl(e.target.value)}
-                                                    style={{ flex: 1, padding: '6px 12px', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-sm)', background: 'var(--bg-base)', color: 'var(--text-main)', fontSize: '0.78rem', outline: 'none' }}
-                                                />
                                             </div>
-                                            {/* Preview attached image */}
-                                            {quickImageUrl && (
-                                                <div style={{ position: 'relative', width: 'fit-content', marginTop: '8px', borderRadius: 'var(--border-radius-sm)', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
-                                                    <img 
-                                                        src={quickImageUrl} 
-                                                        alt="Preview" 
-                                                        style={{ maxWidth: '150px', maxHeight: '100px', display: 'block', objectFit: 'cover' }} 
-                                                    />
-                                                    <button 
-                                                        type="button" 
-                                                        onClick={() => {
-                                                            setQuickImageUrl('');
-                                                            setQuickImageFile(null);
-                                                        }}
-                                                        style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem' }}
-                                                        title="Xóa ảnh"
-                                                    >
-                                                        ✕
-                                                    </button>
+                                            {/* Preview attached images */}
+                                            {quickImageUrls.length > 0 && (
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
+                                                    {quickImageUrls.map((url, idx) => (
+                                                        <div key={idx} style={{ position: 'relative', width: 'fit-content', borderRadius: 'var(--border-radius-sm)', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                                                            <img 
+                                                                src={url} 
+                                                                alt={`Preview ${idx}`} 
+                                                                style={{ width: '100px', height: '75px', display: 'block', objectFit: 'cover' }} 
+                                                            />
+                                                            <button 
+                                                                type="button" 
+                                                                onClick={() => removeQuickImage(idx)}
+                                                                style={{ position: 'absolute', top: '3px', right: '3px', background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', borderRadius: '50%', width: '18px', height: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem' }}
+                                                                title="Xóa ảnh"
+                                                            >
+                                                                ✕
+                                                            </button>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             )}
                                         </div>
-
+ 
                                         <div style={{ display: 'flex', justifySelf: 'flex-end', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
                                             <button 
                                                 type="button" 
@@ -1186,8 +1426,8 @@ export default function Forum({
                                                     setIsQuickCreateExpanded(false);
                                                     setQuickTitle('');
                                                     setQuickContent('');
-                                                    setQuickImageUrl('');
-                                                    setQuickImageFile(null);
+                                                    setQuickImageUrls([]);
+                                                    setQuickImageFiles([]);
                                                 }}
                                             >
                                                 Hủy
@@ -1219,6 +1459,8 @@ export default function Forum({
                                         const isAuthorOrAdmin = currentUser && (post.author_id === currentUser.id || currentUser.roles.includes('admin'));
                                         const isCommentsOpen = !!expandedPostComments[post.id];
                                         const quickCommentVal = quickCommentTexts[post.id] || "";
+                                        const { cleanContent, images: extractedImages } = extractAndCleanImages(post.content);
+                                        const allImages = [post.image_url, ...extractedImages].filter(Boolean) as string[];
 
                                         return (
                                             <div key={post.id} className="social-feed-card">
@@ -1244,7 +1486,7 @@ export default function Forum({
                                                     </div>
 
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                        <span className="tag-badge" style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border-color)', fontSize: '0.7rem', fontWeight: 600 }}>
+                                                        <span className="tag-badge" style={{ background: 'linear-gradient(135deg, var(--sakura-pink-light) 0%, rgba(224, 82, 117, 0.02) 100%)', border: '1px solid rgba(224, 82, 117, 0.25)', color: 'var(--sakura-pink)', fontSize: '0.7rem', fontWeight: 700, borderRadius: '12px', padding: '4px 10px' }}>
                                                             {formatCategoryName(post.category)}
                                                         </span>
                                                         {isAdmin && (
@@ -1273,20 +1515,12 @@ export default function Forum({
                                                     <h4 style={{ margin: '0 0 10px 0', fontSize: '1.08rem', color: 'var(--text-main)', fontWeight: 650, lineHeight: '1.3' }}>
                                                         {post.title}
                                                     </h4>
-                                                    <p style={{ margin: '0 0 12px 0', fontSize: '0.88rem', color: 'var(--text-content)', whiteSpace: 'pre-line', lineHeight: '1.55' }}>
-                                                        {post.content}
+                                                    <p style={{ margin: '0 0 12px 0', fontSize: '0.88rem', color: 'var(--text-content)', lineHeight: '1.55' }}>
+                                                        {parseFormattedContent(cleanContent)}
                                                     </p>
-                                                    {post.image_url && (
-                                                        <div style={{ marginTop: '12px', borderRadius: 'var(--border-radius-md)', overflow: 'hidden', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.02)', display: 'flex', justifyContent: 'center' }}>
-                                                            <img 
-                                                                src={post.image_url} 
-                                                                alt="Post attachment" 
-                                                                style={{ maxWidth: '100%', maxHeight: '480px', objectFit: 'contain', display: 'block', cursor: 'zoom-in' }} 
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setLightboxImage(post.image_url);
-                                                                }}
-                                                            />
+                                                    {allImages.length > 0 && (
+                                                        <div onClick={(e) => e.stopPropagation()}>
+                                                            <ForumImageGrid images={allImages} onImageClick={(url) => setLightboxImage(url)} />
                                                         </div>
                                                     )}
                                                 </div>
@@ -1345,7 +1579,7 @@ export default function Forum({
                                                                                     {c.created_at ? new Date(c.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
                                                                                 </span>
                                                                             </div>
-                                                                            <p style={{ fontSize: '0.8rem', marginTop: '4px', lineHeight: 1.4, color: 'var(--text-content)' }}>{c.text}</p>
+                                                                            <p style={{ fontSize: '0.8rem', marginTop: '4px', lineHeight: 1.4, color: 'var(--text-content)' }}>{parseFormattedContent(c.text)}</p>
                                                                             {currentUser && (
                                                                                 <div style={{ display: 'flex', gap: '8px', fontSize: '0.68rem', marginTop: '2px' }}>
                                                                                     <button 
@@ -1391,7 +1625,7 @@ export default function Forum({
                                                                                         {reply.created_at ? new Date(reply.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
                                                                                     </span>
                                                                                 </div>
-                                                                                <p style={{ fontSize: '0.76rem', marginTop: '2px', lineHeight: 1.35, color: 'var(--text-content)', marginLeft: '24px' }}>{reply.text}</p>
+                                                                                <p style={{ fontSize: '0.76rem', marginTop: '2px', lineHeight: 1.35, color: 'var(--text-content)', marginLeft: '24px' }}>{parseFormattedContent(reply.text)}</p>
                                                                                 {currentUser && (
                                                                                     <div style={{ display: 'flex', gap: '8px', fontSize: '0.66rem', marginTop: '2px', marginLeft: '24px' }}>
                                                                                         <button 
@@ -1471,13 +1705,27 @@ export default function Forum({
                                             className="contact-item" 
                                             onClick={() => handleStartChat(friend)}
                                         >
-                                            <div className="contact-avatar">
-                                                <img 
-                                                    src={friend.avatarSeed && (friend.avatarSeed.startsWith('http') || friend.avatarSeed.startsWith('/uploads') || friend.avatarSeed.startsWith('data:')) 
-                                                        ? friend.avatarSeed 
-                                                        : `https://api.dicebear.com/7.x/adventurer/svg?seed=${friend.avatarSeed || 'Default'}`} 
-                                                    alt="Avatar" 
-                                                />
+                                            <div style={{ position: 'relative' }}>
+                                                <div className="contact-avatar">
+                                                    <img 
+                                                        src={friend.avatarSeed && (friend.avatarSeed.startsWith('http') || friend.avatarSeed.startsWith('/uploads') || friend.avatarSeed.startsWith('data:')) 
+                                                            ? friend.avatarSeed 
+                                                            : `https://api.dicebear.com/7.x/adventurer/svg?seed=${friend.avatarSeed || 'Default'}`} 
+                                                        alt="Avatar" 
+                                                    />
+                                                </div>
+                                                {onlineUsers[friend.id] && (
+                                                    <span style={{
+                                                        position: 'absolute',
+                                                        bottom: 0,
+                                                        right: 0,
+                                                        width: '10px',
+                                                        height: '10px',
+                                                        backgroundColor: '#2ecc71',
+                                                        border: '2px solid var(--bg-card)',
+                                                        borderRadius: '50%'
+                                                    }} title="Trực tuyến" />
+                                                )}
                                             </div>
                                             <div className="contact-name">{friend.displayname}</div>
                                         </div>
@@ -1525,12 +1773,12 @@ export default function Forum({
 
                         <div className="input-field">
                             <label>Nội dung chi tiết</label>
-                            <textarea 
+                            <RichTextEditor 
                                 placeholder="Nhập nội dung chia sẻ..." 
                                 value={newContent} 
-                                onChange={(e) => setNewContent(e.target.value)} 
+                                onChange={setNewContent} 
                                 required
-                                style={{ width: '100%', minHeight: '160px', padding: '10px', border: '1.5px solid var(--border-color)', borderRadius: '6px', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }}
+                                minHeight="160px"
                             />
                         </div>
 
@@ -1543,43 +1791,37 @@ export default function Forum({
                                     <input 
                                         type="file" 
                                         accept="image/*" 
+                                        multiple
                                         style={{ display: 'none' }}
                                         onChange={(e) => {
-                                            const file = e.target.files?.[0];
-                                            if (file) {
-                                                setNewImageFile(file);
-                                                setNewImageUrl(URL.createObjectURL(file));
+                                            const files = Array.from(e.target.files || []);
+                                            if (files.length > 0) {
+                                                setNewImageFiles(prev => [...prev, ...files]);
+                                                setNewImageUrls(prev => [...prev, ...files.map(f => URL.createObjectURL(f))]);
                                             }
                                         }}
                                     />
                                 </label>
-                                <input 
-                                    type="text" 
-                                    placeholder="Hoặc dán URL liên kết ảnh..." 
-                                    value={newImageFile ? "" : newImageUrl} 
-                                    disabled={!!newImageFile}
-                                    onChange={(e) => setNewImageUrl(e.target.value)}
-                                    style={{ flex: 1 }}
-                                />
                             </div>
-                            {newImageUrl && (
-                                <div style={{ position: 'relative', width: 'fit-content', marginTop: '12px', borderRadius: 'var(--border-radius-md)', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
-                                    <img 
-                                        src={newImageUrl} 
-                                        alt="Preview Attachment" 
-                                        style={{ maxWidth: '200px', maxHeight: '150px', display: 'block', objectFit: 'cover' }} 
-                                    />
-                                    <button 
-                                        type="button" 
-                                        onClick={() => {
-                                            setNewImageUrl('');
-                                            setNewImageFile(null);
-                                        }}
-                                        style={{ position: 'absolute', top: '6px', right: '6px', background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem' }}
-                                        title="Xóa ảnh đính kèm"
-                                    >
-                                        ✕
-                                    </button>
+                            {newImageUrls.length > 0 && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '12px' }}>
+                                    {newImageUrls.map((url, idx) => (
+                                        <div key={idx} style={{ position: 'relative', width: 'fit-content', borderRadius: 'var(--border-radius-md)', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                                            <img 
+                                                src={url} 
+                                                alt={`Preview Attachment ${idx}`} 
+                                                style={{ width: '120px', height: '90px', display: 'block', objectFit: 'cover' }} 
+                                            />
+                                            <button 
+                                                type="button" 
+                                                onClick={() => removeNewImage(idx)}
+                                                style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem' }}
+                                                title="Xóa ảnh này"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>
@@ -1592,8 +1834,8 @@ export default function Forum({
                                     setSubView('list');
                                     setNewTitle('');
                                     setNewContent('');
-                                    setNewImageUrl('');
-                                    setNewImageFile(null);
+                                    setNewImageUrls([]);
+                                    setNewImageFiles([]);
                                 }}
                             >
                                 Hủy
@@ -1604,8 +1846,11 @@ export default function Forum({
                 </div>
             )}
 
-            {subView === 'detail' && selectedPost && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {subView === 'detail' && selectedPost && (() => {
+                const { cleanContent: detailCleanContent, images: detailExtractedImages } = extractAndCleanImages(selectedPost.content);
+                const detailAllImages = [selectedPost.image_url, ...detailExtractedImages].filter(Boolean) as string[];
+                return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     {/* Back navigation */}
                     <div>
                         <button className="text-link-btn" onClick={() => { setSubView('list'); if (setInitialPostId) setInitialPostId(null); }}>
@@ -1616,7 +1861,7 @@ export default function Forum({
                     {/* Main post box */}
                     <div className="content-box" style={{ padding: '24px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                            <span className="tag-badge" style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border-color)' }}>
+                            <span className="tag-badge" style={{ background: 'linear-gradient(135deg, var(--sakura-pink-light) 0%, rgba(224, 82, 117, 0.02) 100%)', border: '1px solid rgba(224, 82, 117, 0.25)', color: 'var(--sakura-pink)', fontSize: '0.72rem', fontWeight: 700, borderRadius: '12px', padding: '4px 10px' }}>
                                 {formatCategoryName(selectedPost.category)}
                             </span>
                             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -1680,21 +1925,13 @@ export default function Forum({
                             fontSize: '0.95rem', 
                             color: 'var(--text-main)', 
                             lineHeight: 1.7, 
-                            whiteSpace: 'pre-line',
                             minHeight: '120px'
                         }}>
-                            {selectedPost.content}
+                            {parseFormattedContent(detailCleanContent)}
                         </div>
 
-                        {selectedPost.image_url && (
-                            <div style={{ marginTop: '16px', borderRadius: 'var(--border-radius-lg)', overflow: 'hidden', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.02)', display: 'flex', justifyContent: 'center' }}>
-                                <img 
-                                    src={selectedPost.image_url} 
-                                    alt="Post attachment" 
-                                    style={{ maxWidth: '100%', maxHeight: '500px', objectFit: 'contain', display: 'block', cursor: 'zoom-in' }} 
-                                    onClick={() => setLightboxImage(selectedPost.image_url)}
-                                />
-                            </div>
+                        {detailAllImages.length > 0 && (
+                            <ForumImageGrid images={detailAllImages} onImageClick={(url) => setLightboxImage(url)} />
                         )}
                     </div>
 
@@ -1723,7 +1960,7 @@ export default function Forum({
                                             {new Date(comment.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     </div>
-                                    <p style={{ fontSize: '0.85rem', marginTop: '6px', lineHeight: 1.5, color: 'var(--text-content)' }}>{comment.text}</p>
+                                    <p style={{ fontSize: '0.85rem', marginTop: '6px', lineHeight: 1.5, color: 'var(--text-content)' }}>{parseFormattedContent(comment.text)}</p>
                                     {currentUser && (
                                         <div style={{ marginTop: '6px', display: 'flex', gap: '12px' }}>
                                             <button 
@@ -1781,7 +2018,7 @@ export default function Forum({
                                                     {new Date(reply.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                                                 </span>
                                             </div>
-                                            <p style={{ fontSize: '0.82rem', marginTop: '4px', lineHeight: 1.4, color: 'var(--text-content)', marginLeft: '26px' }}>{reply.text}</p>
+                                            <p style={{ fontSize: '0.82rem', marginTop: '4px', lineHeight: 1.4, color: 'var(--text-content)', marginLeft: '26px' }}>{parseFormattedContent(reply.text)}</p>
                                             {currentUser && (
                                                 <div style={{ marginTop: '4px', display: 'flex', gap: '12px', marginLeft: '26px' }}>
                                                     <button 
@@ -1822,13 +2059,13 @@ export default function Forum({
                                 <form onSubmit={handleAddComment} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                     <div className="input-field">
                                         <label style={{ fontSize: '0.85rem' }}>Viết phản hồi</label>
-                                        <textarea
+                                        <RichTextEditor
                                             id="detailed-comment-textarea"
                                             placeholder="Nhập nội dung câu trả lời hoặc thảo luận..."
                                             value={commentText}
-                                            onChange={(e) => setCommentText(e.target.value)}
+                                            onChange={setCommentText}
                                             required
-                                            style={{ width: '100%', minHeight: '80px', padding: '10px', border: '1.5px solid var(--border-color)', borderRadius: '6px', outline: 'none', fontFamily: 'inherit', resize: 'vertical', fontSize: '0.85rem' }}
+                                            minHeight="80px"
                                         />
                                     </div>
                                     <button type="submit" className="primary-btn small" style={{ alignSelf: 'flex-end' }}>Gửi phản hồi</button>
@@ -1845,20 +2082,35 @@ export default function Forum({
                         )}
                     </div>
                 </div>
-            )}
+                );
+            })()}
 
             {/* Popup chat kiểu Facebook ở dưới cùng màn hình (chỉ hiển thị khi đang trong subView list) */}
             {subView === 'list' && activeChatFriend && (
                 <div className="fb-chat-popup">
                     <div className="fb-chat-header">
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div className="fb-chat-avatar">
-                                <img 
-                                    src={activeChatFriend.avatarSeed && (activeChatFriend.avatarSeed.startsWith('http') || activeChatFriend.avatarSeed.startsWith('/uploads') || activeChatFriend.avatarSeed.startsWith('data:')) 
-                                        ? activeChatFriend.avatarSeed 
-                                        : `https://api.dicebear.com/7.x/adventurer/svg?seed=${activeChatFriend.avatarSeed || 'Default'}`} 
-                                    alt={activeChatFriend.displayname} 
-                                />
+                            <div style={{ position: 'relative' }}>
+                                <div className="fb-chat-avatar">
+                                    <img 
+                                        src={activeChatFriend.avatarSeed && (activeChatFriend.avatarSeed.startsWith('http') || activeChatFriend.avatarSeed.startsWith('/uploads') || activeChatFriend.avatarSeed.startsWith('data:')) 
+                                            ? activeChatFriend.avatarSeed 
+                                            : `https://api.dicebear.com/7.x/adventurer/svg?seed=${activeChatFriend.avatarSeed || 'Default'}`} 
+                                        alt={activeChatFriend.displayname} 
+                                    />
+                                </div>
+                                {onlineUsers[activeChatFriend.id] && (
+                                    <span style={{
+                                        position: 'absolute',
+                                        bottom: 0,
+                                        right: 0,
+                                        width: '8px',
+                                        height: '8px',
+                                        backgroundColor: '#2ecc71',
+                                        border: '1.5px solid white',
+                                        borderRadius: '50%'
+                                    }} title="Trực tuyến" />
+                                )}
                             </div>
                             <span className="fb-chat-name" title={activeChatFriend.displayname}>{activeChatFriend.displayname}</span>
                         </div>

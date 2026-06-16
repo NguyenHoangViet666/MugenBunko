@@ -4,6 +4,23 @@ import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.js';
 
 const router = Router();
 
+// Lấy bảng xếp hạng wibu tuần (top users theo XP)
+router.get('/wibu-ranking', async (req: Request, res: Response) => {
+    try {
+        const ranking = await db.query<any[]>(
+            `SELECT id, username, displayname, avatar_seed as avatarSeed, level, xp 
+             FROM users 
+             WHERE status = 'active'
+             ORDER BY xp DESC 
+             LIMIT 5`
+        );
+        res.json(ranking);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Lỗi tải bảng xếp hạng wibu." });
+    }
+});
+
 // 1. Lấy danh sách bạn bè và lời mời kết bạn
 router.get('/friends', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user?.id;

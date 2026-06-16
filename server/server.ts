@@ -1,4 +1,7 @@
 import express from 'express';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import jwt from 'jsonwebtoken';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import fs from 'fs';
@@ -27,7 +30,10 @@ import policiesRouter from './routes/policies.js';
 import { authenticateToken } from './middleware/auth.js';
 import { checkRole } from './middleware/roles.js';
 
-dotenv.config();
+const envPath = fs.existsSync(path.join(process.cwd(), '.env'))
+    ? path.join(process.cwd(), '.env')
+    : path.join(process.cwd(), 'server', '.env');
+dotenv.config({ path: envPath });
 
 // Configure Cloudinary if credentials are present
 const isCloudinaryConfigured = !!(
@@ -51,6 +57,20 @@ if (isCloudinaryConfigured) {
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+    cors: {
+        origin: (origin, callback) => {
+            callback(null, true);
+        },
+        credentials: true
+    }
+});
+
+// Active Socket Connections map
+const activeSockets = new Map<number, string>(); // userId -> socketId
+const socketUsers = new Map<string, number>(); // socketId -> userId
+
 // Security configuration: CORS Origin Hardening
 const allowedOrigins = [
     'http://localhost:5173',
@@ -60,16 +80,36 @@ const allowedOrigins = [
     process.env.FRONTEND_URL
 ].filter(Boolean) as string[];
 
-const corsOptions: cors.CorsOptions = {
-    origin: (origin, callback) => {
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
-            return callback(null, true);
-        } else {
-            return callback(new Error('CORS Policy: Request from this origin is not allowed!'));
+const corsOptionsDelegate = (req: express.Request, callback: (err: Error | null, options?: cors.CorsOptions) => void) => {
+    const origin = req.header('Origin');
+    let corsOptions: cors.CorsOptions = { credentials: true, origin: false };
+
+    if (!origin) {
+        corsOptions.origin = true;
+    } else {
+        let isAllowed = false;
+        try {
+            const originUrl = new URL(origin);
+            const reqHost = req.header('host');
+            if (originUrl.host === reqHost) {
+                isAllowed = true;
+            }
+        } catch (e) {}
+
+        if (!isAllowed) {
+            if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+                isAllowed = true;
+            }
         }
-    },
-    credentials: true
+
+        if (isAllowed) {
+            corsOptions.origin = true;
+        } else {
+            console.warn(`[CORS Blocked] Origin "${origin}" is not allowed. Host: "${req.header('host')}". Allowed origins:`, allowedOrigins);
+            corsOptions.origin = false;
+        }
+    }
+    callback(null, corsOptions);
 };
 
 // Rate Limiters
@@ -102,7 +142,7 @@ app.use(helmet({
     contentSecurityPolicy: false, // Turn off for unified frontend assets hosting / dev mode ease
     crossOriginEmbedderPolicy: false
 }));
-app.use(cors(corsOptions));
+app.use(cors(corsOptionsDelegate));
 app.use('/api/', generalLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
@@ -203,8 +243,129 @@ if (distPath) {
     console.log(`[Static] Frontend static assets (dist/) not found. Running in API-only mode.`);
 }
 
+// Socket.io Handshake Middleware (JWT Authentication)
+io.use((socket, next) => {
+    const token = socket.handshake.auth.token || socket.handshake.query.token;
+    if (!token) {
+        return next(new Error("Xác thực thất bại: Không có token!"));
+    }
+    
+    try {
+        const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_for_mugen_key_dev';
+        const decoded = jwt.verify(token, JWT_SECRET) as { id: number, username: string };
+        socket.data.user = decoded;
+        next();
+    } catch (err) {
+        return next(new Error("Xác thực thất bại: Token không hợp lệ!"));
+    }
+});
+
+// Helper to broadcast status changes to friends
+async function broadcastStatusToFriends(userId: number, status: 'online' | 'offline') {
+    try {
+        const rows = await db.query<any[]>(
+            `SELECT CASE WHEN user_id_1 = ? THEN user_id_2 ELSE user_id_1 END AS friend_id 
+             FROM friends 
+             WHERE (user_id_1 = ? OR user_id_2 = ?) AND status = 'accepted'`,
+            [userId, userId, userId]
+        );
+        
+        if (rows && rows.length > 0) {
+            rows.forEach(row => {
+                const friendSocketId = activeSockets.get(row.friend_id);
+                if (friendSocketId) {
+                    io.to(friendSocketId).emit('friend_status_change', {
+                        userId,
+                        status
+                    });
+                }
+            });
+        }
+    } catch (err) {
+        console.error("[Socket] Error broadcasting status:", err);
+    }
+}
+
+// Socket.io Event Handlers
+io.on('connection', (socket) => {
+    const user = socket.data.user;
+    if (!user || !user.id) {
+        socket.disconnect();
+        return;
+    }
+    
+    // Track new connection
+    activeSockets.set(user.id, socket.id);
+    socketUsers.set(socket.id, user.id);
+    console.log(`[Socket] User ${user.username} (ID: ${user.id}) connected. Socket ID: ${socket.id}`);
+    
+    // Broadcast that this user is now online
+    broadcastStatusToFriends(user.id, 'online');
+    
+    // Handle sending message in real-time
+    socket.on('send_message', async (data: { receiverId: number, messageText: string }, callback) => {
+        try {
+            const { receiverId, messageText } = data;
+            if (!receiverId || !messageText || !messageText.trim()) {
+                if (callback) callback({ success: false, error: "Nội dung tin nhắn không hợp lệ." });
+                return;
+            }
+            
+            // Insert into the database
+            const result = await db.query<any>(
+                "INSERT INTO messages (sender_id, receiver_id, message_text) VALUES (?, ?, ?)",
+                [user.id, receiverId, messageText.trim()]
+            );
+            
+            const insertId = result.insertId;
+            const message = {
+                id: insertId,
+                sender_id: user.id,
+                receiver_id: receiverId,
+                message_text: messageText.trim(),
+                is_read: 0,
+                created_at: new Date()
+            };
+            
+            // Deliver to recipient via socket if they are online
+            const recipientSocketId = activeSockets.get(receiverId);
+            if (recipientSocketId) {
+                io.to(recipientSocketId).emit('receive_message', message);
+            }
+            
+            if (callback) callback({ success: true, message });
+        } catch (err) {
+            console.error("[Socket] Error saving/sending message:", err);
+            if (callback) callback({ success: false, error: "Lỗi hệ thống khi gửi tin nhắn." });
+        }
+    });
+    
+    // Handle checking online status of user IDs
+    socket.on('check_online_status', (userIds: number[], callback) => {
+        if (!Array.isArray(userIds)) {
+            if (callback) callback({});
+            return;
+        }
+        const statuses: { [key: number]: boolean } = {};
+        userIds.forEach(id => {
+            statuses[id] = activeSockets.has(id);
+        });
+        if (callback) callback(statuses);
+    });
+    
+    // Handle disconnection
+    socket.on('disconnect', () => {
+        console.log(`[Socket] User ${user.username} (ID: ${user.id}) disconnected.`);
+        activeSockets.delete(user.id);
+        socketUsers.delete(socket.id);
+        
+        // Broadcast that this user is now offline
+        broadcastStatusToFriends(user.id, 'offline');
+    });
+});
+
 // Start Server
-app.listen(PORT, async () => {
+httpServer.listen(PORT, async () => {
     console.log(`Server starting on port ${PORT}...`);
     try {
         await initializeDbConnection();
@@ -230,3 +391,5 @@ app.listen(PORT, async () => {
         console.error("Critical: Could not connect to database on startup.");
     }
 });
+// Touch to restart server again
+

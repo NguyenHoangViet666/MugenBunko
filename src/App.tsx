@@ -37,9 +37,9 @@ const DB_KEYS = {
 };
 
 const API_BASE = (import.meta.env.VITE_API_BASE as string) || 
-    (window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
+    (import.meta.env.DEV
         ? 'http://localhost:5000/api'
-        : `${window.location.origin}/api`);
+        : '/api');
 
 
 const CACHE_KEYS = {
@@ -240,6 +240,7 @@ export default function App() {
     const [activeBannerId, setActiveBannerId] = useState<number | null>(null);
     const [activeEventId, setActiveEventId] = useState<number | null>(null);
     const [adminEventContent, setAdminEventContent] = useState<string>("");
+    const [wibuRanking, setWibuRanking] = useState<any[]>([]);
 
     // ----------------------------------------------------
     // User Session & System state
@@ -413,6 +414,7 @@ export default function App() {
             fetchEvents();
             fetchLatestComments();
             fetchLatestReviews();
+            fetchWibuRanking();
         } else if (currentView === 'explore' || currentView === 'library' || currentView === 'studio' || currentView === 'detail' || currentView === 'admin-dashboard' || currentView === 'mod-dashboard') {
             fetchNovels();
         } else if (currentView === 'forum') {
@@ -729,6 +731,17 @@ export default function App() {
         } catch (err) {
             console.error("Error fetching latest reviews:", err);
             setLatestReviews([]);
+        }
+    };
+
+    const fetchWibuRanking = async () => {
+        try {
+            const res = await fetchWithAuth(`${API_BASE}/social/wibu-ranking`);
+            const data = await res.json();
+            setWibuRanking(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error("Error fetching wibu ranking:", err);
+            setWibuRanking([]);
         }
     };
 
@@ -2594,6 +2607,7 @@ export default function App() {
                         latestReviews={latestReviews}
                         events={events}
                         setActiveEventId={setActiveEventId}
+                        wibuRanking={wibuRanking}
                     />
                 )}
 
