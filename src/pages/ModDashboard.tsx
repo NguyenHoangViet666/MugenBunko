@@ -28,7 +28,7 @@ interface ModDashboardProps {
     pendingChapters: any[];
     reports: ModReport[];
     users: User[];
-    modApproveRejectChapter: (novelId: number, chapterIndex: number, action: 'approve' | 'reject') => void;
+    modApproveRejectChapter: (chapterId: number, action: 'approve' | 'reject') => void;
     handleCommentReportAction: (index: number, action: 'keep' | 'delete') => void;
     toggleUserSuspension: (username: string, status: 'active' | 'suspended') => void;
     toggleAdminUserRole: (username: string, role: string, checked: boolean) => void;
@@ -39,11 +39,12 @@ interface ModDashboardProps {
     tagMergeTo: string;
     setTagMergeTo: (tag: string) => void;
     modMergeTagsSubmit: () => void;
-    modRejectChapter: (novelId: number, chapterIndex: number) => void;
+    modRejectChapter: (chapterId: number) => void;
     currentUser: User | null;
 }
 
 export default function ModDashboard({
+    pendingChapters,
     reports,
     users,
     modApproveRejectChapter,
@@ -98,43 +99,23 @@ export default function ModDashboard({
                 <div className="admin-panel-card">
                     <h3 className="panel-title">Chương Truyện Chờ Duyệt</h3>
                     <div className="queue-list" style={{display:'flex', flexDirection:'column', gap:'12px'}}>
-                        {(() => {
-                            const list: PendingChapterItem[] = [];
-                            novels.forEach(n => {
-                                if (n.chapters) {
-                                    n.chapters.forEach((ch, idx) => {
-                                        if (ch.status === 'pending') {
-                                            list.push({ 
-                                                novelId: n.id, 
-                                                chapterIndex: idx, 
-                                                novelTitle: n.title, 
-                                                chapterTitle: ch.title, 
-                                                author: n.author_name || n.author_username || "Ẩn danh", 
-                                                date: ch.created_at || "" 
-                                            });
-                                        }
-                                    });
-                                }
-                            });
-
-                            if (list.length === 0) {
-                                return <div style={{fontSize:'0.8rem', color:'var(--text-muted)', textAlign:'center', padding:'12px 0'}}>Không có chương nào đang chờ duyệt.</div>;
-                            }
-
-                            return list.map((item, index) => (
-                                <div key={index} className="queue-item-box" style={{border:'1px solid var(--border-color)', borderRadius:'4px', padding:'12px', background:'var(--bg-card)'}}>
+                        {pendingChapters.length === 0 ? (
+                            <div style={{fontSize:'0.8rem', color:'var(--text-muted)', textAlign:'center', padding:'12px 0'}}>Không có chương nào đang chờ duyệt.</div>
+                        ) : (
+                            pendingChapters.map((item) => (
+                                <div key={item.id} className="queue-item-box" style={{border:'1px solid var(--border-color)', borderRadius:'4px', padding:'12px', background:'var(--bg-card)'}}>
                                     <div style={{fontSize:'0.82rem', marginBottom:'8px'}}>
                                         <strong>{item.novelTitle}</strong>
-                                        <div style={{fontSize:'0.75rem', color:'var(--text-muted)', fontWeight:600}}>{item.chapterTitle}</div>
-                                        <div style={{fontSize:'0.68rem', color:'var(--text-muted)'}}>Người đăng: {item.author} | Ngày: {item.date}</div>
+                                        <div style={{fontSize:'0.75rem', color:'var(--text-muted)', fontWeight:600}}>{item.title}</div>
+                                        <div style={{fontSize:'0.68rem', color:'var(--text-muted)'}}>Người đăng: {item.authorName || "Ẩn danh"} | Ngày: {item.date}</div>
                                     </div>
                                     <div className="flex-row-end" style={{gap:'8px'}}>
-                                        <button className="outline-btn small" style={{color:'red', borderColor:'rgba(255,0,0,0.15)'}} onClick={() => modApproveRejectChapter(item.novelId, item.chapterIndex, 'reject')}>Từ chối</button>
-                                        <button className="primary-btn small" onClick={() => modApproveRejectChapter(item.novelId, item.chapterIndex, 'approve')}>Duyệt Đăng</button>
+                                        <button className="outline-btn small" style={{color:'red', borderColor:'rgba(255,0,0,0.15)'}} onClick={() => modApproveRejectChapter(item.id, 'reject')}>Từ chối</button>
+                                        <button className="primary-btn small" onClick={() => modApproveRejectChapter(item.id, 'approve')}>Duyệt Đăng</button>
                                     </div>
                                 </div>
-                            ));
-                        })()}
+                            ))
+                        )}
                     </div>
                 </div>
 
@@ -193,14 +174,13 @@ export default function ModDashboard({
                     <h3 className="panel-title">Quản Lý Nội Dung Đã Đăng (Ẩn/Gỡ Truyện)</h3>
                     <div className="queue-list" style={{maxHeight:'300px', overflowY:'auto', display:'flex', flexDirection:'column', gap:'8px'}}>
                         {(() => {
-                            const list: { novelId: number; chapterIndex: number; title: string; author: string }[] = [];
+                            const list: { id: number; title: string; author: string }[] = [];
                             novels.forEach(novel => {
                                 if (novel.chapters) {
-                                    novel.chapters.forEach((ch, idx) => {
+                                    novel.chapters.forEach((ch) => {
                                         if (ch.status === 'published') {
                                             list.push({ 
-                                                novelId: novel.id, 
-                                                chapterIndex: idx, 
+                                                id: ch.id, 
                                                 title: `${novel.title} - ${ch.title}`, 
                                                 author: novel.author_name || novel.author_username || "Ẩn danh" 
                                             });
@@ -213,13 +193,13 @@ export default function ModDashboard({
                                 return <div style={{fontSize:'0.8rem', color:'var(--text-muted)', textAlign:'center', padding:'12px 0'}}>Không có chương truyện nào đã xuất bản.</div>;
                             }
 
-                            return list.map((item, index) => (
-                                <div key={index} className="flex-row-between" style={{padding:'8px 0', borderBottom:'1px dashed var(--border-color)', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                            return list.map((item) => (
+                                <div key={item.id} className="flex-row-between" style={{padding:'8px 0', borderBottom:'1px dashed var(--border-color)', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                                     <div style={{fontSize:'0.82rem', maxWidth:'70%'}}>
                                         <strong>{item.title}</strong>
                                         <span style={{fontSize:'0.7rem', color:'var(--text-muted)', display:'block'}}>Tác giả: {item.author}</span>
                                     </div>
-                                    <button className="outline-btn small" style={{color:'red', borderColor:'rgba(255,0,0,0.15)', padding:'2px 8px', fontSize:'0.72rem'}} onClick={() => modRejectChapter(item.novelId, item.chapterIndex)}>Gỡ/Ẩn</button>
+                                    <button className="outline-btn small" style={{color:'red', borderColor:'rgba(255,0,0,0.15)', padding:'2px 8px', fontSize:'0.72rem'}} onClick={() => modRejectChapter(item.id)}>Gỡ/Ẩn</button>
                                 </div>
                             ));
                         })()}

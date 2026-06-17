@@ -842,6 +842,7 @@ export default function App() {
     useEffect(() => {
         if (currentView === 'mod-dashboard' || currentView === 'admin-dashboard') {
             fetchDashboardData();
+            fetchNovels(true);
         }
     }, [currentView]);
 
@@ -1737,14 +1738,9 @@ export default function App() {
     // ----------------------------------------------------
     // MODERATOR ACTIONS
     // ----------------------------------------------------
-    const modApproveRejectChapter = async (novelId: number, chapterIndex: number, action: 'approve' | 'reject') => {
-        const novel = novels.find(n => n.id === novelId);
-        if (!novel || !novel.chapters) return;
-        const ch = novel.chapters[chapterIndex];
-        if (!ch) return;
-
+    const modApproveRejectChapter = async (chapterId: number, action: 'approve' | 'reject') => {
         try {
-            const res = await fetchWithAuth(`${API_BASE}/mod/chapters/${ch.id}/action`, {
+            const res = await fetchWithAuth(`${API_BASE}/mod/chapters/${chapterId}/action`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action })
@@ -1759,15 +1755,10 @@ export default function App() {
         }
     };
 
-    const modRejectChapter = async (novelId: number, chapterIndex: number) => {
+    const modRejectChapter = async (chapterId: number) => {
         if (!confirm("Bạn có chắc chắn muốn gỡ chương này không?")) return;
-        const novel = novels.find(n => n.id === novelId);
-        if (!novel || !novel.chapters) return;
-        const ch = novel.chapters[chapterIndex];
-        if (!ch) return;
-
         try {
-            const res = await fetchWithAuth(`${API_BASE}/mod/chapters/${ch.id}/action`, {
+            const res = await fetchWithAuth(`${API_BASE}/mod/chapters/${chapterId}/action`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'reject' })
