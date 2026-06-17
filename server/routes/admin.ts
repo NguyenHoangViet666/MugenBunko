@@ -102,4 +102,34 @@ router.delete('/rules/:id', async (req: Request, res: Response) => {
     }
 });
 
+// Admin adds a new genre
+router.post('/genres', async (req: Request, res: Response) => {
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+        return res.status(400).json({ error: "Vui lòng nhập tên thể loại!" });
+    }
+    try {
+        await db.query("INSERT INTO \`genres\` (name) VALUES (?)", [name.trim()]);
+        res.json({ success: true });
+    } catch (err: any) {
+        console.error("Create genre error:", err);
+        if (err.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({ error: "Thể loại này đã tồn tại!" });
+        }
+        res.status(500).json({ error: "Lỗi thêm thể loại mới." });
+    }
+});
+
+// Admin deletes a genre
+router.delete('/genres/:name', async (req: Request, res: Response) => {
+    const { name } = req.params;
+    try {
+        await db.query("DELETE FROM \`genres\` WHERE name = ?", [name]);
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Delete genre error:", err);
+        res.status(500).json({ error: "Lỗi xóa thể loại." });
+    }
+});
+
 export default router;

@@ -244,6 +244,27 @@ export async function initializeDbConnection(): Promise<void> {
         `);
         console.log("Migration check for rules completed.");
 
+        // Ensure genres table exists (migration)
+        console.log("Ensuring genres migration table exists...");
+        await connectionWithDb.query(`
+            CREATE TABLE IF NOT EXISTS \`genres\` (
+                \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+                \`name\` VARCHAR(100) UNIQUE NOT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+        console.log("Migration check for genres completed.");
+
+        // Seed initial genres if empty
+        const [genresCountCheck] = await connectionWithDb.query<any[]>("SELECT COUNT(*) as count FROM \`genres\`");
+        if (genresCountCheck[0].count === 0) {
+            console.log("Seeding initial genres into genres table...");
+            const defaultGenres = ["Isekai", "Fantasy", "Romance", "Sci-Fi", "Slice of Life"];
+            for (const g of defaultGenres) {
+                await connectionWithDb.query("INSERT IGNORE INTO \`genres\` (\`name\`) VALUES (?)", [g]);
+            }
+            console.log("Initial genres seeded successfully.");
+        }
+
         // Seed initial rules if empty
         const [rulesCheck] = await connectionWithDb.query<any[]>("SELECT COUNT(*) as count FROM \`rules\`");
         if (rulesCheck[0].count === 0) {

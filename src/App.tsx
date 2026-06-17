@@ -2375,29 +2375,73 @@ export default function App() {
         return saved ? JSON.parse(saved) : ["Isekai", "Fantasy", "Romance", "Sci-Fi", "Slice of Life"];
     });
 
-    const deleteGenre = (name: string) => {
-        setGenres(prev => {
-            const next = prev.filter(g => g !== name);
-            localStorage.setItem(DB_KEYS.genres, JSON.stringify(next));
-            return next;
-        });
-        showToast(`Đã xóa thể loại '${name}'.`);
+    useEffect(() => {
+        const fetchGenresList = async () => {
+            try {
+                const res = await fetch(`${API_BASE}/genres`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data)) {
+                        const list = data.map((g: any) => g.name);
+                        setGenres(list);
+                        localStorage.setItem(DB_KEYS.genres, JSON.stringify(list));
+                    }
+                }
+            } catch (e) {
+                console.error("Lỗi tải thể loại từ API, dùng cache:", e);
+            }
+        };
+        fetchGenresList();
+    }, []);
+
+    const deleteGenre = async (name: string) => {
+        if (!confirm(`⚠️ Bạn có chắc chắn muốn xóa thể loại '${name}' không? Các truyện thuộc thể loại này vẫn giữ nhãn cũ nhưng thể loại này sẽ biến mất khỏi bộ lọc.`)) return;
+        try {
+            const res = await fetchWithAuth(`${API_BASE}/admin/genres/${encodeURIComponent(name)}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                setGenres(prev => prev.filter(g => g !== name));
+                localStorage.setItem(DB_KEYS.genres, JSON.stringify(genres.filter(g => g !== name)));
+                showToast(`Đã xóa thể loại '${name}'.`);
+            } else {
+                const data = await res.json();
+                alert(data.error || "Lỗi xóa thể loại.");
+            }
+        } catch (err) {
+            console.error("Delete genre error:", err);
+            alert("Lỗi kết nối máy chủ API!");
+        }
     };
 
-    const handleAddGenre = () => {
+    const handleAddGenre = async () => {
         const name = newGenreName.trim();
         if (!name) return;
         if (genres.includes(name)) {
             alert("Thể loại này đã tồn tại!");
             return;
         }
-        setGenres(prev => {
-            const next = [...prev, name];
-            localStorage.setItem(DB_KEYS.genres, JSON.stringify(next));
-            return next;
-        });
-        setNewGenreName("");
-        showToast(`Đã thêm thể loại '${name}' thành công!`);
+
+        try {
+            const res = await fetchWithAuth(`${API_BASE}/admin/genres`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            if (res.ok) {
+                const nextGenres = [...genres, name];
+                setGenres(nextGenres);
+                localStorage.setItem(DB_KEYS.genres, JSON.stringify(nextGenres));
+                setNewGenreName("");
+                showToast(`Đã thêm thể loại '${name}' thành công! 🌸`);
+            } else {
+                const data = await res.json();
+                alert(data.error || "Lỗi thêm thể loại mới.");
+            }
+        } catch (err) {
+            console.error("Add genre error:", err);
+            alert("Lỗi kết nối máy chủ API!");
+        }
     };
 
     return (

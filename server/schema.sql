@@ -125,7 +125,11 @@ CREATE TABLE IF NOT EXISTS `reports` (
     FOREIGN KEY (`comment_id`) REFERENCES `comments` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
-
+-- 11. Genres Table
+CREATE TABLE IF NOT EXISTS `genres` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(100) UNIQUE NOT NULL
+) ENGINE=InnoDB;
 
 -- 13. System Global Events Table
 CREATE TABLE IF NOT EXISTS `events` (
@@ -258,7 +262,16 @@ TRUNCATE TABLE `novel_tags`;
 TRUNCATE TABLE `novels`;
 TRUNCATE TABLE `user_roles`;
 TRUNCATE TABLE `users`;
+TRUNCATE TABLE `genres`;
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- Seed default genres
+INSERT INTO `genres` (`name`) VALUES 
+('Isekai'), 
+('Fantasy'), 
+('Romance'), 
+('Sci-Fi'), 
+('Slice of Life');
 
 -- Seed Single Admin account (ID: 1)
 INSERT INTO `users` (`id`, `username`, `password`, `displayname`, `coins`, `level`, `xp`, `bio`, `avatar_seed`, `status`) 

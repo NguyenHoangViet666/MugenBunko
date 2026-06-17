@@ -223,6 +223,17 @@ app.use('/api/forum', forumRouter);
 app.use('/api/social', socialRouter);
 app.use('/api/policies', policiesRouter);
 
+// Public genres endpoint
+app.get('/api/genres', async (req, res) => {
+    try {
+        const results = await db.query<any[]>("SELECT name FROM \`genres\` ORDER BY name ASC");
+        res.json(results);
+    } catch (err) {
+        console.error("Error fetching genres:", err);
+        res.status(500).json({ error: "Lỗi tải thể loại từ máy chủ." });
+    }
+});
+
 // Serve frontend static files in production (unified hosting)
 const possibleDistPaths = [
     path.join(__dirname, '../../dist'),
