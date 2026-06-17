@@ -26,7 +26,7 @@ services:
     container_name: mugenbunko_app
     restart: always
     ports:
-      - "5000:5000"
+      - "${HOST_PORT:-5000}:5000"
     depends_on:
       db:
         condition: service_healthy
