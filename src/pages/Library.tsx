@@ -28,7 +28,7 @@ export default function Library({
                 <button className="outline-btn small" onClick={() => setCurrentView('home')}>← Quay lại thư viện</button>
             </div>
 
-            <div className="library-full-layout" id="library-full-grid" style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:'20px', marginTop:'24px'}}>
+            <div className="library-full-layout" id="library-full-grid">
                 {currentUser && currentUser.bookmarks && currentUser.bookmarks.length > 0 ? (
                     currentUser.bookmarks.map(id => {
                         const novel = novels.find(n => n.id === id);

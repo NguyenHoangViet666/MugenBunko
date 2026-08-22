@@ -7,6 +7,7 @@ import NewNovelModal from './components/NewNovelModal';
 import EditNovelModal from './components/EditNovelModal';
 import ScheduleModal from './components/ScheduleModal';
 import ChatWidget from './components/ChatWidget';
+import MobileGateOverlay from './components/MobileGateOverlay';
 
 import Home from './pages/Home';
 import Library from './pages/Library';
@@ -247,6 +248,26 @@ export default function App() {
     // ----------------------------------------------------
     const [currentUser, setCurrentUser] = useState<User | null>(cachedSession);
     const [currentView, setCurrentView] = useState<string>(initialRoute.view);
+
+    // ----------------------------------------------------
+    // Mobile Gate State (Standalone clean rendering)
+    // ----------------------------------------------------
+    const [isMobileDevice, setIsMobileDevice] = useState<boolean>(() => {
+        if (typeof window === 'undefined') return false;
+        return window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    });
+    const [mobileBypassed, setMobileBypassed] = useState<boolean>(() => {
+        return sessionStorage.getItem('mugen_mobile_bypass') === 'true';
+    });
+
+    useEffect(() => {
+        const handleResize = () => {
+            const isSmall = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            setIsMobileDevice(isSmall);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
     const [activeNovelId, setActiveNovelId] = useState<number | null>(initialRoute.novelId);
     const [activeChapterIndex, setActiveChapterIndex] = useState<number | null>(initialRoute.chapterIndex);
     
@@ -487,7 +508,19 @@ export default function App() {
             return;
         }
 
+        // Match #/forum?post=123
+        const forumPostMatch = hash.match(/^#\/forum\?post=(\d+)$/);
+        if (forumPostMatch) {
+            const postId = parseInt(forumPostMatch[1]);
+            setActiveForumPostId(postId);
+            setCurrentView('forum');
+            setActiveNovelId(null);
+            setActiveChapterIndex(null);
+            return;
+        }
+
         if (hash === '#/forum') {
+            setActiveForumPostId(null);
             setCurrentView('forum');
             setActiveNovelId(null);
             setActiveChapterIndex(null);
@@ -588,7 +621,7 @@ export default function App() {
                 expectedHash = '#/profile';
             }
         } else if (currentView === 'forum') {
-            expectedHash = '#/forum';
+            expectedHash = activeForumPostId ? `#/forum?post=${activeForumPostId}` : '#/forum';
         } else if (currentView === 'explore') {
             expectedHash = '#/explore';
         } else if (currentView === 'detail' && activeNovelId !== null) {
@@ -600,7 +633,7 @@ export default function App() {
         if (window.location.hash !== expectedHash) {
             window.location.hash = expectedHash;
         }
-    }, [currentView, activeNovelId, activeChapterIndex, profileViewingUsername, currentUser]);
+    }, [currentView, activeNovelId, activeChapterIndex, profileViewingUsername, activeForumPostId, currentUser]);
 
     // ----------------------------------------------------
     // FETCH HELPER METHOD INTEGRATIONS WITH REST API
@@ -2435,6 +2468,16 @@ export default function App() {
         }
     };
 
+    // If visiting from a mobile device and not bypassed, render ONLY the Mobile Gate Splash Screen
+    if (isMobileDevice && !mobileBypassed) {
+        return (
+            <MobileGateOverlay onBypass={() => {
+                sessionStorage.setItem('mugen_mobile_bypass', 'true');
+                setMobileBypassed(true);
+            }} />
+        );
+    }
+
     return (
         <>
             {/* Sakura floating petals overlay */}
@@ -2586,7 +2629,7 @@ export default function App() {
             {/* Breadcrumbs bar (Conditionally hidden inside reader mode) */}
             {currentView !== 'reader' && (
                 <div className="top-meta-bar">
-                    <div className="flex-row-between" style={{ padding: '0 40px' }}>
+                    <div className="flex-row-between top-meta-bar-inner">
                         <div className="breadcrumbs">
                             {renderBreadcrumbs()}
                         </div>

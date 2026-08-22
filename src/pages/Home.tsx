@@ -2,6 +2,107 @@ import React from 'react';
 import { Novel, User, ForumPost, SystemEvent } from '../types';
 import { calculateUserLevel } from '../utils/levelHelper';
 
+// ================= MONOCHROME PROFESSIONAL SVG ICONS =================
+const Icons = {
+    Tag: () => (
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+            <line x1="7" y1="7" x2="7.01" y2="7"></line>
+        </svg>
+    ),
+    History: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+    ),
+    Sparkles: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z"></path>
+        </svg>
+    ),
+    Flame: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z"></path>
+        </svg>
+    ),
+    Book: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+        </svg>
+    ),
+    Star: ({ filled }: { filled?: boolean }) => (
+        <svg viewBox="0 0 24 24" width="13" height="13" fill={filled !== false ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+        </svg>
+    ),
+    Eye: () => (
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+    ),
+    User: () => (
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+    ),
+    Trophy: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+            <path d="M4 22h16"></path>
+            <path d="M10 14.66V17c0 .55-.45 1-1 1H7v4h10v-4h-2c-.55 0-1-.45-1-1v-2.34"></path>
+            <path d="M18 4H6v7a6 6 0 0 0 12 0V4z"></path>
+        </svg>
+    ),
+    Crown: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"></path>
+        </svg>
+    ),
+    Comment: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+        </svg>
+    ),
+    Bookmark: ({ filled }: { filled?: boolean }) => (
+        <svg viewBox="0 0 24 24" width="12" height="12" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+        </svg>
+    ),
+    ArrowRight: () => (
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+    ),
+    Close: () => (
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+    ),
+    Clock: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+    ),
+    ChevronLeft: () => (
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+    ),
+    ChevronRight: () => (
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+    )
+};
+
 interface ReadingHistoryItem {
     novelId: number;
     novelTitle: string;
@@ -57,7 +158,9 @@ export default function Home({
     setActiveNovelId,
     setCurrentView,
     filterGenre,
+    setFilterGenre,
     filterType,
+    setFilterType,
     selectedTags,
     setSelectedTags,
     filterStatus,
@@ -87,6 +190,7 @@ export default function Home({
     wibuRanking
 }: HomeProps) {
     const [readingHistory, setReadingHistory] = React.useState<ReadingHistoryItem[]>([]);
+    
     const activeEvents = React.useMemo(() => {
         return events ? events.filter(ev => ev.status === 'active') : [];
     }, [events]);
@@ -103,6 +207,35 @@ export default function Home({
         }, 5000);
         return () => clearInterval(interval);
     }, [activeEvents]);
+
+    const heroNovels = React.useMemo(() => {
+        const publishedNovels = novels.filter(n => (n.chapters || []).some(ch => ch.status === 'published'));
+        if (publishedNovels.length === 0) return [];
+
+        let list: Novel[] = [];
+        if (activeBannerId) {
+            const pinned = publishedNovels.find(n => n.id === activeBannerId);
+            if (pinned) list.push(pinned);
+        }
+
+        const topByReads = [...publishedNovels]
+            .filter(n => !list.some(x => x.id === n.id))
+            .sort((a, b) => (parseInt(String(b.reads)) || 0) - (parseInt(String(a.reads)) || 0));
+
+        list = [...list, ...topByReads].slice(0, 5);
+        return list;
+    }, [novels, activeBannerId]);
+
+    const [heroIdx, setHeroIdx] = React.useState(0);
+    const [isHeroHovered, setIsHeroHovered] = React.useState(false);
+
+    React.useEffect(() => {
+        if (heroNovels.length <= 1 || isHeroHovered) return;
+        const timer = setInterval(() => {
+            setHeroIdx(prev => (prev + 1) % heroNovels.length);
+        }, 7000);
+        return () => clearInterval(timer);
+    }, [heroNovels.length, isHeroHovered]);
 
     React.useEffect(() => {
         const historyKey = currentUser ? `mugen_reading_history_${currentUser.username}` : 'mugen_reading_history_guest';
@@ -131,16 +264,6 @@ export default function Home({
         const published = novels.filter(n => n.type === 'oneshot' && (n.chapters || []).some(ch => ch.status === 'published'));
         return [...published].sort((a, b) => (parseInt(String(b.reads)) || 0) - (parseInt(String(a.reads)) || 0)).slice(0, 5);
     }, [novels]);
-
-    const completedNovels = React.useMemo(() => {
-        const published = novels.filter(n => n.status === 'completed' && (n.chapters || []).some(ch => ch.status === 'published'));
-        return [...published].sort((a, b) => {
-            const starsA = parseFloat(computeAverageStars(a.id)) || 0;
-            const starsB = parseFloat(computeAverageStars(b.id)) || 0;
-            if (starsB !== starsA) return starsB - starsA;
-            return (parseInt(String(b.reads)) || 0) - (parseInt(String(a.reads)) || 0);
-        }).slice(0, 5);
-    }, [novels, computeAverageStars]);
 
     const recommendedNovels = React.useMemo(() => {
         const published = novels.filter(n => (n.chapters || []).some(ch => ch.status === 'published'));
@@ -208,57 +331,224 @@ export default function Home({
         return sorted.slice(0, 5);
     }, [novels, currentUser, readingHistory, computeAverageStars]);
 
+    const featuredNovels = React.useMemo(() => {
+        const publishedNovels = novels.filter(novel => (novel.chapters || []).some(ch => ch.status === 'published'));
+        return [...publishedNovels].sort((a, b) => (parseInt(String(b.reads)) || 0) - (parseInt(String(a.reads)) || 0)).slice(0, 5);
+    }, [novels]);
+
+    const newestNovels = React.useMemo(() => {
+        const publishedNovels = novels.filter(novel => (novel.chapters || []).some(ch => ch.status === 'published'));
+        return [...publishedNovels].sort((a, b) => b.id - a.id).slice(0, 5);
+    }, [novels]);
+
+    // Render helper for Novel Card 2.0
+    const renderNovelCard = (novel: Novel) => {
+        const isSaved = currentUser && currentUser.bookmarks && currentUser.bookmarks.includes(novel.id);
+        const stars = computeAverageStars(novel.id);
+
+        return (
+            <div key={novel.id} className="novel-card-v2" onClick={() => openNovelDetail(novel.id)}>
+                <div className="novel-cover-wrapper-v2">
+                    <img src={novel.cover} alt={novel.title} className="novel-cover-img-v2" loading="lazy" />
+                    <div className="novel-badges-overlay">
+                        <span className="novel-badge-status">
+                            {novel.status === 'completed' ? 'Hoàn thành' : novel.status === 'paused' ? 'Tạm ngưng' : novel.status === 'suspended' ? 'Đã khóa' : 'Đang ra'}
+                        </span>
+                        <span className="novel-badge-format">
+                            {novel.type === 'oneshot' ? 'Oneshot' : 'Series'}
+                        </span>
+                    </div>
+                </div>
+
+                <div className="novel-info-block-v2">
+                    <h4 className="novel-card-title-v2" title={novel.title}>
+                        {novel.title}
+                    </h4>
+                    
+                    <div className="novel-card-author-v2">
+                        <Icons.User />
+                        <span>{novel.author || novel.author_name || "Ẩn danh"}</span>
+                    </div>
+
+                    <div className="novel-card-tags-v2">
+                        {(novel.tags || []).slice(0, 3).map(t => (
+                            <span key={t} className="novel-tag-pill-v2">#{t}</span>
+                        ))}
+                    </div>
+
+                    <div className="novel-card-meta-v2">
+                        <div className="novel-card-stats-group">
+                            <span className="novel-card-rating-v2">
+                                <Icons.Star /> {stars === 'N/A' ? 'N/A' : stars}
+                            </span>
+                            <span className="novel-card-reads-v2">
+                                <Icons.Eye /> {Number(novel.reads).toLocaleString()}
+                            </span>
+                        </div>
+
+                        {currentUser && (
+                            <button
+                                className={`novel-bookmark-btn-v2 ${isSaved ? 'saved' : ''}`}
+                                onClick={(e) => { e.stopPropagation(); toggleBookmark(novel.id); }}
+                                title={isSaved ? 'Xóa khỏi tủ sách' : 'Lưu vào tủ sách'}
+                            >
+                                <Icons.Bookmark filled={isSaved} />
+                                <span>{isSaved ? 'Đã Lưu' : 'Lưu Tủ'}</span>
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="page-view active">
-            {/* Featured Banner */}
-            {(() => {
-                const publishedNovels = novels.filter(n => (n.chapters || []).some(ch => ch.status === 'published'));
-                let featured = novels.find(n => n.id === activeBannerId);
-                if (!featured || !(featured.chapters || []).some(ch => ch.status === 'published')) {
-                    featured = [...publishedNovels].sort((a, b) => (parseInt(String(b.reads)) || 0) - (parseInt(String(a.reads)) || 0))[0];
-                }
+            
+            {/* 1. FEATURED HERO BANNER 2.0 (CINEMATIC & AUTHENTIC REAL BOOK) */}
+            {heroNovels.length > 0 && (() => {
+                const currentHero = heroNovels[heroIdx] || heroNovels[0];
+                const isHeroSaved = currentUser && currentUser.bookmarks && currentUser.bookmarks.includes(currentHero.id);
+                const heroStars = computeAverageStars(currentHero.id);
+                const firstChapter = (currentHero.chapters || []).find(ch => ch.status === 'published');
+                const firstChapterIdx = firstChapter ? (currentHero.chapters || []).indexOf(firstChapter) : 0;
 
-                if (featured) {
-                    return (
-                        <div className="featured-banner">
-                            <div className="featured-bg-cover" style={{ backgroundImage: `url(${featured.cover})` }}></div>
-                            <div className="featured-banner-content">
-                                <div className="featured-info">
-                                    <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', alignItems: 'center' }}>
-                                        <span className="genre-tag">Tiêu Điểm Đề Cử</span>
-                                        <span className="format-tag">{featured.type === 'oneshot' ? 'Oneshot' : 'Series'}</span>
-                                    </div>
-                                    <h1>{featured.title}</h1>
-                                    <p className="featured-desc">{featured.summary}</p>
-                                    <div className="featured-meta">
-                                        <span>Tác giả: <strong>{featured.author || featured.author_name || "Ẩn danh"}</strong></span>
-                                        <span>•</span>
-                                        <span>Đánh giá: <strong>{computeAverageStars(featured.id) === 'N/A' ? 'N/A' : `${computeAverageStars(featured.id)} ★`}</strong></span>
-                                        <span>•</span>
-                                        <span>Lượt đọc: <strong>{featured.reads}</strong></span>
-                                    </div>
-                                    <button className="primary-btn featured-cta-btn" onClick={() => featured && openNovelDetail(featured.id)}>Đọc ngay</button>
+                return (
+                    <div 
+                        className="featured-banner"
+                        onMouseEnter={() => setIsHeroHovered(true)}
+                        onMouseLeave={() => setIsHeroHovered(false)}
+                    >
+                        <div className="featured-bg-cover" style={{ backgroundImage: `url(${currentHero.cover})` }}></div>
+                        <div className="featured-overlay-ambient"></div>
+                        <div className="featured-kanji-watermark">無限文庫 • 今週の推薦</div>
+
+                        <div className="featured-banner-content" key={currentHero.id}>
+                            <div className="featured-info">
+                                <div className="featured-badges-row">
+                                    <span className="hero-editorial-badge">
+                                        <Icons.Sparkles /> Đề Cử #{heroIdx + 1}
+                                    </span>
+                                    <span className="hero-pill-tag">
+                                        {currentHero.type === 'oneshot' ? 'Oneshot' : 'Series'}
+                                    </span>
+                                    {currentHero.genre && (
+                                        <span className="hero-pill-tag">{currentHero.genre}</span>
+                                    )}
+                                    <span className="hero-pill-tag" style={{ color: currentHero.status === 'completed' ? '#2ecc71' : 'var(--sakura-pink)' }}>
+                                        {currentHero.status === 'completed' ? 'Hoàn' : 'Đang ra'}
+                                    </span>
                                 </div>
-                                <div className="featured-cover-showcase" onClick={() => featured && openNovelDetail(featured.id)}>
-                                    <div className="showcase-card">
-                                        <img src={featured.cover} alt={featured.title} />
-                                        <div className="showcase-glow"></div>
+
+                                <h1 onClick={() => openNovelDetail(currentHero.id)} title={currentHero.title}>
+                                    {currentHero.title}
+                                </h1>
+
+                                <p className="featured-desc">
+                                    {currentHero.summary || "Một tác phẩm hấp dẫn đang được cộng đồng độc giả MugenBunko quan tâm theo dõi."}
+                                </p>
+
+                                <div className="featured-meta">
+                                    <span className="featured-meta-item">
+                                        <Icons.User /> {currentHero.author || currentHero.author_name || "Ẩn danh"}
+                                    </span>
+                                    <span className="meta-sep">•</span>
+                                    <span className="featured-meta-item">
+                                        <Icons.Star /> {heroStars === 'N/A' ? 'N/A' : `${heroStars} ★`}
+                                    </span>
+                                    <span className="meta-sep">•</span>
+                                    <span className="featured-meta-item">
+                                        <Icons.Eye /> {Number(currentHero.reads).toLocaleString()}
+                                    </span>
+                                </div>
+
+                                <div className="featured-actions-row">
+                                    <button 
+                                        className="hero-primary-cta-btn" 
+                                        onClick={() => {
+                                            if (firstChapter) {
+                                                startReading(currentHero.id, firstChapterIdx);
+                                            } else {
+                                                openNovelDetail(currentHero.id);
+                                            }
+                                        }}
+                                    >
+                                        <Icons.Book /> Đọc ngay
+                                    </button>
+
+                                    <button 
+                                        className="hero-secondary-cta-btn" 
+                                        onClick={() => openNovelDetail(currentHero.id)}
+                                    >
+                                        <Icons.ArrowRight /> Chi tiết tác phẩm
+                                    </button>
+
+                                    {currentUser && (
+                                        <button 
+                                            className={`hero-bookmark-cta-btn ${isHeroSaved ? 'saved' : ''}`}
+                                            onClick={(e) => { e.stopPropagation(); toggleBookmark(currentHero.id); }}
+                                            title={isHeroSaved ? "Đã lưu vào tủ sách" : "Lưu vào tủ sách"}
+                                        >
+                                            <Icons.Bookmark filled={isHeroSaved} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Book Showcase (Realistic Physical Light Novel) */}
+                            <div className="featured-cover-showcase" onClick={() => openNovelDetail(currentHero.id)}>
+                                <div className="hero-book-ambient-glow"></div>
+                                <div className="hero-book-wrapper">
+                                    <div className="hero-book-cover">
+                                        <div className="hero-book-spine"></div>
+                                        <img src={currentHero.cover} alt={currentHero.title} />
+                                        <span className="hero-book-rank-ribbon">
+                                            <Icons.Flame /> #{heroIdx + 1} Hot
+                                        </span>
                                     </div>
                                 </div>
                             </div>
-                            <div className="featured-overlay"></div>
                         </div>
-                    );
-                }
-                return null;
+
+                        {/* Multi-slide carousel controls */}
+                        {heroNovels.length > 1 && (
+                            <div className="hero-carousel-controls">
+                                <button 
+                                    className="hero-arrow-btn" 
+                                    onClick={() => setHeroIdx(prev => (prev - 1 + heroNovels.length) % heroNovels.length)}
+                                    title="Tác phẩm trước"
+                                >
+                                    <Icons.ChevronLeft />
+                                </button>
+                                <div className="hero-carousel-dots">
+                                    {heroNovels.map((n, idx) => (
+                                        <button 
+                                            key={n.id}
+                                            className={`hero-dot-btn ${idx === heroIdx ? 'active' : ''}`}
+                                            onClick={() => setHeroIdx(idx)}
+                                            title={n.title}
+                                        />
+                                    ))}
+                                </div>
+                                <button 
+                                    className="hero-arrow-btn" 
+                                    onClick={() => setHeroIdx(prev => (prev + 1) % heroNovels.length)}
+                                    title="Tác phẩm tiếp theo"
+                                >
+                                    <Icons.ChevronRight />
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                );
             })()}
 
-            {/* Genre Quick Navigation Bar */}
+            {/* 2. GENRE QUICK NAVIGATION (MONOCHROME REFINED) */}
             <div className="genre-quick-nav" style={{
                 display: 'flex',
-                gap: '10px',
+                gap: '8px',
                 overflowX: 'auto',
-                padding: '8px 4px 16px 4px',
+                padding: '8px 2px 18px 2px',
                 marginBottom: '16px',
                 scrollbarWidth: 'none',
                 msOverflowStyle: 'none'
@@ -269,10 +559,13 @@ export default function Home({
                     color: 'var(--text-muted)',
                     display: 'flex',
                     alignItems: 'center',
-                    marginRight: '8px',
+                    gap: '6px',
+                    marginRight: '6px',
                     flexShrink: 0
-                }}>🌸 Phân loại nhanh:</span>
-                {genres.slice(0, 8).map(genre => (
+                }}>
+                    <Icons.Tag /> Thể loại nhanh:
+                </span>
+                {genres.slice(0, 10).map(genre => (
                     <button
                         key={genre}
                         className="outline-btn small"
@@ -294,609 +587,411 @@ export default function Home({
                 ))}
             </div>
 
+            {/* 3. MAIN DISCOVERY 2-COLUMN LAYOUT */}
             <div className="discovery-layout">
+                
+                {/* LEFT MAIN COLUMN */}
                 <div className="main-column" style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-                    {/* Đang đọc dở (Reading History) Widget */}
+                    
+                    {/* BENTO READING HISTORY ("Đang đọc dở") */}
                     {readingHistory.length > 0 ? (
-                        <div className="reading-history-widget" style={{
-                            background: 'var(--bg-card)',
-                            border: '1px solid var(--border-color)',
-                            padding: '20px',
-                            borderRadius: '8px',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
-                        }}>
-                            <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--sakura-pink)' }}>
-                                Đang đọc dở
-                            </h3>
-                            <div style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                                gap: '16px'
-                            }}>
-                                {readingHistory.slice(0, 4).map((item, idx) => (
-                                    <div
-                                        key={idx}
-                                        className="reading-history-item"
-                                        onClick={() => startReading(item.novelId, item.chapterIndex)}
-                                        style={{
-                                            display: 'flex',
-                                            gap: '12px',
-                                            padding: '10px',
-                                            border: '1px solid var(--border-color)',
-                                            borderRadius: '6px',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s',
-                                            background: 'var(--bg-base)',
-                                            position: 'relative'
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.borderColor = 'var(--sakura-pink)';
-                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(224, 82, 117, 0.05)';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.borderColor = 'var(--border-color)';
-                                            e.currentTarget.style.boxShadow = 'none';
-                                        }}
-                                    >
-                                        <img
-                                            src={item.novelCover}
-                                            alt={item.novelTitle}
-                                            style={{
-                                                width: '40px',
-                                                height: '55px',
-                                                objectFit: 'cover',
-                                                borderRadius: '3px',
-                                                border: '1px solid var(--border-color)',
-                                                flexShrink: 0
-                                            }}
-                                        />
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', overflow: 'hidden', justifyContent: 'center', paddingRight: '20px' }}>
-                                            <h4 style={{
-                                                margin: 0,
-                                                fontSize: '0.85rem',
-                                                fontWeight: 600,
-                                                whiteSpace: 'nowrap',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                color: 'var(--text-main)'
-                                            }} title={item.novelTitle}>
-                                                {item.novelTitle}
-                                            </h4>
-                                            <span style={{
-                                                fontSize: '0.72rem',
-                                                color: 'var(--sakura-pink)',
-                                                whiteSpace: 'nowrap',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                fontWeight: 500
-                                            }} title={item.chapterTitle}>
-                                                {item.chapterTitle}
-                                            </span>
-                                            {(() => {
-                                                const n = novels.find(x => x.id === item.novelId);
-                                                const pubChs = n?.chapters?.filter(ch => ch.status === 'published') || [];
-                                                const total = pubChs.length || 1;
-                                                let readCount = item.chapterIndex + 1;
-                                                if (currentUser) {
-                                                    try {
-                                                        const key = `mugen_readprogress_${currentUser.username}_${item.novelId}`;
-                                                        const raw = localStorage.getItem(key);
-                                                        const saved = raw ? JSON.parse(raw) : null;
-                                                        if (saved && saved.readChaptersList) readCount = saved.readChaptersList.length;
-                                                    } catch(e) {}
-                                                }
-                                                const pct = Math.min(100, Math.round((readCount / total) * 100));
-                                                return (
-                                                    <div style={{ width: '100%', height: '4px', background: 'var(--border-color)', borderRadius: '2px', marginTop: '4px', overflow: 'hidden' }}>
-                                                        <div style={{ width: `${pct}%`, height: '100%', background: 'var(--sakura-pink)', transition: 'width 0.3s ease' }} title={`Đã đọc ${pct}%`}></div>
-                                                    </div>
-                                                );
-                                            })()}
-                                        </div>
-                                        <button
-                                            onClick={(e) => deleteHistoryItem(e, item.novelId)}
-                                            title="Xóa khỏi lịch sử đọc"
-                                            style={{
-                                                position: 'absolute',
-                                                top: '4px',
-                                                right: '4px',
-                                                background: 'none',
-                                                border: 'none',
-                                                color: 'var(--text-muted)',
-                                                fontSize: '16px',
-                                                cursor: 'pointer',
-                                                padding: '2px 6px',
-                                                borderRadius: '4px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                transition: 'all 0.2s',
-                                                lineHeight: 1,
-                                                zIndex: 10
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.stopPropagation();
-                                                e.currentTarget.style.color = '#ff3b30';
-                                                e.currentTarget.style.background = 'rgba(255, 59, 48, 0.1)';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.stopPropagation();
-                                                e.currentTarget.style.color = 'var(--text-muted)';
-                                                e.currentTarget.style.background = 'none';
-                                            }}
+                        <div className="reading-history-card-bento">
+                            <div className="reading-history-header-v2">
+                                <Icons.History />
+                                <span>Tiếp Tục Đọc Dở</span>
+                            </div>
+                            <div className="reading-history-grid-v2">
+                                {readingHistory.slice(0, 4).map((item, idx) => {
+                                    const n = novels.find(x => x.id === item.novelId);
+                                    const pubChs = n?.chapters?.filter(ch => ch.status === 'published') || [];
+                                    const total = pubChs.length || 1;
+                                    let readCount = item.chapterIndex + 1;
+                                    if (currentUser) {
+                                        try {
+                                            const key = `mugen_readprogress_${currentUser.username}_${item.novelId}`;
+                                            const raw = localStorage.getItem(key);
+                                            const saved = raw ? JSON.parse(raw) : null;
+                                            if (saved && saved.readChaptersList) readCount = saved.readChaptersList.length;
+                                        } catch(e) {}
+                                    }
+                                    const pct = Math.min(100, Math.round((readCount / total) * 100));
+
+                                    return (
+                                        <div
+                                            key={idx}
+                                            className="reading-history-item-v2"
+                                            onClick={() => startReading(item.novelId, item.chapterIndex)}
                                         >
-                                            &times;
-                                        </button>
-                                    </div>
-                                ))}
+                                            <img
+                                                src={item.novelCover}
+                                                alt={item.novelTitle}
+                                                className="reading-history-cover-v2"
+                                            />
+                                            <div className="reading-history-info-v2">
+                                                <h4 className="reading-history-title-v2" title={item.novelTitle}>
+                                                    {item.novelTitle}
+                                                </h4>
+                                                <span className="reading-history-chapter-v2" title={item.chapterTitle}>
+                                                    {item.chapterTitle}
+                                                </span>
+                                                <div style={{ width: '100%', height: '4px', background: 'var(--border-color)', borderRadius: '2px', marginTop: '4px', overflow: 'hidden' }}>
+                                                    <div style={{ width: `${pct}%`, height: '100%', background: 'var(--sakura-pink)', transition: 'width 0.3s ease' }} title={`Đã đọc ${pct}%`}></div>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={(e) => deleteHistoryItem(e, item.novelId)}
+                                                title="Xóa khỏi lịch sử đọc"
+                                                className="reading-history-del-btn"
+                                            >
+                                                <Icons.Close />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     ) : (
-                        <div className="reading-history-widget-empty" style={{
-                            background: 'var(--bg-card)',
-                            border: '1px solid var(--border-color)',
-                            padding: '20px',
-                            borderRadius: '8px',
-                            textAlign: 'center',
-                            color: 'var(--text-muted)',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
-                        }}>
-                            <h4 style={{ fontSize: '0.9rem', fontWeight: 600, margin: '0 0 6px 0', color: 'var(--text-main)' }}>Đang đọc dở</h4>
-                            <p style={{ fontSize: '0.78rem', margin: 0 }}>Bạn chưa đọc tác phẩm nào. Hãy khám phá thư viện và chọn một câu chuyện thú vị để bắt đầu nhé! 🌸</p>
+                        <div className="reading-history-card-bento" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                            <div style={{ display: 'inline-flex', padding: '8px', background: 'var(--bg-base)', borderRadius: '50%', marginBottom: '8px', color: 'var(--sakura-pink)' }}>
+                                <Icons.Book />
+                            </div>
+                            <h4 style={{ fontSize: '0.92rem', fontWeight: 600, margin: '0 0 4px 0', color: 'var(--text-main)' }}>Đang đọc dở</h4>
+                            <p style={{ fontSize: '0.78rem', margin: 0 }}>Bạn chưa đọc tác phẩm nào. Hãy khám phá thư viện và chọn một câu chuyện thú vị để bắt đầu nhé!</p>
                         </div>
                     )}
 
-                    {/* Dynamic active system event announcement banner */}
+                    {/* ACTIVE SYSTEM EVENT BANNER */}
                     {activeEvents.length > 0 && (() => {
                         const activeEv = activeEvents[currentEventIdx] || activeEvents[0];
                         if (!activeEv) return null;
                         return (
                             <div
-                                className="home-event-banner"
+                                className="home-event-banner-v2"
                                 onClick={() => {
                                     setActiveEventId(activeEv.id);
                                     setCurrentView('event-detail');
                                 }}
                             >
-                                <div className="home-event-banner-left">
-                                    <div className="home-event-icon-wrapper">
-                                        🌸
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '8px', background: 'var(--sakura-pink-light)', color: 'var(--sakura-pink)' }}>
+                                        <Icons.Sparkles />
                                     </div>
-                                    <div className="home-event-info" style={{ animation: 'fadeSlideIn 0.3s ease-out' }} key={activeEv.id}>
-                                        <span className="home-event-tag">
-                                            Sự kiện {activeEvents.length > 1 && `(${currentEventIdx + 1}/${activeEvents.length})`}
-                                        </span>
-                                        <h4 className="home-event-title">{activeEv.title}</h4>
-                                        <p className="home-event-desc">{activeEv.description || activeEv.content || ""}</p>
+                                    <div key={activeEv.id} style={{ animation: 'fadeSlideIn 0.3s ease-out' }}>
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '2px' }}>
+                                            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--sakura-pink)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                Sự kiện {activeEvents.length > 1 && `(${currentEventIdx + 1}/${activeEvents.length})`}
+                                            </span>
+                                        </div>
+                                        <h4 style={{ fontSize: '0.92rem', fontWeight: 700, margin: '0 0 2px 0', color: 'var(--text-main)' }}>
+                                            {activeEv.title}
+                                        </h4>
+                                        <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', margin: 0 }}>
+                                            {activeEv.description || activeEv.content || ""}
+                                        </p>
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', zIndex: 2 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
                                     {activeEvents.length > 1 && (
-                                        <div className="home-event-dots" onClick={(e) => e.stopPropagation()} style={{ display: 'flex', gap: '6px' }}>
+                                        <div className="home-event-dots" onClick={(e) => e.stopPropagation()} style={{ display: 'flex', gap: '5px' }}>
                                             {activeEvents.map((_, dotIdx) => (
                                                 <span
                                                     key={dotIdx}
                                                     onClick={() => setCurrentEventIdx(dotIdx)}
                                                     className={`home-event-dot ${currentEventIdx === dotIdx ? 'active' : ''}`}
+                                                    style={{ width: '6px', height: '6px', borderRadius: '50%', background: currentEventIdx === dotIdx ? 'var(--sakura-pink)' : 'var(--border-color)', cursor: 'pointer', transition: 'all 0.2s' }}
                                                 />
                                             ))}
                                         </div>
                                     )}
-                                    <div className="home-event-action">
-                                        Xem ngay →
-                                    </div>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', fontWeight: 600, color: 'var(--sakura-pink)' }}>
+                                        Xem ngay <Icons.ArrowRight />
+                                    </span>
                                 </div>
                             </div>
                         );
                     })()}
 
-                    {/* Personalized Recommendations Section */}
+                    {/* SECTION 1: PERSONALIZED RECOMMENDATIONS */}
                     {recommendedNovels.length > 0 && (
                         <div>
-                            <div className="filter-header-bar" style={{ marginBottom: '16px' }}>
-                                <h2 style={{ fontSize: '1.4rem', fontWeight: 600 }}>Dành Riêng Cho Bạn</h2>
+                            <div className="home-section-header">
+                                <h2 className="home-section-title">
+                                    <span className="section-icon-mono"><Icons.Sparkles /></span>
+                                    <span>Dành Riêng Cho Bạn</span>
+                                </h2>
                             </div>
                             <div className="novel-grid">
-                                {recommendedNovels.map(novel => {
-                                    const isSaved = currentUser && currentUser.bookmarks && currentUser.bookmarks.includes(novel.id);
-                                    return (
-                                        <div key={novel.id} className="novel-card" onClick={() => openNovelDetail(novel.id)}>
-                                            <div className="novel-cover-wrapper">
-                                                <img src={novel.cover} alt={novel.title} className="novel-cover-img" loading="lazy" />
-                                                <div className="novel-card-badges-container">
-                                                    <span className="novel-card-badge">{novel.status === 'completed' ? 'Hoàn' : novel.status === 'paused' ? 'Ngưng' : novel.status === 'suspended' ? 'Khóa' : 'Đang ra'}</span>
-                                                    <span className="novel-card-format-badge">{novel.type === 'oneshot' ? 'Oneshot' : 'Series'}</span>
-                                                </div>
-                                            </div>
-                                            <div className="novel-info-block">
-                                                <h4 className="novel-card-title">{novel.title}</h4>
-                                                <div className="novel-card-author">Tác giả: {novel.author || novel.author_name || "Ẩn danh"}</div>
-                                                <div className="detail-tags-row" style={{ marginBottom: '8px', gap: '4px' }}>
-                                                    {(novel.tags || []).slice(0, 3).map(t => (
-                                                        <span key={t} className="tag-badge" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>#{t}</span>
-                                                    ))}
-                                                </div>
-                                                <div className="novel-card-meta">
-                                                    <span className="novel-card-rating">{computeAverageStars(novel.id) === 'N/A' ? 'N/A' : `★ ${computeAverageStars(novel.id)}`}</span>
-                                                    <span className="novel-card-reads">{novel.reads}</span>
-                                                </div>
-                                                <div className="flex-row-between" style={{ marginTop: '10px' }}>
-                                                    {currentUser && (
-                                                        <button
-                                                            className={isSaved ? "primary-btn small" : "outline-btn small"}
-                                                            style={{ padding: '4px 8px', fontSize: '0.72rem', background: isSaved ? 'var(--indigo-blue)' : '' }}
-                                                            onClick={(e) => { e.stopPropagation(); toggleBookmark(novel.id); }}
-                                                        >
-                                                            {isSaved ? 'Đã Lưu' : 'Lưu Tủ'}
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                                {recommendedNovels.map(renderNovelCard)}
                             </div>
                         </div>
                     )}
 
-                    {/* Featured / Most Read Section */}
+                    {/* SECTION 2: FEATURED NOVELS (TOP READS) */}
                     <div>
-                        <div className="filter-header-bar" style={{ marginBottom: '16px' }}>
-                            <h2 style={{ fontSize: '1.4rem', fontWeight: 600 }}>Đề Cử Nổi Bật</h2>
+                        <div className="home-section-header">
+                            <h2 className="home-section-title">
+                                <span className="section-icon-mono"><Icons.Flame /></span>
+                                <span>Đề Cử Nổi Bật</span>
+                            </h2>
                         </div>
                         <div className="novel-grid">
-                            {(() => {
-                                const publishedNovels = novels.filter(novel => (novel.chapters || []).some(ch => ch.status === 'published'));
-                                const list = [...publishedNovels].sort((a, b) => (parseInt(String(b.reads)) || 0) - (parseInt(String(a.reads)) || 0)).slice(0, 5);
-
-                                if (list.length === 0) {
-                                    return <div style={{ color: 'var(--text-muted)', fontSize: '0.88rem', padding: '16px 0' }}>Chưa có tác phẩm đề cử.</div>;
-                                }
-
-                                return list.map(novel => {
-                                    const isSaved = currentUser && currentUser.bookmarks && currentUser.bookmarks.includes(novel.id);
-                                    return (
-                                        <div key={novel.id} className="novel-card" onClick={() => openNovelDetail(novel.id)}>
-                                            <div className="novel-cover-wrapper">
-                                                <img src={novel.cover} alt={novel.title} className="novel-cover-img" loading="lazy" />
-                                                <div className="novel-card-badges-container">
-                                                    <span className="novel-card-badge">{novel.status === 'completed' ? 'Hoàn' : novel.status === 'paused' ? 'Ngưng' : novel.status === 'suspended' ? 'Khóa' : 'Đang ra'}</span>
-                                                    <span className="novel-card-format-badge">{novel.type === 'oneshot' ? 'Oneshot' : 'Series'}</span>
-                                                </div>
-                                            </div>
-                                            <div className="novel-info-block">
-                                                <h4 className="novel-card-title">{novel.title}</h4>
-                                                <div className="novel-card-author">Tác giả: {novel.author || novel.author_name || "Ẩn danh"}</div>
-                                                <div className="detail-tags-row" style={{ marginBottom: '8px', gap: '4px' }}>
-                                                    {(novel.tags || []).slice(0, 3).map(t => (
-                                                        <span key={t} className="tag-badge" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>#{t}</span>
-                                                    ))}
-                                                </div>
-                                                <div className="novel-card-meta">
-                                                    <span className="novel-card-rating">{computeAverageStars(novel.id) === 'N/A' ? 'N/A' : `★ ${computeAverageStars(novel.id)}`}</span>
-                                                    <span className="novel-card-reads">{novel.reads}</span>
-                                                </div>
-                                                <div className="flex-row-between" style={{ marginTop: '10px' }}>
-                                                    {currentUser && (
-                                                        <button
-                                                            className={isSaved ? "primary-btn small" : "outline-btn small"}
-                                                            style={{ padding: '4px 8px', fontSize: '0.72rem', background: isSaved ? 'var(--indigo-blue)' : '' }}
-                                                            onClick={(e) => { e.stopPropagation(); toggleBookmark(novel.id); }}
-                                                        >
-                                                            {isSaved ? 'Đã Lưu' : 'Lưu Tủ'}
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                });
-                            })()}
+                            {featuredNovels.length === 0 ? (
+                                <div style={{ color: 'var(--text-muted)', fontSize: '0.88rem', padding: '16px 0' }}>Chưa có tác phẩm đề cử.</div>
+                            ) : (
+                                featuredNovels.map(renderNovelCard)
+                            )}
                         </div>
                     </div>
 
-                    {/* Oneshot Showcase Section */}
+                    {/* SECTION 3: ONESHOT NOVELS */}
                     {oneshotNovels.length > 0 && (
                         <div>
-                            <div className="filter-header-bar" style={{ marginBottom: '16px' }}>
-                                <h2 style={{ fontSize: '1.4rem', fontWeight: 600 }}>Truyện Ngắn Chọn Lọc</h2>
+                            <div className="home-section-header">
+                                <h2 className="home-section-title">
+                                    <span className="section-icon-mono"><Icons.Book /></span>
+                                    <span>Truyện Ngắn Chọn Lọc</span>
+                                </h2>
                             </div>
                             <div className="novel-grid">
-                                {oneshotNovels.map(novel => {
-                                    const isSaved = currentUser && currentUser.bookmarks && currentUser.bookmarks.includes(novel.id);
-                                    return (
-                                        <div key={novel.id} className="novel-card" onClick={() => openNovelDetail(novel.id)}>
-                                            <div className="novel-cover-wrapper">
-                                                <img src={novel.cover} alt={novel.title} className="novel-cover-img" loading="lazy" />
-                                                <div className="novel-card-badges-container">
-                                                    <span className="novel-card-badge">{novel.status === 'completed' ? 'Hoàn' : novel.status === 'paused' ? 'Ngưng' : novel.status === 'suspended' ? 'Khóa' : 'Đang ra'}</span>
-                                                    <span className="novel-card-format-badge">{novel.type === 'oneshot' ? 'Oneshot' : 'Series'}</span>
-                                                </div>
-                                            </div>
-                                            <div className="novel-info-block">
-                                                <h4 className="novel-card-title">{novel.title}</h4>
-                                                <div className="novel-card-author">Tác giả: {novel.author || novel.author_name || "Ẩn danh"}</div>
-                                                <div className="detail-tags-row" style={{ marginBottom: '8px', gap: '4px' }}>
-                                                    {(novel.tags || []).slice(0, 3).map(t => (
-                                                        <span key={t} className="tag-badge" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>#{t}</span>
-                                                    ))}
-                                                </div>
-                                                <div className="novel-card-meta">
-                                                    <span className="novel-card-rating">{computeAverageStars(novel.id) === 'N/A' ? 'N/A' : `★ ${computeAverageStars(novel.id)}`}</span>
-                                                    <span className="novel-card-reads">{novel.reads}</span>
-                                                </div>
-                                                <div className="flex-row-between" style={{ marginTop: '10px' }}>
-                                                    {currentUser && (
-                                                        <button
-                                                            className={isSaved ? "primary-btn small" : "outline-btn small"}
-                                                            style={{ padding: '4px 8px', fontSize: '0.72rem', background: isSaved ? 'var(--indigo-blue)' : '' }}
-                                                            onClick={(e) => { e.stopPropagation(); toggleBookmark(novel.id); }}
-                                                        >
-                                                            {isSaved ? 'Đã Lưu' : 'Lưu Tủ'}
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                                {oneshotNovels.map(renderNovelCard)}
                             </div>
                         </div>
                     )}
 
-                    {/* Newest Releases Section */}
+                    {/* SECTION 4: NEWEST RELEASES */}
                     <div>
-                        <div className="filter-header-bar" style={{ marginBottom: '16px' }}>
-                            <h2 style={{ fontSize: '1.4rem', fontWeight: 600 }}>Tác Phẩm Mới Nhất</h2>
+                        <div className="home-section-header">
+                            <h2 className="home-section-title">
+                                <span className="section-icon-mono"><Icons.Clock /></span>
+                                <span>Tác Phẩm Mới Nhất</span>
+                            </h2>
                         </div>
                         <div className="novel-grid">
-                            {(() => {
-                                const publishedNovels = novels.filter(novel => (novel.chapters || []).some(ch => ch.status === 'published'));
-                                const list = [...publishedNovels].sort((a, b) => b.id - a.id).slice(0, 5);
-
-                                if (list.length === 0) {
-                                    return <div style={{ color: 'var(--text-muted)', fontSize: '0.88rem', padding: '16px 0' }}>Chưa có tác phẩm mới đăng.</div>;
-                                }
-
-                                return list.map(novel => {
-                                    const isSaved = currentUser && currentUser.bookmarks && currentUser.bookmarks.includes(novel.id);
-                                    return (
-                                        <div key={novel.id} className="novel-card" onClick={() => openNovelDetail(novel.id)}>
-                                            <div className="novel-cover-wrapper">
-                                                <img src={novel.cover} alt={novel.title} className="novel-cover-img" loading="lazy" />
-                                                <div className="novel-card-badges-container">
-                                                    <span className="novel-card-badge">{novel.status === 'completed' ? 'Hoàn' : novel.status === 'paused' ? 'Ngưng' : novel.status === 'suspended' ? 'Khóa' : 'Đang ra'}</span>
-                                                    <span className="novel-card-format-badge">{novel.type === 'oneshot' ? 'Oneshot' : 'Series'}</span>
-                                                </div>
-                                            </div>
-                                            <div className="novel-info-block">
-                                                <h4 className="novel-card-title">{novel.title}</h4>
-                                                <div className="novel-card-author">Tác giả: {novel.author || novel.author_name || "Ẩn danh"}</div>
-                                                <div className="detail-tags-row" style={{ marginBottom: '8px', gap: '4px' }}>
-                                                    {(novel.tags || []).slice(0, 3).map(t => (
-                                                        <span key={t} className="tag-badge" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>#{t}</span>
-                                                    ))}
-                                                </div>
-                                                <div className="novel-card-meta">
-                                                    <span className="novel-card-rating">{computeAverageStars(novel.id) === 'N/A' ? 'N/A' : `★ ${computeAverageStars(novel.id)}`}</span>
-                                                    <span className="novel-card-reads">{novel.reads}</span>
-                                                </div>
-                                                <div className="flex-row-between" style={{ marginTop: '10px' }}>
-                                                    {currentUser && (
-                                                        <button
-                                                            className={isSaved ? "primary-btn small" : "outline-btn small"}
-                                                            style={{ padding: '4px 8px', fontSize: '0.72rem', background: isSaved ? 'var(--indigo-blue)' : '' }}
-                                                            onClick={(e) => { e.stopPropagation(); toggleBookmark(novel.id); }}
-                                                        >
-                                                            {isSaved ? 'Đã Lưu' : 'Lưu Tủ'}
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                });
-                            })()}
+                            {newestNovels.length === 0 ? (
+                                <div style={{ color: 'var(--text-muted)', fontSize: '0.88rem', padding: '16px 0' }}>Chưa có tác phẩm mới đăng.</div>
+                            ) : (
+                                newestNovels.map(renderNovelCard)
+                            )}
                         </div>
                     </div>
                 </div>
 
-                <aside className="sidebar-column">
-                    {/* Bảng Xếp Hạng Truyện */}
-                    <div className="sidebar-card ranking-card">
-                        <h3 className="card-title" style={{ borderBottomColor: 'rgba(224, 82, 117, 0.1)' }}>
-                            🏆 Bảng Xếp Hạng Truyện
+                {/* RIGHT SIDEBAR BENTO COLUMN */}
+                <aside className="sidebar-column" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    
+                    {/* BENTO 1: BẢNG XẾP HẠNG TRUYỆN */}
+                    <div className="sidebar-bento-card">
+                        <h3 className="sidebar-bento-title">
+                            <span className="title-icon-mono"><Icons.Trophy /></span>
+                            <span>Bảng Xếp Hạng Truyện</span>
                         </h3>
-                        <ul className="ranking-list" style={{ padding: 0, margin: 0 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             {(() => {
                                 const publishedNovels = novels.filter(n => (n.chapters || []).some(ch => ch.status === 'published'));
                                 const sorted = [...publishedNovels].sort((a, b) => (parseInt(String(b.reads)) || 0) - (parseInt(String(a.reads)) || 0)).slice(0, 5);
+                                
                                 if (sorted.length === 0) {
                                     return <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Chưa có tác phẩm nào.</div>;
                                 }
-                                return sorted.map((novel, index) => (
-                                    <li key={novel.id} className="ranking-item" onClick={() => openNovelDetail(novel.id)}>
-                                        <span className="ranking-num">{index + 1}</span>
-                                        <div className="ranking-details">
-                                            <div className="ranking-title">{novel.title}</div>
-                                            <div className="ranking-score">👀 {novel.reads.toLocaleString()} lượt đọc</div>
+
+                                return sorted.map((novel, index) => {
+                                    const rankClass = index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : '';
+                                    return (
+                                        <div key={novel.id} className="ranking-item-v2" onClick={() => openNovelDetail(novel.id)}>
+                                            <span className={`ranking-badge-v2 ${rankClass}`}>
+                                                {index + 1}
+                                            </span>
+                                            <div className="ranking-info-v2">
+                                                <div className="ranking-title-v2">{novel.title}</div>
+                                                <div className="ranking-score-v2">
+                                                    <Icons.Eye /> {Number(novel.reads).toLocaleString()} lượt đọc
+                                                </div>
+                                            </div>
                                         </div>
-                                    </li>
-                                ));
+                                    );
+                                });
                             })()}
-                        </ul>
+                        </div>
                     </div>
 
-                    {/* Wibu Ranking Widget */}
-                    <div className="sidebar-card ranking-card">
-                        <h3 className="card-title" style={{ borderBottomColor: 'rgba(224, 82, 117, 0.1)' }}>
-                            🏆 Cao Thủ Wibu Tuần
+                    {/* BENTO 2: CAO THỦ WIBU TUẦN */}
+                    <div className="sidebar-bento-card">
+                        <h3 className="sidebar-bento-title">
+                            <span className="title-icon-mono"><Icons.Crown /></span>
+                            <span>Cao Thủ Wibu Tuần</span>
                         </h3>
-                        <ul className="ranking-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: 0, margin: 0, listStyle: 'none' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {(() => {
-                                const getMedalColor = (idx: number) => {
-                                    if (idx === 0) return '#ffd700';
-                                    if (idx === 1) return '#c0c0c0';
-                                    if (idx === 2) return '#cd7f32';
-                                    return 'var(--text-muted)';
-                                };
-                                
                                 if (!wibuRanking || wibuRanking.length === 0) {
                                     return <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Chưa có cao thủ nào.</div>;
                                 }
                                 
-                                return wibuRanking.map((user, index) => {
+                                return wibuRanking.slice(0, 5).map((user, index) => {
                                     const lvlInfo = calculateUserLevel(user.xp || 0);
-                                    const isLast = index === wibuRanking.length - 1;
+                                    const rankClass = index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : '';
+                                    const avatarSrc = user.avatarSeed && (user.avatarSeed.startsWith('http') || user.avatarSeed.startsWith('/uploads') || user.avatarSeed.startsWith('data:')) 
+                                        ? user.avatarSeed 
+                                        : `https://api.dicebear.com/7.x/adventurer/svg?seed=${user.avatarSeed || 'Default'}`;
+
                                     return (
-                                        <li 
+                                        <div 
                                             key={user.id} 
-                                            style={{ 
-                                                display: 'flex', 
-                                                alignItems: 'center', 
-                                                gap: '12px', 
-                                                borderBottom: isLast ? 'none' : '1px dashed var(--border-color)', 
-                                                paddingBottom: isLast ? '4px' : '8px',
-                                                cursor: 'pointer'
-                                            }}
+                                            className="ranking-item-v2"
                                             onClick={() => {
                                                 window.location.hash = `#/profile/${encodeURIComponent(user.username)}`;
                                             }}
                                         >
-                                            <span style={{ 
-                                                background: getMedalColor(index), 
-                                                color: '#fff', 
-                                                width: '22px', 
-                                                height: '22px', 
-                                                borderRadius: '50%', 
-                                                display: 'flex', 
-                                                alignItems: 'center', 
-                                                justifyContent: 'center', 
-                                                fontSize: '0.75rem', 
-                                                fontWeight: 700, 
-                                                flexShrink: 0 
-                                            }}>
+                                            <span className={`ranking-badge-v2 ${rankClass}`}>
                                                 {index + 1}
                                             </span>
-                                            <div style={{ flexGrow: 1 }}>
-                                                <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)' }}>@{user.username}</div>
-                                                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Cấp bậc: {lvlInfo.tierName} • {Number(user.xp).toLocaleString()} XP</div>
+                                            <img 
+                                                src={avatarSrc} 
+                                                alt={user.username} 
+                                                style={{ width: '28px', height: '28px', borderRadius: '50%', border: '1px solid var(--border-color)', objectFit: 'cover' }} 
+                                            />
+                                            <div className="ranking-info-v2">
+                                                <div className="ranking-title-v2">@{user.username}</div>
+                                                <div className="ranking-score-v2">
+                                                    <span>{lvlInfo.tierName}</span>
+                                                    <span>•</span>
+                                                    <span>{Number(user.xp).toLocaleString()} XP</span>
+                                                </div>
                                             </div>
-                                        </li>
+                                        </div>
                                     );
                                 });
                             })()}
-                        </ul>
+                        </div>
                     </div>
 
-                    {/* Latest Comments Sidebar Widget */}
-                    <div className="sidebar-card ranking-card">
-                        <h3 className="card-title" style={{ borderBottomColor: 'rgba(224, 82, 117, 0.1)' }}>
-                            Bình luận mới nhất
+                    {/* BENTO 3: BÌNH LUẬN MỚI NHẤT */}
+                    <div className="sidebar-bento-card">
+                        <h3 className="sidebar-bento-title">
+                            <span className="title-icon-mono"><Icons.Comment /></span>
+                            <span>Bình Luận Mới Nhất</span>
                         </h3>
-                        <ul className="ranking-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: 0, margin: 0, listStyle: 'none' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             {latestComments && latestComments.length > 0 ? (
-                                latestComments.map((comment: any) => (
-                                    <li
-                                        key={comment.id}
-                                        onClick={() => openNovelDetail(comment.novelId)}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'flex-start',
-                                            gap: '10px',
-                                            borderBottom: '1px dashed var(--border-color)',
-                                            paddingBottom: '8px',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        <img
-                                            src={comment.avatarSeed && (comment.avatarSeed.startsWith('http') || comment.avatarSeed.startsWith('/uploads') || comment.avatarSeed.startsWith('data:')) ? comment.avatarSeed : `https://api.dicebear.com/7.x/adventurer/svg?seed=${comment.avatarSeed || 'Default'}`}
-                                            alt="Avatar"
-                                            style={{ width: '28px', height: '28px', borderRadius: '50%', border: '1px solid var(--border-color)', objectFit: 'cover', marginTop: '2px', flexShrink: 0 }}
-                                        />
-                                        <div style={{ flexGrow: 1, minWidth: 0 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                                <strong style={{ fontSize: '0.78rem', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100px' }}>{comment.displayname}</strong>
-                                                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{comment.date ? comment.date.split(' ')[0] : ''}</span>
-                                            </div>
-                                            <div style={{
-                                                fontSize: '0.72rem',
-                                                color: 'var(--text-muted)',
-                                                margin: '2px 0',
-                                                display: '-webkit-box',
-                                                WebkitLineClamp: 2,
-                                                WebkitBoxOrient: 'vertical',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                lineHeight: '1.4'
-                                            }}>
-                                                "{comment.text}"
-                                            </div>
-                                            <div style={{ fontSize: '0.65rem', color: 'var(--sakura-pink)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                📖 {comment.novelTitle}
+                                latestComments.slice(0, 4).map((comment: any) => {
+                                    const avatarSrc = comment.avatarSeed && (comment.avatarSeed.startsWith('http') || comment.avatarSeed.startsWith('/uploads') || comment.avatarSeed.startsWith('data:')) 
+                                        ? comment.avatarSeed 
+                                        : `https://api.dicebear.com/7.x/adventurer/svg?seed=${comment.avatarSeed || 'Default'}`;
+
+                                    return (
+                                        <div
+                                            key={comment.id}
+                                            onClick={() => openNovelDetail(comment.novelId)}
+                                            style={{
+                                                display: 'flex',
+                                                gap: '10px',
+                                                padding: '8px',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer',
+                                                border: '1px dashed var(--border-color)',
+                                                background: 'var(--bg-base)',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                        >
+                                            <img
+                                                src={avatarSrc}
+                                                alt={comment.displayname}
+                                                style={{ width: '26px', height: '26px', borderRadius: '50%', border: '1px solid var(--border-color)', objectFit: 'cover', marginTop: '2px', flexShrink: 0 }}
+                                            />
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                                    <strong style={{ fontSize: '0.78rem', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100px' }}>{comment.displayname}</strong>
+                                                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{comment.date ? comment.date.split(' ')[0] : ''}</span>
+                                                </div>
+                                                <p style={{
+                                                    fontSize: '0.73rem',
+                                                    color: 'var(--text-muted)',
+                                                    margin: '3px 0',
+                                                    display: '-webkit-box',
+                                                    WebkitLineClamp: 2,
+                                                    WebkitBoxOrient: 'vertical',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    lineHeight: '1.35'
+                                                }}>
+                                                    "{comment.text}"
+                                                </p>
+                                                <div style={{ fontSize: '0.66rem', color: 'var(--sakura-pink)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                                    <Icons.Book /> {comment.novelTitle}
+                                                </div>
                                             </div>
                                         </div>
-                                    </li>
-                                ))
+                                    );
+                                })
                             ) : (
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Chưa có bình luận nào.</div>
                             )}
-                        </ul>
+                        </div>
                     </div>
 
-                    {/* Latest Reviews Sidebar Widget */}
-                    <div className="sidebar-card ranking-card">
-                        <h3 className="card-title" style={{ borderBottomColor: 'rgba(224, 82, 117, 0.1)' }}>
-                            Đánh giá mới nhất
+                    {/* BENTO 4: ĐÁNH GIÁ MỚI NHẤT */}
+                    <div className="sidebar-bento-card">
+                        <h3 className="sidebar-bento-title">
+                            <span className="title-icon-mono"><Icons.Star /></span>
+                            <span>Đánh Giá Mới Nhất</span>
                         </h3>
-                        <ul className="ranking-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: 0, margin: 0, listStyle: 'none' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             {latestReviews && latestReviews.length > 0 ? (
-                                latestReviews.map((review: any) => (
-                                    <li
-                                        key={review.id}
-                                        onClick={() => openNovelDetail(review.novelId)}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'flex-start',
-                                            gap: '10px',
-                                            borderBottom: '1px dashed var(--border-color)',
-                                            paddingBottom: '8px',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        <img
-                                            src={review.avatarSeed && (review.avatarSeed.startsWith('http') || review.avatarSeed.startsWith('/uploads') || review.avatarSeed.startsWith('data:')) ? review.avatarSeed : `https://api.dicebear.com/7.x/adventurer/svg?seed=${review.avatarSeed || 'Default'}`}
-                                            alt="Avatar"
-                                            style={{ width: '28px', height: '28px', borderRadius: '50%', border: '1px solid var(--border-color)', objectFit: 'cover', marginTop: '2px', flexShrink: 0 }}
-                                        />
-                                        <div style={{ flexGrow: 1, minWidth: 0 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <strong style={{ fontSize: '0.78rem', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100px' }}>{review.username}</strong>
-                                                <span style={{ fontSize: '0.7rem', color: 'var(--sakura-pink)', fontWeight: 700 }}>⭐ {review.stars ? parseFloat(review.stars).toFixed(1) : '5.0'}</span>
-                                            </div>
-                                            <div style={{
-                                                fontSize: '0.72rem',
-                                                color: 'var(--text-muted)',
-                                                margin: '2px 0',
-                                                display: '-webkit-box',
-                                                WebkitLineClamp: 2,
-                                                WebkitBoxOrient: 'vertical',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                lineHeight: '1.4'
-                                            }}>
-                                                "{review.text}"
-                                            </div>
-                                            <div style={{ fontSize: '0.65rem', color: 'var(--sakura-pink)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                📖 {review.novelTitle}
+                                latestReviews.slice(0, 4).map((review: any) => {
+                                    const avatarSrc = review.avatarSeed && (review.avatarSeed.startsWith('http') || review.avatarSeed.startsWith('/uploads') || review.avatarSeed.startsWith('data:')) 
+                                        ? review.avatarSeed 
+                                        : `https://api.dicebear.com/7.x/adventurer/svg?seed=${review.avatarSeed || 'Default'}`;
+
+                                    return (
+                                        <div
+                                            key={review.id}
+                                            onClick={() => openNovelDetail(review.novelId)}
+                                            style={{
+                                                display: 'flex',
+                                                gap: '10px',
+                                                padding: '8px',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer',
+                                                border: '1px dashed var(--border-color)',
+                                                background: 'var(--bg-base)',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                        >
+                                            <img
+                                                src={avatarSrc}
+                                                alt={review.username}
+                                                style={{ width: '26px', height: '26px', borderRadius: '50%', border: '1px solid var(--border-color)', objectFit: 'cover', marginTop: '2px', flexShrink: 0 }}
+                                            />
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <strong style={{ fontSize: '0.78rem', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100px' }}>{review.username}</strong>
+                                                    <span style={{ fontSize: '0.7rem', color: 'var(--sakura-pink)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                                        <Icons.Star /> {review.stars ? parseFloat(review.stars).toFixed(1) : '5.0'}
+                                                    </span>
+                                                </div>
+                                                <p style={{
+                                                    fontSize: '0.73rem',
+                                                    color: 'var(--text-muted)',
+                                                    margin: '3px 0',
+                                                    display: '-webkit-box',
+                                                    WebkitLineClamp: 2,
+                                                    WebkitBoxOrient: 'vertical',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    lineHeight: '1.35'
+                                                }}>
+                                                    "{review.text}"
+                                                </p>
+                                                <div style={{ fontSize: '0.66rem', color: 'var(--sakura-pink)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                                    <Icons.Book /> {review.novelTitle}
+                                                </div>
                                             </div>
                                         </div>
-                                    </li>
-                                ))
+                                    );
+                                })
                             ) : (
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Chưa có đánh giá nào.</div>
                             )}
-                        </ul>
+                        </div>
                     </div>
                 </aside>
             </div>

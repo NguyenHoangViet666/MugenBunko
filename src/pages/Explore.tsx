@@ -104,7 +104,7 @@ export default function Explore({
                 <button className="outline-btn small" onClick={() => { setSearchQuery(""); setCurrentView('home'); }}>← Về Trang Chủ</button>
             </div>
 
-            <div className="explore-layout" style={{ display: 'grid', gridTemplateColumns: '8.5fr 3.5fr', gap: '24px', alignItems: 'flex-start' }}>
+            <div className="explore-layout">
                 <div className="explore-main-column">
                     {/* Unified Filter Bar at the top */}
                     <div className="explore-filter-bar" style={{

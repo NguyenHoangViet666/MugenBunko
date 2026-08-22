@@ -207,7 +207,7 @@ export default function UserProfile({
                 </button>
             </div>
 
-            <div className="profile-layout-container" style={{ display: 'grid', gridTemplateColumns: '3.5fr 8.5fr', gap: '32px', marginTop: '24px' }}>
+            <div className="profile-layout-container">
                 {/* Left column info card */}
                 <div className="profile-left-column">
                     <div className="sidebar-card text-center" style={{ textAlign: 'center' }}>
@@ -479,7 +479,7 @@ export default function UserProfile({
                                         </p>
                                     </div>
                                 ) : (
-                                    <div className="novel-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' }}>
+                                    <div className="novel-grid">
                                         {filteredNovels.map(novel => (
                                             <div key={novel.id} className="novel-card" onClick={() => openNovelDetail(novel.id)} style={{ cursor: 'pointer' }}>
                                                 <div className="novel-cover-wrapper">

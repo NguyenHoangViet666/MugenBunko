@@ -5,15 +5,159 @@ import { compressImage } from '../utils/imageCompressor';
 import RichTextEditor, { parseFormattedContent, extractAndCleanImages, ForumImageGrid } from '../components/RichTextEditor';
 import { io } from 'socket.io-client';
 
+// ================= MONOCHROME PROFESSIONAL SVG ICONS =================
+const Icons = {
+    All: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+    ),
+    General: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+    ),
+    Announcement: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+        </svg>
+    ),
+    Review: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+        </svg>
+    ),
+    Spoil: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+        </svg>
+    ),
+    QA: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+    ),
+    Misc: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+            <line x1="7" y1="7" x2="7.01" y2="7"></line>
+        </svg>
+    ),
+    Heart: ({ filled }: { filled?: boolean }) => (
+        <svg viewBox="0 0 24 24" width="17" height="17" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+        </svg>
+    ),
+    Comment: () => (
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+        </svg>
+    ),
+    Share: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="18" cy="5" r="3"></circle>
+            <circle cx="6" cy="12" r="3"></circle>
+            <circle cx="18" cy="19" r="3"></circle>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+        </svg>
+    ),
+    Image: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+        </svg>
+    ),
+    Pen: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 20h9"></path>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+        </svg>
+    ),
+    Send: () => (
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+    ),
+    Trash: () => (
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+    ),
+    Lock: () => (
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+    ),
+    Unlock: () => (
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+        </svg>
+    ),
+    Trending: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+            <polyline points="17 6 23 6 23 12"></polyline>
+        </svg>
+    ),
+    Users: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+    ),
+    Shield: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        </svg>
+    ),
+    Hash: () => (
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="4" y1="9" x2="20" y2="9"></line>
+            <line x1="4" y1="15" x2="20" y2="15"></line>
+            <line x1="10" y1="3" x2="8" y2="21"></line>
+            <line x1="16" y1="3" x2="14" y2="21"></line>
+        </svg>
+    )
+};
+
 const CATEGORIES = [
-    { id: 'all', name: 'Tất cả chủ đề', emoji: '🌟' },
-    { id: 'general', name: 'Thảo luận chung', emoji: '💬' },
-    { id: 'announcement', name: 'Thông báo', emoji: '📢' },
-    { id: 'review', name: 'Review', emoji: '📝' },
-    { id: 'spoil', name: 'Spoil', emoji: '🤫' },
-    { id: 'qa', name: 'Hỏi đáp', emoji: '❓' },
-    { id: 'misc', name: 'Linh tinh', emoji: '🎭' }
+    { id: 'all', name: 'Tất cả chủ đề', icon: Icons.All },
+    { id: 'general', name: 'Thảo luận chung', icon: Icons.General },
+    { id: 'announcement', name: 'Thông báo', icon: Icons.Announcement },
+    { id: 'review', name: 'Review truyện', icon: Icons.Review },
+    { id: 'spoil', name: 'Spoil tình tiết', icon: Icons.Spoil },
+    { id: 'qa', name: 'Hỏi đáp thắc mắc', icon: Icons.QA },
+    { id: 'misc', name: 'Linh tinh khác', icon: Icons.Misc }
 ];
+
+// Helper to reliably normalize categories (supporting both English and Vietnamese)
+export const normalizeForumCategory = (cat: string | undefined | null): string => {
+    if (!cat) return 'general';
+    const lower = cat.toLowerCase().trim();
+    if (lower === 'general' || lower === 'thảo luận chung' || lower === 'thảo luận') return 'general';
+    if (lower === 'announcement' || lower === 'thông báo' || lower === 'thông báo hệ thống') return 'announcement';
+    if (lower === 'review' || lower === 'review truyện' || lower === 'review tác phẩm' || lower === 'đánh giá') return 'review';
+    if (lower === 'spoil' || lower === 'spoil tình tiết' || lower === 'spoil nội dung') return 'spoil';
+    if (lower === 'qa' || lower === 'q&a' || lower === 'hỏi đáp' || lower === 'hỏi đáp thắc mắc') return 'qa';
+    if (lower === 'misc' || lower === 'linh tinh' || lower === 'linh tinh khác') return 'misc';
+    return lower;
+};
 
 interface SocialUser {
     id: number;
@@ -73,6 +217,7 @@ export default function Forum({
     const [subView, setSubView] = useState<'list' | 'detail' | 'create'>('list');
     const [selectedPost, setSelectedPost] = useState<ForumPost | null>(null);
     const [loading, setLoading] = useState(false);
+    const [isSubmittingPost, setIsSubmittingPost] = useState(false);
 
     // Lightbox for viewing and zooming images
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
@@ -114,7 +259,7 @@ export default function Forum({
     const [expandedPostComments, setExpandedPostComments] = useState<{ [postId: number]: boolean }>({});
     const [quickCommentTexts, setQuickCommentTexts] = useState<{ [postId: number]: string }>({});
 
-    // Facebook-style right side chat states
+    // Contacts / Friends chat states
     const [forumFriends, setForumFriends] = useState<SocialUser[]>([]);
     const [activeChatFriend, setActiveChatFriend] = useState<SocialUser | null>(null);
     const [chatMessages, setChatMessages] = useState<Message[]>([]);
@@ -139,20 +284,13 @@ export default function Forum({
         });
 
         newSocket.on('connect', () => {
-            console.log("[Socket] Connected to MUGENBUNKO Socket Server.");
             setSocket(newSocket);
-            
-            // Check initial online statuses of friends
             if (forumFriends.length > 0) {
                 const friendIds = forumFriends.map(f => f.id);
                 newSocket.emit('check_online_status', friendIds, (statuses: Record<number, boolean>) => {
                     setOnlineUsers(statuses);
                 });
             }
-        });
-
-        newSocket.on('connect_error', (err) => {
-            console.error("[Socket] Connection error:", err.message);
         });
 
         newSocket.on('receive_message', (message: Message) => {
@@ -183,7 +321,6 @@ export default function Forum({
         };
     }, [currentUser]);
 
-    // Check friends status when list loads or changes
     useEffect(() => {
         if (socket && forumFriends.length > 0) {
             const friendIds = forumFriends.map(f => f.id);
@@ -208,12 +345,17 @@ export default function Forum({
  
     useEffect(() => {
         fetchPosts();
+    }, []);
+
+    useEffect(() => {
         if (initialPostId) {
             fetchPostDetail(initialPostId);
+        } else {
+            setSubView('list');
+            setSelectedPost(null);
         }
     }, [initialPostId]);
 
-    // Load friends list for Facebook-style sidebar contacts
     const fetchForumFriends = async () => {
         if (!currentUser) return;
         try {
@@ -231,7 +373,6 @@ export default function Forum({
         fetchForumFriends();
     }, [currentUser]);
 
-    // Load initial chat history when chat friend opens
     useEffect(() => {
         if (!activeChatFriend) return;
 
@@ -241,8 +382,6 @@ export default function Forum({
                 if (res.ok) {
                     const data = await res.json();
                     setChatMessages(data);
-                    
-                    // Cuộn chat sau 150ms
                     setTimeout(() => {
                         const chatBoxBody = document.getElementById("fb-chat-body-container");
                         if (chatBoxBody) chatBoxBody.scrollTop = chatBoxBody.scrollHeight;
@@ -289,10 +428,8 @@ export default function Forum({
         }
     };
 
-    // Helper function to upload an image from file input
     const uploadImageFile = async (file: File, type: string): Promise<string> => {
         try {
-            // Compress forum images to max 1200px and 80% quality
             const compressedBase64 = await compressImage(file, 1200, 1200, 0.8);
             const res = await fetchWithAuth(`${API_BASE}/upload`, {
                 method: 'POST',
@@ -321,6 +458,7 @@ export default function Forum({
             return;
         }
 
+        setIsSubmittingPost(true);
         try {
             let imageUrl: string | null = null;
             let finalContent = newContent;
@@ -341,10 +479,10 @@ export default function Forum({
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    title: newTitle,
-                    content: finalContent,
-                    category: newCategory,
-                    imageUrl
+                    title: newTitle.trim(),
+                    content: finalContent.trim(),
+                    category: newCategory || 'general',
+                    imageUrl: imageUrl || null
                 })
             });
             const data = await res.json();
@@ -366,10 +504,11 @@ export default function Forum({
         } catch (err) {
             console.error("Error creating post:", err);
             showAlert((err as string) || "Lỗi khi đăng bài viết.");
+        } finally {
+            setIsSubmittingPost(false);
         }
     };
 
-    // Quick creation at the top of the social feed
     const handleQuickCreatePost = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!currentUser) {
@@ -377,10 +516,11 @@ export default function Forum({
             return;
         }
         if (!quickTitle.trim() || !quickContent.trim()) {
-            showAlert("Vui lòng nhập đầy đủ tiêu đề và nội dung!");
+            showAlert("Vui lòng nhập đầy đủ tiêu đề và nội dung bài viết!");
             return;
         }
 
+        setIsSubmittingPost(true);
         try {
             let imageUrl: string | null = null;
             let finalContent = quickContent;
@@ -401,10 +541,10 @@ export default function Forum({
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    title: quickTitle,
-                    content: finalContent,
-                    category: quickCategory,
-                    imageUrl
+                    title: quickTitle.trim(),
+                    content: finalContent.trim(),
+                    category: quickCategory || 'general',
+                    imageUrl: imageUrl || null
                 })
             });
             const data = await res.json();
@@ -426,6 +566,8 @@ export default function Forum({
         } catch (err) {
             console.error("Error creating quick post:", err);
             showAlert((err as string) || "Lỗi khi đăng bài viết.");
+        } finally {
+            setIsSubmittingPost(false);
         }
     };
 
@@ -443,7 +585,7 @@ export default function Forum({
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    text: commentText,
+                    text: commentText.trim(),
                     replyToUserId
                 })
             });
@@ -457,7 +599,6 @@ export default function Forum({
         }
     };
 
-    // Quick Comment under Card
     const handleQuickCommentSubmit = async (postId: number, e?: React.FormEvent) => {
         if (e) e.preventDefault();
         if (!currentUser) {
@@ -484,7 +625,6 @@ export default function Forum({
             if (res.ok) {
                 const data = await res.json();
                 if (data.success && data.comment) {
-                    // Cập nhật local state posts trực tiếp
                     setPosts(prevPosts => prevPosts.map(post => {
                         if (post.id === postId) {
                             let updatedComments: ForumComment[];
@@ -509,7 +649,6 @@ export default function Forum({
                         }
                         return post;
                     }));
-                    // Clear text input and states
                     setQuickCommentTexts(prev => ({ ...prev, [postId]: "" }));
                     setReplyToUserId(null);
                     setQuickReplyToCommentIds(prev => ({ ...prev, [postId]: null }));
@@ -520,7 +659,6 @@ export default function Forum({
         }
     };
 
-    // Submit reply to a comment in Detail View
     const handleSubmitReply = async (parentCommentId: number) => {
         if (!currentUser) {
             showAlert("Bạn cần đăng nhập để bình luận!");
@@ -580,11 +718,10 @@ export default function Forum({
         }
     };
 
-    // Toggle heart reaction (like)
     const handleLikePost = async (postId: number, e: React.MouseEvent) => {
         if (e) e.stopPropagation();
         if (!currentUser) {
-            showAlert("Bạn cần đăng nhập để thả tim bài viết!");
+            showAlert("Bạn cần đăng nhập để tương tác bài viết!");
             return;
         }
 
@@ -599,40 +736,46 @@ export default function Forum({
                     if (post.id === postId) {
                         return {
                             ...post,
-                            is_liked: data.liked ? 1 : 0,
-                            likes_count: data.liked ? ((post.likes_count || 0) + 1) : Math.max(0, (post.likes_count || 0) - 1)
+                            is_liked: data.isLiked,
+                            likes_count: data.likesCount
                         };
                     }
                     return post;
                 }));
+                if (selectedPost && selectedPost.id === postId) {
+                    setSelectedPost(prev => prev ? ({
+                        ...prev,
+                        is_liked: data.isLiked,
+                        likes_count: data.likesCount
+                    }) : null);
+                }
             }
         } catch (err) {
-            console.error("Error toggle like:", err);
+            console.error("Error liking post:", err);
         }
     };
 
-    const handleDeletePost = async (postId: number, e: React.MouseEvent) => {
+    const handleDeletePost = (postId: number, e: React.MouseEvent) => {
         if (e) e.stopPropagation();
-        if (!currentUser) return;
-        triggerConfirm("Bạn có chắc chắn muốn xóa bài viết này vĩnh viễn?", async () => {
+        triggerConfirm("Bạn có chắc chắn muốn xóa bài viết này không?", async () => {
             try {
                 const res = await fetchWithAuth(`${API_BASE}/forum/posts/${postId}`, {
                     method: 'DELETE'
                 });
-                const data = await res.json();
-                if (res.ok && data.success) {
-                    if (showToast) showToast("Đã xóa bài viết.");
-                    if (subView === 'detail') {
-                        setSubView('list');
+                if (res.ok) {
+                    setPosts(prev => prev.filter(p => p.id !== postId));
+                    if (selectedPost && selectedPost.id === postId) {
                         setSelectedPost(null);
-                        if (setInitialPostId) setInitialPostId(null);
+                        setSubView('list');
                     }
-                    await fetchPosts();
+                    if (showToast) showToast("Đã xóa bài viết thành công.");
                 } else {
-                    showAlert(data.error || "Lỗi khi xóa bài viết.");
+                    const data = await res.json();
+                    showAlert(data.error || "Lỗi xóa bài viết.");
                 }
             } catch (err) {
                 console.error("Error deleting post:", err);
+                showAlert("Lỗi kết nối máy chủ.");
             }
         });
     };
@@ -645,21 +788,13 @@ export default function Forum({
         }));
     };
 
-    // Chat popup action
     const handleStartChat = (friend: SocialUser) => {
         setActiveChatFriend(friend);
-        setChatMessages([]);
-        setChatInputText('');
-        // Cuộn chat sau 150ms
-        setTimeout(() => {
-            const chatBoxBody = document.getElementById("fb-chat-body-container");
-            if (chatBoxBody) chatBoxBody.scrollTop = chatBoxBody.scrollHeight;
-        }, 150);
     };
 
     const handleSendChatMessage = async (e: React.FormEvent) => {
-        if (e) e.preventDefault();
-        if (!chatInputText.trim() || !activeChatFriend || !currentUser) return;
+        e.preventDefault();
+        if (!activeChatFriend || !chatInputText.trim()) return;
 
         const text = chatInputText.trim();
         setChatInputText('');
@@ -667,41 +802,29 @@ export default function Forum({
         if (socket && socket.connected) {
             socket.emit('send_message', {
                 receiverId: activeChatFriend.id,
-                messageText: text
+                message: text
             }, (response: any) => {
                 if (response && response.success && response.message) {
-                    setChatMessages(prev => {
-                        if (prev.some(m => m.id === response.message.id)) return prev;
-                        return [...prev, response.message];
-                    });
-                    
+                    setChatMessages(prev => [...prev, response.message]);
                     setTimeout(() => {
                         const chatBoxBody = document.getElementById("fb-chat-body-container");
                         if (chatBoxBody) chatBoxBody.scrollTop = chatBoxBody.scrollHeight;
                     }, 100);
-                } else {
-                    showAlert(response?.error || "Không thể gửi tin nhắn qua Socket.");
                 }
             });
         } else {
-            // Fallback to HTTP POST
             try {
-                const res = await fetchWithAuth(`${API_BASE}/social/messages/send`, {
+                const res = await fetchWithAuth(`${API_BASE}/social/messages`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        receiverId: activeChatFriend.id,
-                        messageText: text
+                        receiver_id: activeChatFriend.id,
+                        message: text
                     })
                 });
-
-                if (res.ok) {
-                    const data = await res.json();
-                    setChatMessages(prev => {
-                        if (prev.some(m => m.id === data.message.id)) return prev;
-                        return [...prev, data.message];
-                    });
-                    
+                const data = await res.json();
+                if (res.ok && data.message) {
+                    setChatMessages(prev => [...prev, data.message]);
                     setTimeout(() => {
                         const chatBoxBody = document.getElementById("fb-chat-body-container");
                         if (chatBoxBody) chatBoxBody.scrollTop = chatBoxBody.scrollHeight;
@@ -713,624 +836,214 @@ export default function Forum({
         }
     };
 
-    // Filter posts
+    // Filter posts using normalized categories (supports both EN & VI)
     const displayedPosts = posts.filter(post => {
         if (activeCategory === 'all') return true;
-        
-        // Map category ID to Vietnamese database categories
-        const catMap: { [key: string]: string } = {
-            general: 'thảo luận chung',
-            announcement: 'thông báo',
-            review: 'review',
-            spoil: 'spoil',
-            qa: 'hỏi đáp',
-            misc: 'linh tinh'
-        };
-        return post.category === catMap[activeCategory];
+        return normalizeForumCategory(post.category) === activeCategory;
     });
 
     const formatCategoryName = (cat: string) => {
-        const found = CATEGORIES.find(c => {
-            const catMap: { [key: string]: string } = {
-                general: 'thảo luận chung',
-                announcement: 'thông báo',
-                review: 'review',
-                spoil: 'spoil',
-                qa: 'hỏi đáp',
-                misc: 'linh tinh'
-            };
-            return catMap[c.id] === cat;
-        });
-        return found ? found.name : cat;
+        const norm = normalizeForumCategory(cat);
+        const found = CATEGORIES.find(c => c.id === norm);
+        return found ? found.name : (cat || 'Thảo luận');
     };
 
+    // Hot trending posts for sidebar
+    const hotTrendingPosts = React.useMemo(() => {
+        return [...posts]
+            .sort((a, b) => ((b.likes_count || 0) + (b.comments_count || 0)) - ((a.likes_count || 0) + (a.comments_count || 0)))
+            .slice(0, 5);
+    }, [posts]);
+
+    // Count posts per category accurately
+    const categoryCounts = React.useMemo(() => {
+        const counts: Record<string, number> = { all: posts.length };
+        CATEGORIES.forEach(c => {
+            if (c.id !== 'all') {
+                counts[c.id] = posts.filter(p => normalizeForumCategory(p.category) === c.id).length;
+            }
+        });
+        return counts;
+    }, [posts]);
+
     return (
-        <div className="page-view active">
-            <style>{`
-                .sidebar-column {
-                    position: sticky;
-                    top: 92px;
-                    align-self: start;
-                    height: fit-content;
-                }
-                .social-feed-card {
-                    background: var(--bg-card);
-                    border: 1px solid var(--border-color);
-                    border-radius: var(--border-radius-lg);
-                    box-shadow: var(--shadow-sm);
-                    padding: 20px;
-                    transition: var(--transition-smooth);
-                    position: relative;
-                }
-                .social-feed-card:hover {
-                    box-shadow: var(--shadow-md);
-                    border-color: rgba(224, 82, 117, 0.25);
-                }
-                .post-header {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    margin-bottom: 14px;
-                }
-                .post-author-info {
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                }
-                .post-author-avatar {
-                    width: 44px;
-                    height: 44px;
-                    border-radius: 50%;
-                    overflow: hidden;
-                    border: 1.5px solid var(--border-color);
-                }
-                .post-author-avatar img {
-                    width: 100%;
-                    height: 100%;
-                    object-fit: cover;
-                }
-                .post-author-meta {
-                    display: flex;
-                    flex-direction: column;
-                }
-                .post-author-name {
-                    font-size: 0.92rem;
-                    font-weight: 650;
-                    color: var(--text-main);
-                }
-                .post-time-meta {
-                    font-size: 0.72rem;
-                    color: var(--text-muted);
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                }
-                .quick-create-card {
-                    background: var(--bg-card);
-                    border: 1px solid var(--border-color);
-                    border-radius: var(--border-radius-lg);
-                    padding: 16px;
-                    margin-bottom: 20px;
-                    box-shadow: var(--shadow-sm);
-                }
-                .quick-create-input-collapsed {
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    cursor: pointer;
-                }
-                .quick-create-placeholder {
-                    flex: 1;
-                    background: var(--bg-base);
-                    border: 1px solid var(--border-color);
-                    border-radius: 24px;
-                    padding: 10px 16px;
-                    color: var(--text-muted);
-                    font-size: 0.88rem;
-                    transition: var(--transition-smooth);
-                }
-                .quick-create-placeholder:hover {
-                    background: var(--border-color);
-                }
-                .quick-create-expanded-form {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 12px;
-                    animation: slideDownQuickForm 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-                }
-                @keyframes slideDownQuickForm {
-                    from { opacity: 0; transform: translateY(-10px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-                .interaction-actions-bar {
-                    display: flex;
-                    align-items: center;
-                    border-top: 1px solid var(--border-color);
-                    border-bottom: 1px solid var(--border-color);
-                    padding: 8px 0;
-                    margin-top: 16px;
-                    gap: 20px;
-                }
-                .interaction-btn {
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                    background: transparent;
-                    border: none;
-                    font-size: 0.85rem;
-                    color: var(--text-muted);
-                    font-weight: 600;
-                    padding: 6px 12px;
-                    border-radius: var(--border-radius-md);
-                    transition: var(--transition-smooth);
-                }
-                .interaction-btn:hover {
-                    background: var(--sakura-pink-light);
-                    color: var(--sakura-pink);
-                }
-                .theme-charcoal .interaction-btn:hover {
-                    background: rgba(224, 82, 117, 0.15);
-                }
-                .interaction-btn svg {
-                    width: 18px;
-                    height: 18px;
-                    fill: none;
-                    stroke: currentColor;
-                    stroke-width: 2px;
-                    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-                }
-                .interaction-btn:hover svg {
-                    transform: scale(1.18);
-                    stroke: var(--sakura-pink);
-                }
-                .interaction-btn.liked {
-                    color: var(--sakura-pink);
-                }
-                .interaction-btn.liked svg {
-                    fill: var(--sakura-pink);
-                    stroke: var(--sakura-pink);
-                    animation: pulseHeart 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) 1;
-                }
-                .interaction-btn.liked:hover {
-                    color: var(--sakura-pink-hover);
-                }
-                .interaction-btn.liked:hover svg {
-                    fill: var(--sakura-pink-hover);
-                    stroke: var(--sakura-pink-hover);
-                }
-
-                @keyframes pulseHeart {
-                    0% { transform: scale(1); }
-                    50% { transform: scale(1.25); }
-                    100% { transform: scale(1); }
-                }
-
-                /* Premium Image preview container - centered & 3D Pop */
-                .forum-image-wrapper {
-                    margin: 16px auto 0 auto;
-                    border-radius: 12px;
-                    overflow: hidden;
-                    border: 1px solid var(--border-color);
-                    background: rgba(0,0,0,0.015);
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    width: fit-content;
-                    max-width: 100%;
-                    box-shadow: var(--shadow-sm);
-                    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
-                }
-                .forum-image-wrapper:hover {
-                    box-shadow: 0 12px 28px rgba(224, 82, 117, 0.18);
-                    transform: scale(1.02);
-                }
-                .forum-image-preview {
-                    max-width: 100%;
-                    max-height: 500px;
-                    object-fit: contain;
-                    display: block;
-                    cursor: zoom-in;
-                    border-radius: 12px;
-                    transition: opacity 0.2s ease;
-                }
-                .forum-image-preview:hover {
-                    opacity: 0.95;
-                }
-
-                .grid-image-item {
-                    position: relative;
-                    overflow: hidden;
-                }
-                .grid-image-item img {
-                    width: 100%;
-                    height: 100%;
-                    object-fit: cover;
-                    transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
-                }
-                .grid-image-item:hover img {
-                    transform: scale(1.05);
-                }
-
-                /* Spoiler and formatting tags styles */
-                .spoiler-text {
-                    background-color: var(--text-main);
-                    color: var(--text-main);
-                    cursor: pointer;
-                    border-radius: 4px;
-                    padding: 0 6px;
-                    user-select: none;
-                    transition: background-color 0.2s ease, color 0.2s ease;
-                    font-weight: normal;
-                }
-                .spoiler-text.revealed {
-                    background-color: var(--sakura-pink-light);
-                    color: var(--text-main);
-                    user-select: auto;
-                }
-                .theme-charcoal .spoiler-text.revealed {
-                    background-color: rgba(224, 82, 117, 0.2);
-                }
-                .forum-link {
-                    color: var(--sakura-pink);
-                    text-decoration: underline;
-                    font-weight: 500;
-                }
-                .forum-link:hover {
-                    color: var(--sakura-pink-hover);
-                }
-                .quick-comments-section {
-                    background: var(--bg-base);
-                    border-radius: var(--border-radius-md);
-                    padding: 12px;
-                    margin-top: 12px;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 10px;
-                    animation: slideUpQuickComments 0.2s ease;
-                }
-                @keyframes slideUpQuickComments {
-                    from { opacity: 0; transform: translateY(5px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-                .quick-comment-item {
-                    display: flex;
-                    gap: 8px;
-                }
-                .quick-comment-avatar {
-                    width: 30px;
-                    height: 30px;
-                    border-radius: 50%;
-                    overflow: hidden;
-                    background: var(--bg-card);
-                    border: 1px solid var(--border-color);
-                }
-                .quick-comment-avatar img {
-                    width: 100%;
-                    height: 100%;
-                    object-fit: cover;
-                }
-                .quick-comment-bubble {
-                    flex: 1;
-                    background: var(--bg-card);
-                    border: 1px solid var(--border-color);
-                    border-radius: 12px;
-                    padding: 6px 12px;
-                    font-size: 0.8rem;
-                }
-                .quick-comment-name {
-                    font-weight: 700;
-                    color: var(--text-main);
-                    margin-bottom: 2px;
-                    font-size: 0.78rem;
-                }
-                .quick-comment-text {
-                    color: var(--text-content);
-                    line-height: 1.4;
-                }
-                .quick-comment-input-form {
-                    display: flex;
-                    gap: 8px;
-                    margin-top: 6px;
-                }
-                .quick-comment-input {
-                    flex: 1;
-                    border-radius: 20px;
-                    border: 1px solid var(--border-color);
-                    padding: 8px 14px;
-                    font-size: 0.82rem;
-                    outline: none;
-                    background: var(--bg-card);
-                    color: var(--text-main);
-                }
-                .quick-comment-input:focus {
-                    border-color: var(--sakura-pink);
-                }
-                .quick-comment-submit-btn {
-                    width: 32px;
-                    height: 32px;
-                    border-radius: 50%;
-                    background: var(--sakura-pink);
-                    border: none;
-                    color: white;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    cursor: pointer;
-                    transition: var(--transition-smooth);
-                }
-                .quick-comment-submit-btn:hover {
-                    background: var(--sakura-pink-hover);
-                }
-                .quick-comment-submit-btn svg {
-                    width: 14px;
-                    height: 14px;
-                    fill: currentColor;
-                }
-                .right-sidebar-contacts {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 10px;
-                    margin-top: 8px;
-                }
-                .contact-item {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    cursor: pointer;
-                    padding: 8px;
-                    border-radius: var(--border-radius-sm);
-                    transition: var(--transition-smooth);
-                }
-                .contact-item:hover {
-                    background: var(--bg-card-hover);
-                }
-                .contact-avatar {
-                    width: 32px;
-                    height: 32px;
-                    border-radius: 50%;
-                    overflow: hidden;
-                    border: 1px solid var(--border-color);
-                    background: #eee;
-                }
-                .contact-avatar img {
-                    width: 100%;
-                    height: 100%;
-                    object-fit: cover;
-                }
-                .contact-name {
-                    font-size: 0.82rem;
-                    font-weight: 600;
-                    color: var(--text-main);
-                }
-
-                /* Facebook-style Chat Popup */
-                .fb-chat-popup {
-                    position: fixed;
-                    bottom: 0;
-                    right: 80px;
-                    width: 320px;
-                    height: 420px;
-                    background: var(--bg-card);
-                    border: 1px solid var(--border-color);
-                    border-radius: 12px 12px 0 0;
-                    z-index: 1100;
-                    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-                    display: flex;
-                    flex-direction: column;
-                    overflow: hidden;
-                    animation: slideUpChat 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
-                }
-                @keyframes slideUpChat {
-                    from { transform: translateY(100%); opacity: 0; }
-                    to { transform: translateY(0); opacity: 1; }
-                }
-                .fb-chat-header {
-                    height: 46px;
-                    background: linear-gradient(135deg, var(--sakura-pink) 0%, #d83f68 100%);
-                    color: white;
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    padding: 0 12px;
-                    cursor: pointer;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                }
-                .fb-chat-avatar {
-                    width: 30px;
-                    height: 30px;
-                    border-radius: 50%;
-                    overflow: hidden;
-                    border: 1.5px solid rgba(255, 255, 255, 0.8);
-                    background: #eee;
-                }
-                .fb-chat-avatar img {
-                    width: 100%;
-                    height: 100%;
-                    object-fit: cover;
-                }
-                .fb-chat-name {
-                    font-size: 0.85rem;
-                    font-weight: 600;
-                    color: white;
-                    max-width: 180px;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    white-space: nowrap;
-                }
-                .fb-chat-close-btn {
-                    background: transparent;
-                    border: none;
-                    color: rgba(255, 255, 255, 0.85);
-                    font-size: 1.1rem;
-                    cursor: pointer;
-                    width: 26px;
-                    height: 26px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    border-radius: 50%;
-                    transition: all 0.2s ease;
-                }
-                .fb-chat-close-btn:hover {
-                    background: rgba(255, 255, 255, 0.15);
-                    color: white;
-                }
-                .fb-chat-body {
-                    flex: 1;
-                    overflow-y: auto;
-                    padding: 12px;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 10px;
-                    background: var(--bg-base);
-                }
-                .fb-chat-body::-webkit-scrollbar {
-                    width: 6px;
-                }
-                .fb-chat-body::-webkit-scrollbar-track {
-                    background: transparent;
-                }
-                .fb-chat-body::-webkit-scrollbar-thumb {
-                    background: rgba(0, 0, 0, 0.15);
-                    border-radius: 3px;
-                }
-                .fb-chat-body::-webkit-scrollbar-thumb:hover {
-                    background: rgba(0, 0, 0, 0.3);
-                }
-                .fb-chat-msg {
-                    padding: 8px 12px;
-                    font-size: 0.82rem;
-                    max-width: 75%;
-                    word-break: break-word;
-                    line-height: 1.4;
-                    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-                }
-                .fb-chat-msg.sent {
-                    align-self: flex-end;
-                    background: var(--sakura-pink);
-                    color: white;
-                    border-radius: 14px 14px 2px 14px;
-                }
-                .fb-chat-msg.received {
-                    align-self: flex-start;
-                    background: var(--bg-card);
-                    color: var(--text-main);
-                    border: 1px solid var(--border-color);
-                    border-radius: 14px 14px 14px 2px;
-                }
-                .fb-chat-input-area {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    padding: 10px 12px;
-                    background: var(--bg-card);
-                    border-top: 1px solid var(--border-color);
-                }
-                .fb-chat-input {
-                    flex: 1;
-                    padding: 8px 14px;
-                    border-radius: 20px;
-                    border: 1px solid var(--border-color);
-                    background: var(--bg-base);
-                    color: var(--text-main);
-                    font-size: 0.82rem;
-                    outline: none;
-                    transition: all 0.2s ease;
-                }
-                .fb-chat-input:focus {
-                    border-color: var(--sakura-pink);
-                    box-shadow: 0 0 0 2px var(--sakura-pink-light);
-                }
-                .fb-chat-send-btn {
-                    width: 32px;
-                    height: 32px;
-                    border-radius: 50%;
-                    background: transparent;
-                    border: none;
-                    color: var(--sakura-pink);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                }
-                .fb-chat-send-btn:hover {
-                    background: var(--sakura-pink-light);
-                    color: var(--sakura-pink-hover);
-                }
-                .fb-chat-send-btn svg {
-                    width: 16px;
-                    height: 16px;
-                    fill: currentColor;
-                }
-            `}</style>
-
-            <div className="studio-header">
-                <div>
-                    <h2>Bảng Tin Diễn Đàn</h2>
-                    <p className="subtitle">Mạng xã hội giao lưu, chia sẻ bài viết, đánh giá truyện và kết nối wibu.</p>
+        <div className="page-view active forum-page-wrap">
+            
+            {/* 1. FORUM COMMUNITY HERO BANNER */}
+            <div className="forum-hero-banner">
+                <div className="forum-hero-info">
+                    <span className="forum-hero-tag">
+                        <Icons.General /> Diễn Đàn & Thảo Luận
+                    </span>
+                    <h1 className="forum-hero-title">Không Gian Giao Lưu MugenBunko</h1>
+                    <p className="forum-hero-subtitle">
+                        Nơi giao lưu, thảo luận light novel, chia sẻ review và kết nối cộng đồng văn minh.
+                    </p>
+                    <div className="forum-hero-metrics">
+                        <span className="forum-metric-item">
+                            <Icons.Review /> <strong>{posts.length}</strong> bài viết
+                        </span>
+                        <span className="forum-metric-item">
+                            <Icons.Comment /> <strong>{posts.reduce((acc, p) => acc + (p.comments_count || 0), 0)}</strong> thảo luận
+                        </span>
+                        {currentUser && (
+                            <span className="forum-metric-item">
+                                <Icons.Users /> <strong>{forumFriends.length}</strong> bạn bè
+                            </span>
+                        )}
+                    </div>
                 </div>
-                <button className="outline-btn small" onClick={() => setCurrentView('home')}>← Về Trang Chủ</button>
+                <div className="forum-hero-cta">
+                    {subView === 'list' ? (
+                        <button 
+                            className="primary-btn" 
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: 'var(--border-radius-md)' }}
+                            onClick={() => {
+                                if (!currentUser) {
+                                    showAlert("Vui lòng đăng nhập để đăng bài viết!");
+                                    return;
+                                }
+                                setSubView('create');
+                            }}
+                        >
+                            <Icons.Pen /> Tạo bài viết mới
+                        </button>
+                    ) : (
+                        <button 
+                            className="outline-btn" 
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px' }}
+                            onClick={() => { if (setInitialPostId) setInitialPostId(null); else setSubView('list'); }}
+                        >
+                            ← Về bảng tin diễn đàn
+                        </button>
+                    )}
+                </div>
             </div>
 
+            {/* 2. SUBVIEW LIST: MAIN 3-COLUMN FORUM LAYOUT */}
             {subView === 'list' && (
-                <div className="studio-layout" style={{ display: 'grid', gridTemplateColumns: currentUser ? '2.5fr 6.5fr 3fr' : '3fr 9fr', gap: '24px' }}>
-                    {/* Left Sidebar - Categories */}
-                    <div className="sidebar-column">
-                        <div className="sidebar-card">
-                            <h3 className="card-title">Chủ đề thảo luận</h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                {CATEGORIES.map(cat => (
-                                    <button
-                                        key={cat.id}
-                                        onClick={() => setActiveCategory(cat.id)}
-                                        className={`outline-btn w-100`}
-                                        style={{
-                                            textAlign: 'left',
-                                            justifyContent: 'flex-start',
-                                            background: activeCategory === cat.id ? 'var(--sakura-pink-light)' : 'transparent',
-                                            color: activeCategory === cat.id ? 'var(--sakura-pink)' : 'var(--text-main)',
-                                            borderColor: activeCategory === cat.id ? 'var(--sakura-pink)' : 'var(--border-color)',
-                                            fontSize: '0.85rem',
-                                            padding: '8px 12px',
-                                            fontWeight: activeCategory === cat.id ? '600' : 'normal'
+                <div className={`forum-layout-container ${currentUser ? 'has-user' : 'guest'}`}>
+                    
+                    {/* LEFT COLUMN: Categories Navigation & Guidelines */}
+                    <aside className="sidebar-column">
+                        
+                        {/* Categories Box */}
+                        <div className="forum-sidebar-card">
+                            <h3 className="forum-sidebar-title">
+                                <Icons.All /> Chủ Đề Thảo Luận
+                            </h3>
+                            <div className="forum-category-nav">
+                                {CATEGORIES.map(cat => {
+                                    const IconComponent = cat.icon;
+                                    const count = categoryCounts[cat.id] || 0;
+                                    return (
+                                        <button
+                                            key={cat.id}
+                                            onClick={() => setActiveCategory(cat.id)}
+                                            className={`forum-category-btn-mono ${activeCategory === cat.id ? 'active' : ''}`}
+                                        >
+                                            <div className="forum-cat-left">
+                                                <span className="forum-cat-icon"><IconComponent /></span>
+                                                <span>{cat.name}</span>
+                                            </div>
+                                            <span className="forum-cat-count-badge">{count}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Trending Hashtags */}
+                        <div className="forum-sidebar-card">
+                            <h3 className="forum-sidebar-title">
+                                <Icons.Hash /> Từ Khóa Thịnh Hành
+                            </h3>
+                            <div className="forum-trending-tags-wrap">
+                                {['#Isekai', '#ReviewTruyen', '#SpoilMoi', '#TienHiep', '#Romance', '#HoiDap'].map(tag => (
+                                    <span 
+                                        key={tag} 
+                                        className="forum-tag-mono-pill"
+                                        onClick={() => {
+                                            setActiveCategory('all');
+                                            showAlert(`Đang lọc theo tag ${tag}`);
                                         }}
                                     >
-                                        {cat.name}
-                                    </button>
+                                        {tag}
+                                    </span>
                                 ))}
                             </div>
                         </div>
-                    </div>
 
-                    {/* Middle Panel - Social Feed List */}
-                    <div className="main-column">
-                        {/* 1. Quick create post box */}
+                        {/* Community Guidelines */}
+                        <div className="forum-sidebar-card">
+                            <h3 className="forum-sidebar-title">
+                                <Icons.Shield /> Quy Tắc Cộng Đồng
+                            </h3>
+                            <ul className="forum-guidelines-list">
+                                <li className="forum-guideline-item">
+                                    <span className="forum-guideline-dot">•</span>
+                                    <span>Tôn trọng người khác, không công kích cá nhân.</span>
+                                </li>
+                                <li className="forum-guideline-item">
+                                    <span className="forum-guideline-dot">•</span>
+                                    <span>Gắn nhãn [Spoil] khi bàn luận chi tiết cốt truyện.</span>
+                                </li>
+                                <li className="forum-guideline-item">
+                                    <span className="forum-guideline-dot">•</span>
+                                    <span>Không quảng cáo spam hoặc nội dung không lành mạnh.</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </aside>
+
+                    {/* MIDDLE COLUMN: Social Feed & Quick Post Box */}
+                    <div className="main-column" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        
+                        {/* Quick Create Box */}
                         {currentUser && (
-                            <div className="quick-create-card">
+                            <div className="forum-quick-create-box">
                                 {!isQuickCreateExpanded ? (
-                                    <div className="quick-create-input-collapsed" onClick={() => setIsQuickCreateExpanded(true)}>
-                                        <div className={`avatar-frame level-${calculateUserLevel(currentUser.xp).className}`} style={{ width: '40px', height: '40px' }}>
-                                            <img 
-                                                src={currentUser.avatarSeed && (currentUser.avatarSeed.startsWith('http') || currentUser.avatarSeed.startsWith('/uploads') || currentUser.avatarSeed.startsWith('data:')) 
-                                                    ? currentUser.avatarSeed 
-                                                    : `https://api.dicebear.com/7.x/adventurer/svg?seed=${currentUser.avatarSeed || 'Default'}`} 
-                                                alt="Avatar" 
-                                                className="avatar-img"
-                                            />
+                                    <>
+                                        <div className="forum-qc-collapsed" onClick={() => setIsQuickCreateExpanded(true)}>
+                                            <div className="forum-qc-avatar">
+                                                <img 
+                                                    src={currentUser.avatarSeed && (currentUser.avatarSeed.startsWith('http') || currentUser.avatarSeed.startsWith('/uploads') || currentUser.avatarSeed.startsWith('data:')) 
+                                                        ? currentUser.avatarSeed 
+                                                        : `https://api.dicebear.com/7.x/adventurer/svg?seed=${currentUser.avatarSeed || 'Default'}`} 
+                                                    alt="Avatar" 
+                                                />
+                                            </div>
+                                            <div className="forum-qc-fake-input">
+                                                Bạn đang nghĩ gì thế, {currentUser.displayname}?
+                                            </div>
                                         </div>
-                                        <div className="quick-create-placeholder">
-                                            Bạn đang nghĩ gì thế, {currentUser.displayname}?
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <form onSubmit={handleQuickCreatePost} className="quick-create-expanded-form">
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <h4 style={{ fontSize: '0.9rem', fontWeight: 600 }}>Tạo bài viết mới</h4>
+                                        <div className="forum-qc-quick-actions">
                                             <button 
                                                 type="button" 
-                                                className="chat-header-btn" 
-                                                style={{ color: 'var(--text-muted)' }} 
+                                                className="forum-qc-action-btn"
+                                                onClick={() => setIsQuickCreateExpanded(true)}
+                                            >
+                                                <Icons.Image /> Thêm ảnh
+                                            </button>
+                                            <button 
+                                                type="button" 
+                                                className="forum-qc-action-btn"
+                                                onClick={() => setSubView('create')}
+                                            >
+                                                <Icons.Pen /> Mở trang soạn thảo đầy đủ
+                                            </button>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <form onSubmit={handleQuickCreatePost} className="quick-create-expanded-form">
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                            <h4 style={{ fontSize: '0.92rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <Icons.Pen /> Tạo bài viết nhanh
+                                            </h4>
+                                            <button 
+                                                type="button" 
+                                                className="icon-btn" 
+                                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
                                                 onClick={() => {
                                                     setIsQuickCreateExpanded(false);
                                                     setQuickTitle('');
@@ -1342,19 +1055,22 @@ export default function Forum({
                                                 ✕
                                             </button>
                                         </div>
+
                                         <input 
                                             type="text" 
                                             placeholder="Tiêu đề bài viết..." 
                                             value={quickTitle} 
                                             onChange={(e) => setQuickTitle(e.target.value)} 
                                             required
-                                            style={{ padding: '8px 12px', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-sm)', background: 'var(--bg-base)', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none' }}
+                                            style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-sm)', background: 'var(--bg-base)', color: 'var(--text-main)', fontSize: '0.88rem', outline: 'none' }}
                                         />
-                                        <div style={{ display: 'flex', gap: '10px' }}>
+
+                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                            <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Chủ đề:</label>
                                             <select 
                                                 value={quickCategory} 
                                                 onChange={(e) => setQuickCategory(e.target.value)}
-                                                style={{ flex: '0.4', padding: '8px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-base)', color: 'var(--text-main)', fontSize: '0.82rem', outline: 'none' }}
+                                                style={{ flex: 1, padding: '8px 12px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-base)', color: 'var(--text-main)', fontSize: '0.82rem', outline: 'none' }}
                                             >
                                                 <option value="general">Thảo luận chung</option>
                                                 <option value="announcement">Thông báo</option>
@@ -1363,22 +1079,20 @@ export default function Forum({
                                                 <option value="qa">Hỏi đáp</option>
                                                 <option value="misc">Linh tinh</option>
                                             </select>
-                                            <span style={{ flex: '0.6' }}></span>
                                         </div>
+
                                         <RichTextEditor 
-                                            placeholder="Hãy viết nội dung thảo luận chia sẻ..." 
+                                            placeholder="Chia sẻ suy nghĩ, đánh giá hoặc câu hỏi của bạn..." 
                                             value={quickContent} 
                                             onChange={setQuickContent} 
-                                            required
-                                            minHeight="100px"
+                                            minHeight="120px"
                                         />
- 
+
                                         {/* Image attachments selection */}
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px dashed var(--border-color)', paddingTop: '10px', marginTop: '4px' }}>
-                                            <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Thêm hình ảnh bài đăng (Tùy chọn)</label>
-                                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                                <label className="outline-btn small" style={{ cursor: 'pointer', margin: 0, padding: '6px 12px', fontSize: '0.78rem', gap: '4px' }}>
-                                                    📁 Chọn ảnh từ máy
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px dashed var(--border-color)', paddingTop: '10px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <label className="outline-btn small" style={{ cursor: 'pointer', margin: 0, padding: '6px 14px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                    <Icons.Image /> Chọn ảnh đính kèm
                                                     <input 
                                                         type="file" 
                                                         accept="image/*" 
@@ -1393,21 +1107,25 @@ export default function Forum({
                                                         }}
                                                     />
                                                 </label>
+                                                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                                    {quickImageFiles.length > 0 ? `${quickImageFiles.length} ảnh đã chọn` : 'Tối đa 5 ảnh'}
+                                                </span>
                                             </div>
+
                                             {/* Preview attached images */}
                                             {quickImageUrls.length > 0 && (
-                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
                                                     {quickImageUrls.map((url, idx) => (
-                                                        <div key={idx} style={{ position: 'relative', width: 'fit-content', borderRadius: 'var(--border-radius-sm)', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                                                        <div key={idx} style={{ position: 'relative', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
                                                             <img 
                                                                 src={url} 
                                                                 alt={`Preview ${idx}`} 
-                                                                style={{ width: '100px', height: '75px', display: 'block', objectFit: 'cover' }} 
+                                                                style={{ width: '90px', height: '68px', display: 'block', objectFit: 'cover' }} 
                                                             />
                                                             <button 
                                                                 type="button" 
                                                                 onClick={() => removeQuickImage(idx)}
-                                                                style={{ position: 'absolute', top: '3px', right: '3px', background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', borderRadius: '50%', width: '18px', height: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem' }}
+                                                                style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(0,0,0,0.65)', border: 'none', color: '#fff', borderRadius: '50%', width: '18px', height: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem' }}
                                                                 title="Xóa ảnh"
                                                             >
                                                                 ✕
@@ -1417,8 +1135,8 @@ export default function Forum({
                                                 </div>
                                             )}
                                         </div>
- 
-                                        <div style={{ display: 'flex', justifySelf: 'flex-end', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
+
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>
                                             <button 
                                                 type="button" 
                                                 className="outline-btn small" 
@@ -1432,660 +1150,664 @@ export default function Forum({
                                             >
                                                 Hủy
                                             </button>
-                                            <button type="submit" className="primary-btn small">Đăng bài</button>
+                                            <button 
+                                                type="submit" 
+                                                className="primary-btn small" 
+                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                                                disabled={isSubmittingPost}
+                                            >
+                                                <Icons.Send /> {isSubmittingPost ? 'Đang đăng...' : 'Đăng bài'}
+                                            </button>
                                         </div>
                                     </form>
                                 )}
                             </div>
                         )}
 
-                        <div className="content-box" style={{ padding: '24px' }}>
-                            <h3 className="section-title" style={{ marginBottom: '20px' }}>
-                                {CATEGORIES.find(c => c.id === activeCategory)?.name || 'Bài viết'}
-                            </h3>
+                        {/* Social Feed Post List */}
+                        {loading && (
+                            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                                Đang tải các bài viết...
+                            </div>
+                        )}
 
-                            {loading && <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Đang tải bài viết...</div>}
+                        {!loading && displayedPosts.length === 0 && (
+                            <div style={{ textAlign: 'center', padding: '48px 24px', background: 'var(--bg-card)', borderRadius: 'var(--border-radius-lg)', border: '1px dashed var(--border-color)', color: 'var(--text-muted)' }}>
+                                <div style={{ marginBottom: '8px', opacity: 0.5 }}><Icons.All /></div>
+                                <h4 style={{ margin: '0 0 6px 0', color: 'var(--text-main)', fontSize: '1rem' }}>Chưa có bài viết nào</h4>
+                                <p style={{ margin: 0, fontSize: '0.82rem' }}>Hãy là người đầu tiên chia sẻ bài viết trong chủ đề này nhé!</p>
+                            </div>
+                        )}
 
-                            {!loading && displayedPosts.length === 0 && (
-                                <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
-                                    <span style={{ fontSize: '2rem', display: 'block', marginBottom: '10px' }}>📭</span>
-                                    Chưa có bài viết nào trong chủ đề này.
-                                </div>
-                            )}
+                        {!loading && displayedPosts.length > 0 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                {displayedPosts.map(post => {
+                                    const isAuthorOrAdmin = currentUser && (post.author_id === currentUser.id || currentUser.roles.includes('admin'));
+                                    const isCommentsOpen = !!expandedPostComments[post.id];
+                                    const quickCommentVal = quickCommentTexts[post.id] || "";
+                                    const { cleanContent, images: extractedImages } = extractAndCleanImages(post.content);
+                                    const allImages = [post.image_url, ...extractedImages].filter(Boolean) as string[];
 
-                            {!loading && displayedPosts.length > 0 && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                                    {displayedPosts.map(post => {
-                                        const isAuthorOrAdmin = currentUser && (post.author_id === currentUser.id || currentUser.roles.includes('admin'));
-                                        const isCommentsOpen = !!expandedPostComments[post.id];
-                                        const quickCommentVal = quickCommentTexts[post.id] || "";
-                                        const { cleanContent, images: extractedImages } = extractAndCleanImages(post.content);
-                                        const allImages = [post.image_url, ...extractedImages].filter(Boolean) as string[];
+                                    const authorAvatarSrc = post.author_avatar_seed && (post.author_avatar_seed.startsWith('http') || post.author_avatar_seed.startsWith('/uploads') || post.author_avatar_seed.startsWith('data:')) 
+                                        ? post.author_avatar_seed 
+                                        : `https://api.dicebear.com/7.x/adventurer/svg?seed=${post.author_avatar_seed || 'Default'}`;
 
-                                        return (
-                                            <div key={post.id} className="social-feed-card">
-                                                {/* Post Header */}
-                                                <div className="post-header">
-                                                    <div className="post-author-info">
-                                                        <div className="post-author-avatar">
-                                                            <img 
-                                                                src={post.author_avatar_seed && (post.author_avatar_seed.startsWith('http') || post.author_avatar_seed.startsWith('/uploads') || post.author_avatar_seed.startsWith('data:')) 
-                                                                    ? post.author_avatar_seed 
-                                                                    : `https://api.dicebear.com/7.x/adventurer/svg?seed=${post.author_avatar_seed || 'Default'}`} 
-                                                                alt={post.author_username} 
-                                                            />
-                                                        </div>
-                                                        <div className="post-author-meta">
-                                                            <span className="post-author-name">{post.author_displayname}</span>
-                                                            <span className="post-time-meta">
-                                                                <span>@{post.author_username}</span>
-                                                                <span>•</span>
-                                                                <span>{new Date(post.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
-                                                            </span>
-                                                        </div>
+                                    return (
+                                        <div key={post.id} className="forum-post-card-v2">
+                                            {/* Post Header */}
+                                            <div className="forum-post-header-v2">
+                                                <div className="forum-author-block">
+                                                    <div 
+                                                        className="forum-author-avatar-wrap"
+                                                        onClick={() => post.author_username && viewPublicProfile?.(post.author_username)}
+                                                    >
+                                                        <img src={authorAvatarSrc} alt={post.author_username} />
                                                     </div>
-
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                        <span className="tag-badge" style={{ background: 'linear-gradient(135deg, var(--sakura-pink-light) 0%, rgba(224, 82, 117, 0.02) 100%)', border: '1px solid rgba(224, 82, 117, 0.25)', color: 'var(--sakura-pink)', fontSize: '0.7rem', fontWeight: 700, borderRadius: '12px', padding: '4px 10px' }}>
-                                                            {formatCategoryName(post.category)}
-                                                        </span>
-                                                        {isAdmin && (
-                                                            <button
-                                                                onClick={(e) => handleToggleRestrictComments(post.id, post.restrictComments || post.restrict_comments, e)}
-                                                                style={{ background: 'none', border: 'none', color: (post.restrictComments || post.restrict_comments) ? 'var(--sakura-pink)' : 'var(--text-muted)', cursor: 'pointer', padding: '4px', fontSize: '0.85rem' }}
-                                                                title={(post.restrictComments || post.restrict_comments) ? "Mở khóa bình luận thành viên" : "Chỉ cho phép BQL bình luận"}
+                                                    <div className="forum-author-details">
+                                                        <div className="forum-author-name-row">
+                                                            <span 
+                                                                className="forum-author-name"
+                                                                onClick={() => post.author_username && viewPublicProfile?.(post.author_username)}
                                                             >
-                                                                {(post.restrictComments || post.restrict_comments) ? "🔒" : "🔓"}
-                                                            </button>
-                                                        )}
-                                                        {isAuthorOrAdmin && (
-                                                            <button
-                                                                onClick={(e) => handleDeletePost(post.id, e)}
-                                                                style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', padding: '4px', fontSize: '0.85rem' }}
-                                                                title="Xóa bài viết"
-                                                            >
-                                                                🗑️
-                                                            </button>
-                                                        )}
+                                                                {post.author_displayname}
+                                                            </span>
+                                                            <span className="forum-author-handle">@{post.author_username}</span>
+                                                        </div>
+                                                        <div className="forum-post-time">
+                                                            <span>{new Date(post.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
 
-                                                {/* Post Content */}
-                                                <div style={{ cursor: 'pointer' }} onClick={() => fetchPostDetail(post.id)}>
-                                                    <h4 style={{ margin: '0 0 10px 0', fontSize: '1.08rem', color: 'var(--text-main)', fontWeight: 650, lineHeight: '1.3' }}>
-                                                        {post.title}
-                                                    </h4>
-                                                    <p style={{ margin: '0 0 12px 0', fontSize: '0.88rem', color: 'var(--text-content)', lineHeight: '1.55' }}>
-                                                        {parseFormattedContent(cleanContent)}
-                                                    </p>
-                                                    {allImages.length > 0 && (
-                                                        <div onClick={(e) => e.stopPropagation()}>
-                                                            <ForumImageGrid images={allImages} onImageClick={(url) => setLightboxImage(url)} />
-                                                        </div>
+                                                <div className="forum-post-badges-right">
+                                                    <span className="forum-cat-badge-pill">
+                                                        {formatCategoryName(post.category)}
+                                                    </span>
+                                                    {isAdmin && (
+                                                        <button
+                                                            onClick={(e) => handleToggleRestrictComments(post.id, post.restrictComments || post.restrict_comments, e)}
+                                                            style={{ background: 'none', border: 'none', color: (post.restrictComments || post.restrict_comments) ? 'var(--sakura-pink)' : 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}
+                                                            title={(post.restrictComments || post.restrict_comments) ? "Mở khóa bình luận thành viên" : "Chỉ cho phép BQL bình luận"}
+                                                        >
+                                                            {(post.restrictComments || post.restrict_comments) ? <Icons.Lock /> : <Icons.Unlock />}
+                                                        </button>
+                                                    )}
+                                                    {isAuthorOrAdmin && (
+                                                        <button
+                                                            onClick={(e) => handleDeletePost(post.id, e)}
+                                                            style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', padding: '4px' }}
+                                                            title="Xóa bài viết"
+                                                        >
+                                                            <Icons.Trash />
+                                                        </button>
                                                     )}
                                                 </div>
+                                            </div>
 
-                                                {/* Interaction Actions Bar */}
-                                                <div className="interaction-actions-bar">
-                                                    {/* Like Button */}
+                                            {/* Post Content */}
+                                            <div style={{ cursor: 'pointer' }} onClick={() => { if (setInitialPostId) setInitialPostId(post.id); else fetchPostDetail(post.id); }}>
+                                                <h3 className="forum-post-title-v2">
+                                                    {post.title}
+                                                </h3>
+                                                <div className="forum-post-body-text">
+                                                    {parseFormattedContent(cleanContent)}
+                                                </div>
+                                                {allImages.length > 0 && (
+                                                    <div onClick={(e) => e.stopPropagation()}>
+                                                        <ForumImageGrid images={allImages} onImageClick={(url) => setLightboxImage(url)} />
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Interaction Bar */}
+                                            <div className="forum-interaction-bar-v2">
+                                                <div className="forum-actions-left">
                                                     <button 
-                                                        className={`interaction-btn ${post.is_liked ? 'liked' : ''}`}
+                                                        className={`forum-action-btn-mono ${post.is_liked ? 'liked' : ''}`}
                                                         onClick={(e) => handleLikePost(post.id, e)}
                                                         title="Thích bài viết"
                                                     >
-                                                        <svg viewBox="0 0 24 24">
-                                                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                                                        </svg>
-                                                        <span>{post.likes_count || 0} Thích</span>
+                                                        <Icons.Heart filled={!!post.is_liked} />
+                                                        <span>{post.likes_count || 0}</span>
                                                     </button>
-
-                                                    {/* Comments Button */}
                                                     <button 
-                                                        className="interaction-btn"
+                                                        className="forum-action-btn-mono"
                                                         onClick={(e) => toggleCommentsExpand(post.id, e)}
-                                                        title="Bình luận nhanh"
+                                                        title="Bình luận"
                                                     >
-                                                        <svg viewBox="0 0 24 24" style={{ fill: isCommentsOpen ? 'var(--text-muted)' : 'none' }}>
-                                                            <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
-                                                        </svg>
-                                                        <span>{post.comments_count || 0} Bình luận</span>
+                                                        <Icons.Comment />
+                                                        <span>{post.comments_count || 0} bình luận</span>
                                                     </button>
                                                 </div>
+                                                <button 
+                                                    className="forum-action-btn-mono"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (navigator.clipboard) {
+                                                            navigator.clipboard.writeText(`${window.location.origin}/#/forum?post=${post.id}`);
+                                                            showAlert("Đã sao chép liên kết bài viết!");
+                                                        }
+                                                    }}
+                                                    title="Chia sẻ liên kết"
+                                                >
+                                                    <Icons.Share />
+                                                </button>
+                                            </div>
 
-                                                {/* Quick Comments Overlay Box */}
-                                                {isCommentsOpen && (
-                                                    <div className="quick-comments-section">
-                                                        {/* Render comments list */}
-                                                        {post.comments && post.comments.length > 0 ? (
-                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '300px', overflowY: 'auto', paddingRight: '4px' }}>
-                                                                {post.comments.map(c => (
-                                                                    <div key={c.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingBottom: '10px', borderBottom: '1px solid var(--border-color)' }}>
-                                                                        {/* Root Comment Row */}
-                                                                        <div className="comment-item-node" style={{ display: 'flex', flexDirection: 'column' }}>
-                                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', cursor: 'pointer' }} onClick={() => c.author_username && viewPublicProfile?.(c.author_username)}>
-                                                                                    <img 
-                                                                                        src={c.author_avatar_seed && (c.author_avatar_seed.startsWith('http') || c.author_avatar_seed.startsWith('/uploads') || c.author_avatar_seed.startsWith('data:')) 
-                                                                                            ? c.author_avatar_seed 
-                                                                                            : `https://api.dicebear.com/7.x/adventurer/svg?seed=${c.author_avatar_seed || 'Default'}`} 
-                                                                                        style={{ width: '24px', height: '24px', borderRadius: '50%' }}
-                                                                                        alt={c.author_username} 
-                                                                                    />
-                                                                                    <strong style={{ fontSize: '0.78rem', color: 'var(--text-main)' }}>
-                                                                                        {c.author_displayname} <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>@{c.author_username}</span>
-                                                                                    </strong>
-                                                                                </div>
-                                                                                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                                                                                    {c.created_at ? new Date(c.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
+                                            {/* Quick Comments Accordion */}
+                                            {isCommentsOpen && (
+                                                <div className="quick-comments-section" style={{ marginTop: '14px' }}>
+                                                    {post.comments && post.comments.length > 0 ? (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '320px', overflowY: 'auto' }}>
+                                                            {post.comments.map(c => (
+                                                                <div key={c.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingBottom: '8px', borderBottom: '1px solid var(--border-color)' }}>
+                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', cursor: 'pointer' }} onClick={() => c.author_username && viewPublicProfile?.(c.author_username)}>
+                                                                            <img 
+                                                                                src={c.author_avatar_seed && (c.author_avatar_seed.startsWith('http') || c.author_avatar_seed.startsWith('/uploads') || c.author_avatar_seed.startsWith('data:')) 
+                                                                                    ? c.author_avatar_seed 
+                                                                                    : `https://api.dicebear.com/7.x/adventurer/svg?seed=${c.author_avatar_seed || 'Default'}`} 
+                                                                                style={{ width: '22px', height: '22px', borderRadius: '50%' }}
+                                                                                alt={c.author_username} 
+                                                                            />
+                                                                            <strong style={{ fontSize: '0.78rem', color: 'var(--text-main)' }}>
+                                                                                {c.author_displayname} <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>@{c.author_username}</span>
+                                                                            </strong>
+                                                                        </div>
+                                                                        <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>
+                                                                            {c.created_at ? new Date(c.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
+                                                                        </span>
+                                                                    </div>
+                                                                    <p style={{ fontSize: '0.8rem', margin: '2px 0 0 28px', lineHeight: 1.45, color: 'var(--text-content)' }}>{parseFormattedContent(c.text)}</p>
+                                                                    
+                                                                    {/* Quick Comment Replies */}
+                                                                    {c.replies && c.replies.map(reply => (
+                                                                        <div key={reply.id} style={{ marginLeft: '28px', background: 'var(--bg-base)', padding: '6px 10px', borderLeft: '2px solid var(--sakura-pink)', borderRadius: '4px', marginTop: '4px' }}>
+                                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                                                                                <strong style={{ fontSize: '0.74rem', color: 'var(--text-main)' }}>
+                                                                                    {reply.author_displayname} <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>@{reply.author_username}</span>
+                                                                                </strong>
+                                                                                <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)' }}>
+                                                                                    {reply.created_at ? new Date(reply.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
                                                                                 </span>
                                                                             </div>
-                                                                            <p style={{ fontSize: '0.8rem', marginTop: '4px', lineHeight: 1.4, color: 'var(--text-content)' }}>{parseFormattedContent(c.text)}</p>
-                                                                            {currentUser && (
-                                                                                <div style={{ display: 'flex', gap: '8px', fontSize: '0.68rem', marginTop: '2px' }}>
-                                                                                    <button 
-                                                                                        type="button" 
-                                                                                        style={{ background: 'none', border: 'none', color: 'var(--sakura-pink)', cursor: 'pointer', padding: 0 }}
-                                                                                        onClick={() => {
-                                                                                            setReplyToUserId(c.user_id);
-                                                                                            setQuickReplyToCommentIds(prev => ({ ...prev, [post.id]: c.id }));
-                                                                                            if (c.author_username === currentUser.username) {
-                                                                                                setQuickCommentTexts(prev => ({ ...prev, [post.id]: "" }));
-                                                                                            } else {
-                                                                                                setQuickCommentTexts(prev => ({ ...prev, [post.id]: `@${c.author_displayname} ` }));
-                                                                                            }
-                                                                                            setTimeout(() => {
-                                                                                                const el = document.getElementById(`quick-comment-input-${post.id}`);
-                                                                                                if (el) el.focus();
-                                                                                            }, 50);
-                                                                                        }}
-                                                                                    >
-                                                                                        Phản hồi
-                                                                                    </button>
-                                                                                </div>
-                                                                            )}
+                                                                            <p style={{ fontSize: '0.76rem', margin: '2px 0 0 0', lineHeight: 1.4, color: 'var(--text-content)' }}>{parseFormattedContent(reply.text)}</p>
                                                                         </div>
+                                                                    ))}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textAlign: 'center', padding: '10px 0' }}>
+                                                            Chưa có bình luận nào.
+                                                        </div>
+                                                    )}
 
-                                                                        {/* Quick Comment Replies */}
-                                                                        {c.replies && c.replies.map(reply => (
-                                                                            <div key={reply.id} style={{ marginLeft: '32px', background: 'rgba(0,0,0,0.02)', padding: '6px 10px', borderLeft: '2px solid var(--sakura-pink)', borderRadius: '4px' }}>
-                                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                                                                                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', cursor: 'pointer' }} onClick={() => reply.author_username && viewPublicProfile?.(reply.author_username)}>
-                                                                                        <img 
-                                                                                            src={reply.author_avatar_seed && (reply.author_avatar_seed.startsWith('http') || reply.author_avatar_seed.startsWith('/uploads') || reply.author_avatar_seed.startsWith('data:')) 
-                                                                                                ? reply.author_avatar_seed 
-                                                                                                : `https://api.dicebear.com/7.x/adventurer/svg?seed=${reply.author_avatar_seed || 'Default'}`} 
-                                                                                            style={{ width: '18px', height: '18px', borderRadius: '50%' }}
-                                                                                            alt={reply.author_username} 
-                                                                                        />
-                                                                                        <strong style={{ fontSize: '0.74rem', color: 'var(--text-main)' }}>
-                                                                                            {reply.author_displayname} <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>@{reply.author_username}</span>
-                                                                                        </strong>
-                                                                                    </div>
-                                                                                    <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>
-                                                                                        {reply.created_at ? new Date(reply.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
-                                                                                    </span>
-                                                                                </div>
-                                                                                <p style={{ fontSize: '0.76rem', marginTop: '2px', lineHeight: 1.35, color: 'var(--text-content)', marginLeft: '24px' }}>{parseFormattedContent(reply.text)}</p>
-                                                                                {currentUser && (
-                                                                                    <div style={{ display: 'flex', gap: '8px', fontSize: '0.66rem', marginTop: '2px', marginLeft: '24px' }}>
-                                                                                        <button 
-                                                                                            type="button" 
-                                                                                            style={{ background: 'none', border: 'none', color: 'var(--sakura-pink)', cursor: 'pointer', padding: 0 }}
-                                                                                            onClick={() => {
-                                                                                                setReplyToUserId(reply.user_id);
-                                                                                                setQuickReplyToCommentIds(prev => ({ ...prev, [post.id]: c.id }));
-                                                                                                if (reply.author_username === currentUser.username) {
-                                                                                                    setQuickCommentTexts(prev => ({ ...prev, [post.id]: "" }));
-                                                                                                } else {
-                                                                                                    setQuickCommentTexts(prev => ({ ...prev, [post.id]: `@${reply.author_displayname} ` }));
-                                                                                                }
-                                                                                                setTimeout(() => {
-                                                                                                    const el = document.getElementById(`quick-comment-input-${post.id}`);
-                                                                                                    if (el) el.focus();
-                                                                                                }, 50);
-                                                                                            }}
-                                                                                        >
-                                                                                            Phản hồi
-                                                                                        </button>
-                                                                                    </div>
-                                                                                )}
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        ) : (
-                                                            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>
-                                                                Chưa có bình luận nào. Hãy bình luận ngay!
-                                                            </div>
-                                                        )}
+                                                    {/* Quick comment input */}
+                                                    {currentUser && (!post.restrictComments || isStaff) ? (
+                                                        <form onSubmit={(e) => handleQuickCommentSubmit(post.id, e)} className="quick-comment-input-form" style={{ marginTop: '10px' }}>
+                                                            <input 
+                                                                id={`quick-comment-input-${post.id}`}
+                                                                type="text" 
+                                                                className="quick-comment-input" 
+                                                                placeholder="Nhập phản hồi nhanh..." 
+                                                                value={quickCommentVal}
+                                                                onChange={(e) => setQuickCommentTexts(prev => ({ ...prev, [post.id]: e.target.value }))}
+                                                            />
+                                                            <button type="submit" className="quick-comment-submit-btn" title="Gửi">
+                                                                <Icons.Send />
+                                                            </button>
+                                                        </form>
+                                                    ) : currentUser && (
+                                                        <div style={{ padding: '6px', color: 'var(--text-muted)', fontSize: '0.72rem', textAlign: 'center' }}>
+                                                            🔒 Bình luận tạm khóa cho thành viên.
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
 
-                                                        {/* Quick comment form */}
-                                                        {currentUser && (!post.restrictComments || isStaff) ? (
-                                                            <form onSubmit={(e) => handleQuickCommentSubmit(post.id, e)} className="quick-comment-input-form">
-                                                                <input 
-                                                                    id={`quick-comment-input-${post.id}`}
-                                                                    type="text" 
-                                                                    className="quick-comment-input" 
-                                                                    placeholder={quickReplyToCommentIds[post.id] ? "Nhập phản hồi nhanh..." : "Viết bình luận nhanh..."} 
-                                                                    value={quickCommentVal}
-                                                                    onChange={(e) => setQuickCommentTexts(prev => ({ ...prev, [post.id]: e.target.value }))}
-                                                                />
-                                                                <button type="submit" className="quick-comment-submit-btn" title="Gửi bình luận">
-                                                                    <svg viewBox="0 0 24 24">
-                                                                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-                                                                    </svg>
-                                                                </button>
-                                                            </form>
-                                                        ) : currentUser && (
-                                                            <div style={{ padding: '6px', color: 'var(--text-muted)', fontSize: '0.72rem', textAlign: 'center' }}>
-                                                                🔒 Bình luận tạm khóa cho thành viên.
-                                                            </div>
-                                                        )}
+                    {/* RIGHT COLUMN: Online Contacts & Hot Threads */}
+                    {currentUser && (
+                        <aside className="sidebar-column">
+                            
+                            {/* Live Contacts */}
+                            <div className="forum-sidebar-card">
+                                <h3 className="forum-sidebar-title">
+                                    <Icons.Users /> Bạn Bè & Liên Lạc
+                                </h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    {forumFriends.map(friend => {
+                                        const friendAvatar = friend.avatarSeed && (friend.avatarSeed.startsWith('http') || friend.avatarSeed.startsWith('/uploads') || friend.avatarSeed.startsWith('data:')) 
+                                            ? friend.avatarSeed 
+                                            : `https://api.dicebear.com/7.x/adventurer/svg?seed=${friend.avatarSeed || 'Default'}`;
+
+                                        return (
+                                            <div 
+                                                key={friend.id} 
+                                                className="forum-contact-row" 
+                                                onClick={() => handleStartChat(friend)}
+                                            >
+                                                <div className="forum-contact-avatar-wrap">
+                                                    <img src={friendAvatar} alt={friend.displayname} />
+                                                    {onlineUsers[friend.id] && (
+                                                        <span className="forum-online-dot-pulse" title="Trực tuyến" />
+                                                    )}
+                                                </div>
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                        {friend.displayname}
                                                     </div>
-                                                )}
+                                                    <div style={{ fontSize: '0.68rem', color: onlineUsers[friend.id] ? '#2ecc71' : 'var(--text-muted)' }}>
+                                                        {onlineUsers[friend.id] ? 'Online' : 'Offline'}
+                                                    </div>
+                                                </div>
                                             </div>
                                         );
                                     })}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Right Sidebar - Contacts (Only for logged in users) */}
-                    {currentUser && (
-                        <div className="sidebar-column">
-                            <div className="sidebar-card">
-                                <h3 className="card-title">🌸 Danh sách liên lạc</h3>
-                                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '12px' }}>Click vào bạn bè để mở ô chat nhanh.</p>
-                                <div className="right-sidebar-contacts">
-                                    {forumFriends.map(friend => (
-                                        <div 
-                                            key={friend.id} 
-                                            className="contact-item" 
-                                            onClick={() => handleStartChat(friend)}
-                                        >
-                                            <div style={{ position: 'relative' }}>
-                                                <div className="contact-avatar">
-                                                    <img 
-                                                        src={friend.avatarSeed && (friend.avatarSeed.startsWith('http') || friend.avatarSeed.startsWith('/uploads') || friend.avatarSeed.startsWith('data:')) 
-                                                            ? friend.avatarSeed 
-                                                            : `https://api.dicebear.com/7.x/adventurer/svg?seed=${friend.avatarSeed || 'Default'}`} 
-                                                        alt="Avatar" 
-                                                    />
-                                                </div>
-                                                {onlineUsers[friend.id] && (
-                                                    <span style={{
-                                                        position: 'absolute',
-                                                        bottom: 0,
-                                                        right: 0,
-                                                        width: '10px',
-                                                        height: '10px',
-                                                        backgroundColor: '#2ecc71',
-                                                        border: '2px solid var(--bg-card)',
-                                                        borderRadius: '50%'
-                                                    }} title="Trực tuyến" />
-                                                )}
-                                            </div>
-                                            <div className="contact-name">{friend.displayname}</div>
-                                        </div>
-                                    ))}
                                     {forumFriends.length === 0 && (
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: '10px 0', textAlign: 'center' }}>Chưa có bạn bè nào. Hãy gửi kết bạn ở trang cá nhân của thành viên nhé!</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: '12px 0', textAlign: 'center' }}>
+                                            Chưa có bạn bè nào trong danh sách.
+                                        </div>
                                     )}
                                 </div>
                             </div>
-                        </div>
+
+                            {/* Hot Threads Widget */}
+                            <div className="forum-sidebar-card">
+                                <h3 className="forum-sidebar-title">
+                                    <Icons.Trending /> Thảo Luận Sôi Nổi
+                                </h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    {hotTrendingPosts.map((hp, idx) => (
+                                        <div 
+                                            key={hp.id} 
+                                            className="forum-hot-thread-item"
+                                            onClick={() => { if (setInitialPostId) setInitialPostId(hp.id); else fetchPostDetail(hp.id); }}
+                                        >
+                                            <span className="forum-hot-num">#{idx + 1}</span>
+                                            <div className="forum-hot-info">
+                                                <div className="forum-hot-title" title={hp.title}>{hp.title}</div>
+                                                <div className="forum-hot-meta">
+                                                    <span>💖 {hp.likes_count || 0}</span>
+                                                    <span>💬 {hp.comments_count || 0}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </aside>
                     )}
                 </div>
             )}
 
+            {/* 3. SUBVIEW CREATE: FULL-PAGE CREATE POST VIEW */}
             {subView === 'create' && (
-                <div className="content-box" style={{ padding: '24px' }}>
-                    <h3 className="section-title">Đăng bài viết mới lên Diễn đàn</h3>
-                    <form onSubmit={handleCreatePost} style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
-                        <div className="input-field">
-                            <label>Tiêu đề bài đăng</label>
-                            <input 
-                                type="text" 
-                                placeholder="Nhập tiêu đề ấn tượng..." 
-                                value={newTitle} 
-                                onChange={(e) => setNewTitle(e.target.value)} 
-                                required
-                            />
-                        </div>
-
-                        <div className="input-field">
-                            <label>Chủ đề lựa chọn</label>
-                            <select 
-                                value={newCategory} 
-                                onChange={(e) => setNewCategory(e.target.value)}
-                                style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-base)', color: 'var(--text-main)', fontSize: '0.85rem' }}
-                            >
-                                <option value="general">Thảo luận chung</option>
-                                <option value="announcement">Thông báo hệ thống</option>
-                                <option value="review">Review sách / truyện</option>
-                                <option value="spoil">Spoil thảo luận tình tiết</option>
-                                <option value="qa">Hỏi đáp thắc mắc</option>
-                                <option value="misc">Linh tinh khác</option>
-                            </select>
-                        </div>
-
-                        <div className="input-field">
-                            <label>Nội dung chi tiết</label>
-                            <RichTextEditor 
-                                placeholder="Nhập nội dung chia sẻ..." 
-                                value={newContent} 
-                                onChange={setNewContent} 
-                                required
-                                minHeight="160px"
-                            />
-                        </div>
-
-                        {/* Image attachment file upload */}
-                        <div className="input-field" style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '16px' }}>
-                            <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Thêm hình ảnh bài đăng (Tùy chọn)</label>
-                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '8px' }}>
-                                <label className="outline-btn small" style={{ cursor: 'pointer', margin: 0, padding: '8px 16px' }}>
-                                    📁 Chọn file ảnh từ máy
-                                    <input 
-                                        type="file" 
-                                        accept="image/*" 
-                                        multiple
-                                        style={{ display: 'none' }}
-                                        onChange={(e) => {
-                                            const files = Array.from(e.target.files || []);
-                                            if (files.length > 0) {
-                                                setNewImageFiles(prev => [...prev, ...files]);
-                                                setNewImageUrls(prev => [...prev, ...files.map(f => URL.createObjectURL(f))]);
-                                            }
-                                        }}
-                                    />
-                                </label>
-                            </div>
-                            {newImageUrls.length > 0 && (
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '12px' }}>
-                                    {newImageUrls.map((url, idx) => (
-                                        <div key={idx} style={{ position: 'relative', width: 'fit-content', borderRadius: 'var(--border-radius-md)', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
-                                            <img 
-                                                src={url} 
-                                                alt={`Preview Attachment ${idx}`} 
-                                                style={{ width: '120px', height: '90px', display: 'block', objectFit: 'cover' }} 
-                                            />
-                                            <button 
-                                                type="button" 
-                                                onClick={() => removeNewImage(idx)}
-                                                style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem' }}
-                                                title="Xóa ảnh này"
-                                            >
-                                                ✕
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="flex-row-end" style={{ gap: '12px', marginTop: '16px' }}>
-                            <button 
-                                type="button" 
-                                className="outline-btn" 
-                                onClick={() => {
-                                    setSubView('list');
-                                    setNewTitle('');
-                                    setNewContent('');
-                                    setNewImageUrls([]);
-                                    setNewImageFiles([]);
-                                }}
-                            >
-                                Hủy
-                            </button>
-                            <button type="submit" className="primary-btn">Đăng bài viết</button>
-                        </div>
-                    </form>
-                </div>
-            )}
-
-            {subView === 'detail' && selectedPost && (() => {
-                const { cleanContent: detailCleanContent, images: detailExtractedImages } = extractAndCleanImages(selectedPost.content);
-                const detailAllImages = [selectedPost.image_url, ...detailExtractedImages].filter(Boolean) as string[];
-                return (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    {/* Back navigation */}
-                    <div>
-                        <button className="text-link-btn" onClick={() => { setSubView('list'); if (setInitialPostId) setInitialPostId(null); }}>
+                <div style={{ maxWidth: '880px', margin: '0 auto' }}>
+                    <div style={{ marginBottom: '16px' }}>
+                        <button 
+                            className="outline-btn small" 
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                            onClick={() => { if (setInitialPostId) setInitialPostId(null); else setSubView('list'); }}
+                        >
                             ← Quay lại danh sách bài viết
                         </button>
                     </div>
 
-                    {/* Main post box */}
-                    <div className="content-box" style={{ padding: '24px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                            <span className="tag-badge" style={{ background: 'linear-gradient(135deg, var(--sakura-pink-light) 0%, rgba(224, 82, 117, 0.02) 100%)', border: '1px solid rgba(224, 82, 117, 0.25)', color: 'var(--sakura-pink)', fontSize: '0.72rem', fontWeight: 700, borderRadius: '12px', padding: '4px 10px' }}>
-                                {formatCategoryName(selectedPost.category)}
-                            </span>
-                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                                {isAdmin && (
-                                    <button
-                                        onClick={(e) => handleToggleRestrictComments(selectedPost.id, selectedPost.restrictComments || selectedPost.restrict_comments, e)}
-                                        style={{
-                                            background: 'none',
-                                            border: 'none',
-                                            color: (selectedPost.restrictComments || selectedPost.restrict_comments) ? 'var(--sakura-pink)' : 'var(--text-muted)',
-                                            cursor: 'pointer',
-                                            fontSize: '0.9rem',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '4px'
-                                        }}
-                                        title={(selectedPost.restrictComments || selectedPost.restrict_comments) ? "Mở khóa bình luận thành viên" : "Chỉ cho phép BQL bình luận"}
-                                    >
-                                        {(selectedPost.restrictComments || selectedPost.restrict_comments) ? "🔒 Chỉ BQL" : "🔓 Tự do"}
-                                    </button>
-                                )}
-                                {currentUser && (selectedPost.author_id === currentUser.id || currentUser.roles.includes('admin')) && (
-                                    <button
-                                        onClick={(e) => handleDeletePost(selectedPost.id, e)}
-                                        style={{
-                                            background: 'none',
-                                            border: 'none',
-                                            color: '#dc3545',
-                                            cursor: 'pointer',
-                                            fontSize: '0.9rem'
-                                        }}
-                                        title="Xóa bài viết"
-                                    >
-                                        🗑️ Xóa bài
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '12px' }}>
-                            {selectedPost.title}
+                    <div className="forum-post-card-v2" style={{ padding: '32px' }}>
+                        <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.4rem', fontWeight: 700, margin: '0 0 20px 0', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Icons.Pen /> Đăng Bài Viết Mới Lên Diễn Đàn
                         </h2>
-                        
-                        {/* Author info bar */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-                            <div className="post-author-avatar">
-                                <img 
-                                    src={selectedPost.author_avatar_seed && (selectedPost.author_avatar_seed.startsWith('http') || selectedPost.author_avatar_seed.startsWith('/uploads') || selectedPost.author_avatar_seed.startsWith('data:')) 
-                                        ? selectedPost.author_avatar_seed 
-                                        : `https://api.dicebear.com/7.x/adventurer/svg?seed=${selectedPost.author_avatar_seed || 'Default'}`} 
-                                    alt={selectedPost.author_username} 
+
+                        <form onSubmit={handleCreatePost} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '6px' }}>
+                                    Tiêu đề bài viết <span style={{ color: 'var(--sakura-pink)' }}>*</span>
+                                </label>
+                                <input 
+                                    type="text" 
+                                    placeholder="Nhập tiêu đề bài viết rõ ràng, hấp dẫn..." 
+                                    value={newTitle} 
+                                    onChange={(e) => setNewTitle(e.target.value)} 
+                                    required
+                                    style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-sm)', background: 'var(--bg-base)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
                                 />
                             </div>
+
                             <div>
-                                <div style={{ fontSize: '0.88rem', fontWeight: 600 }}>{selectedPost.author_displayname}</div>
-                                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>@{selectedPost.author_username} • {new Date(selectedPost.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div>
+                                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '6px' }}>
+                                    Chủ đề bài đăng <span style={{ color: 'var(--sakura-pink)' }}>*</span>
+                                </label>
+                                <select 
+                                    value={newCategory} 
+                                    onChange={(e) => setNewCategory(e.target.value)}
+                                    style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-sm)', background: 'var(--bg-base)', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none' }}
+                                >
+                                    <option value="general">Thảo luận chung</option>
+                                    <option value="announcement">Thông báo hệ thống</option>
+                                    <option value="review">Review tác phẩm / truyện</option>
+                                    <option value="spoil">Spoil thảo luận tình tiết</option>
+                                    <option value="qa">Hỏi đáp thắc mắc</option>
+                                    <option value="misc">Linh tinh khác</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '6px' }}>
+                                    Nội dung chi tiết <span style={{ color: 'var(--sakura-pink)' }}>*</span>
+                                </label>
+                                <RichTextEditor 
+                                    placeholder="Soạn nội dung thảo luận, review, chia sẻ cảm nhận..." 
+                                    value={newContent} 
+                                    onChange={setNewContent} 
+                                    minHeight="180px"
+                                />
+                            </div>
+
+                            {/* Image attachment file upload */}
+                            <div style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '16px' }}>
+                                <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+                                    Thêm hình ảnh bài đăng (Tùy chọn)
+                                </label>
+                                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                    <label className="outline-btn small" style={{ cursor: 'pointer', margin: 0, padding: '8px 16px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                        <Icons.Image /> Chọn file ảnh từ máy
+                                        <input 
+                                            type="file" 
+                                            accept="image/*" 
+                                            multiple
+                                            style={{ display: 'none' }}
+                                            onChange={(e) => {
+                                                const files = Array.from(e.target.files || []);
+                                                if (files.length > 0) {
+                                                    setNewImageFiles(prev => [...prev, ...files]);
+                                                    setNewImageUrls(prev => [...prev, ...files.map(f => URL.createObjectURL(f))]);
+                                                }
+                                            }}
+                                        />
+                                    </label>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        {newImageFiles.length > 0 ? `Đã chọn ${newImageFiles.length} ảnh` : 'Hỗ trợ định dạng JPG, PNG, WEBP'}
+                                    </span>
+                                </div>
+                                {newImageUrls.length > 0 && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '12px' }}>
+                                        {newImageUrls.map((url, idx) => (
+                                            <div key={idx} style={{ position: 'relative', borderRadius: 'var(--border-radius-md)', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                                                <img 
+                                                    src={url} 
+                                                    alt={`Preview Attachment ${idx}`} 
+                                                    style={{ width: '120px', height: '90px', display: 'block', objectFit: 'cover' }} 
+                                                />
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => removeNewImage(idx)}
+                                                    style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.65)', border: 'none', color: '#fff', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem' }}
+                                                    title="Xóa ảnh này"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
+                                <button 
+                                    type="button" 
+                                    className="outline-btn" 
+                                    onClick={() => {
+                                        setSubView('list');
+                                        if (setInitialPostId) setInitialPostId(null);
+                                        setNewTitle('');
+                                        setNewContent('');
+                                        setNewImageUrls([]);
+                                        setNewImageFiles([]);
+                                    }}
+                                >
+                                    Hủy
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    className="primary-btn" 
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                                    disabled={isSubmittingPost}
+                                >
+                                    <Icons.Send /> {isSubmittingPost ? 'Đang đăng...' : 'Đăng bài viết'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* 4. SUBVIEW DETAIL: FULL POST VIEW */}
+            {subView === 'detail' && selectedPost && (() => {
+                const { cleanContent: detailCleanContent, images: detailExtractedImages } = extractAndCleanImages(selectedPost.content);
+                const detailAllImages = [selectedPost.image_url, ...detailExtractedImages].filter(Boolean) as string[];
+
+                const authorAvatar = selectedPost.author_avatar_seed && (selectedPost.author_avatar_seed.startsWith('http') || selectedPost.author_avatar_seed.startsWith('/uploads') || selectedPost.author_avatar_seed.startsWith('data:')) 
+                    ? selectedPost.author_avatar_seed 
+                    : `https://api.dicebear.com/7.x/adventurer/svg?seed=${selectedPost.author_avatar_seed || 'Default'}`;
+
+                return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '960px', margin: '0 auto' }}>
+                        
+                        {/* Back button */}
+                        <div>
+                            <button 
+                                className="outline-btn small" 
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                                onClick={() => { setSubView('list'); if (setInitialPostId) setInitialPostId(null); }}
+                            >
+                                ← Quay lại danh sách bài viết
+                            </button>
+                        </div>
+
+                        {/* Main Article Container */}
+                        <div className="forum-post-card-v2" style={{ padding: '32px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                <span className="forum-cat-badge-pill">
+                                    {formatCategoryName(selectedPost.category)}
+                                </span>
+                                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                    {isAdmin && (
+                                        <button
+                                            onClick={(e) => handleToggleRestrictComments(selectedPost.id, selectedPost.restrictComments || selectedPost.restrict_comments, e)}
+                                            className="outline-btn small"
+                                            style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+                                        >
+                                            {(selectedPost.restrictComments || selectedPost.restrict_comments) ? "🔒 Chỉ BQL" : "🔓 Tự do"}
+                                        </button>
+                                    )}
+                                    {currentUser && (selectedPost.author_id === currentUser.id || currentUser.roles.includes('admin')) && (
+                                        <button
+                                            onClick={(e) => handleDeletePost(selectedPost.id, e)}
+                                            className="outline-btn small"
+                                            style={{ color: '#e74c3c', borderColor: '#e74c3c', fontSize: '0.75rem', padding: '4px 10px' }}
+                                        >
+                                            <Icons.Trash /> Xóa bài
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.65rem', fontWeight: 700, color: 'var(--text-main)', margin: '0 0 16px 0', lineHeight: 1.3 }}>
+                                {selectedPost.title}
+                            </h1>
+
+                            {/* Author Info Bar */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '16px', borderBottom: '1px solid var(--border-color)', marginBottom: '20px' }}>
+                                <div className="forum-author-avatar-wrap">
+                                    <img src={authorAvatar} alt={selectedPost.author_username} />
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                                        {selectedPost.author_displayname}
+                                    </div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        @{selectedPost.author_username} • {new Date(selectedPost.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Content text */}
+                            <div style={{ fontSize: '0.96rem', lineHeight: 1.75, color: 'var(--text-content)', minHeight: '120px' }}>
+                                {parseFormattedContent(detailCleanContent)}
+                            </div>
+
+                            {detailAllImages.length > 0 && (
+                                <div style={{ marginTop: '20px' }}>
+                                    <ForumImageGrid images={detailAllImages} onImageClick={(url) => setLightboxImage(url)} />
+                                </div>
+                            )}
+
+                            {/* Interaction Bar */}
+                            <div className="forum-interaction-bar-v2" style={{ marginTop: '24px' }}>
+                                <div className="forum-actions-left">
+                                    <button 
+                                        className={`forum-action-btn-mono ${selectedPost.is_liked ? 'liked' : ''}`}
+                                        onClick={(e) => handleLikePost(selectedPost.id, e)}
+                                    >
+                                        <Icons.Heart filled={!!selectedPost.is_liked} />
+                                        <span>{selectedPost.likes_count || 0} Thích</span>
+                                    </button>
+                                    <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                                        <Icons.Comment /> {selectedPost.comments?.length || 0} Phản hồi
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Content */}
-                        <div style={{ 
-                            fontSize: '0.95rem', 
-                            color: 'var(--text-main)', 
-                            lineHeight: 1.7, 
-                            minHeight: '120px'
-                        }}>
-                            {parseFormattedContent(detailCleanContent)}
-                        </div>
+                        {/* Comments Thread Section */}
+                        <div className="forum-post-card-v2" style={{ padding: '28px' }}>
+                            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: '0 0 20px 0', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+                                Thảo Luận & Phản Hồi ({selectedPost.comments?.length || 0})
+                            </h3>
 
-                        {detailAllImages.length > 0 && (
-                            <ForumImageGrid images={detailAllImages} onImageClick={(url) => setLightboxImage(url)} />
-                        )}
-                    </div>
-
-                    {/* Replies section */}
-                    <div className="content-box" style={{ padding: '24px' }}>
-                        <h3 className="section-title" style={{ marginBottom: '16px' }}>Phản hồi ({selectedPost.comments?.length || 0})</h3>
-                        
-                        {/* Comments list */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
-                            {selectedPost.comments?.map(comment => (
-                                <div key={comment.id} style={{ marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
-                                    <div className="flex-row-between" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', cursor: 'pointer' }} onClick={() => comment.author_username && viewPublicProfile?.(comment.author_username)}>
-                                            <img 
-                                                src={comment.author_avatar_seed && (comment.author_avatar_seed.startsWith('http') || comment.author_avatar_seed.startsWith('/uploads') || comment.author_avatar_seed.startsWith('data:')) 
-                                                    ? comment.author_avatar_seed 
-                                                    : `https://api.dicebear.com/7.x/adventurer/svg?seed=${comment.author_avatar_seed || 'Default'}`} 
-                                                style={{ width: '28px', height: '28px', borderRadius: '50%' }}
-                                                alt={comment.author_username} 
-                                            />
-                                            <strong style={{ fontSize: '0.82rem', color: 'var(--text-main)' }}>
-                                                {comment.author_displayname} <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>@{comment.author_username}</span>
-                                            </strong>
-                                        </div>
-                                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                                            {new Date(comment.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                    </div>
-                                    <p style={{ fontSize: '0.85rem', marginTop: '6px', lineHeight: 1.5, color: 'var(--text-content)' }}>{parseFormattedContent(comment.text)}</p>
-                                    {currentUser && (
-                                        <div style={{ marginTop: '6px', display: 'flex', gap: '12px' }}>
-                                            <button 
-                                                type="button" 
-                                                style={{ background: 'none', border: 'none', color: 'var(--sakura-pink)', cursor: 'pointer', padding: 0, fontSize: '0.75rem' }}
-                                                onClick={() => {
-                                                    setReplyToCommentId(comment.id);
-                                                    setReplyToUserId(comment.user_id);
-                                                    setReplyText("");
-                                                    setTimeout(() => {
-                                                        const el = document.getElementById(`reply-textarea-${comment.id}`);
-                                                        if (el) el.focus();
-                                                    }, 50);
-                                                }}
-                                            >
-                                                Phản hồi
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    {/* Inline reply form */}
-                                    {replyToCommentId === comment.id && (
-                                        <div className="reply-form-placeholder" style={{ marginTop: '8px', marginLeft: '40px' }}>
-                                            <textarea 
-                                                id={`reply-textarea-${comment.id}`}
-                                                placeholder="Nhập phản hồi..." 
-                                                value={replyText}
-                                                onChange={(e) => setReplyText(e.target.value)}
-                                                style={{ width: '100%', minHeight: '60px', fontSize: '0.8rem', padding: '8px', border: '1px solid var(--border-color)', borderRadius: '4px', outline: 'none', fontFamily: 'inherit', background: 'var(--bg-card)', color: 'var(--text-main)' }}
-                                            />
-                                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
-                                                <button type="button" className="outline-btn small" style={{ padding: '2px 8px', fontSize: '0.7rem' }} onClick={() => { setReplyToCommentId(null); setReplyToUserId(null); }}>Hủy</button>
-                                                <button type="button" className="primary-btn small" style={{ padding: '2px 8px', fontSize: '0.7rem' }} onClick={() => handleSubmitReply(comment.id)}>Gửi phản hồi</button>
+                            {/* Comments list */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+                                {selectedPost.comments?.map(comment => (
+                                    <div key={comment.id} style={{ paddingBottom: '14px', borderBottom: '1px solid var(--border-color)' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', cursor: 'pointer' }} onClick={() => comment.author_username && viewPublicProfile?.(comment.author_username)}>
+                                                <img 
+                                                    src={comment.author_avatar_seed && (comment.author_avatar_seed.startsWith('http') || comment.author_avatar_seed.startsWith('/uploads') || comment.author_avatar_seed.startsWith('data:')) 
+                                                        ? comment.author_avatar_seed 
+                                                        : `https://api.dicebear.com/7.x/adventurer/svg?seed=${comment.author_avatar_seed || 'Default'}`} 
+                                                    style={{ width: '28px', height: '28px', borderRadius: '50%' }}
+                                                    alt={comment.author_username} 
+                                                />
+                                                <strong style={{ fontSize: '0.84rem', color: 'var(--text-main)' }}>
+                                                    {comment.author_displayname} <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>@{comment.author_username}</span>
+                                                </strong>
                                             </div>
+                                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                                {new Date(comment.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
                                         </div>
-                                    )}
+                                        <p style={{ fontSize: '0.88rem', margin: '6px 0 6px 36px', lineHeight: 1.55, color: 'var(--text-content)' }}>{parseFormattedContent(comment.text)}</p>
+                                        
+                                        {currentUser && (
+                                            <div style={{ marginLeft: '36px', display: 'flex', gap: '12px' }}>
+                                                <button 
+                                                    type="button" 
+                                                    style={{ background: 'none', border: 'none', color: 'var(--sakura-pink)', cursor: 'pointer', padding: 0, fontSize: '0.75rem', fontWeight: 600 }}
+                                                    onClick={() => {
+                                                        setReplyToCommentId(comment.id);
+                                                        setReplyToUserId(comment.user_id);
+                                                        setReplyText("");
+                                                        setTimeout(() => {
+                                                            const el = document.getElementById(`reply-textarea-${comment.id}`);
+                                                            if (el) el.focus();
+                                                        }, 50);
+                                                    }}
+                                                >
+                                                    Phản hồi
+                                                </button>
+                                            </div>
+                                        )}
 
-                                    {/* Child Comments List */}
-                                    {comment.replies && comment.replies.map(reply => (
-                                        <div key={reply.id} className="comment-reply-node" style={{ marginLeft: '40px', marginTop: '12px', background: 'rgba(0,0,0,0.02)', padding: '8px 12px', borderLeft: '2px solid var(--sakura-pink)', borderRadius: '4px' }}>
-                                            <div className="flex-row-between" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', cursor: 'pointer' }} onClick={() => reply.author_username && viewPublicProfile?.(reply.author_username)}>
-                                                    <img 
-                                                        src={reply.author_avatar_seed && (reply.author_avatar_seed.startsWith('http') || reply.author_avatar_seed.startsWith('/uploads') || reply.author_avatar_seed.startsWith('data:')) 
-                                                            ? reply.author_avatar_seed 
-                                                            : `https://api.dicebear.com/7.x/adventurer/svg?seed=${reply.author_avatar_seed || 'Default'}`} 
-                                                        style={{ width: '20px', height: '20px', borderRadius: '50%' }}
-                                                        alt={reply.author_username} 
-                                                    />
-                                                    <strong style={{ fontSize: '0.78rem', color: 'var(--text-main)' }}>
-                                                        {reply.author_displayname} <span style={{ fontSize: '0.7' + 'rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>@{reply.author_username}</span>
+                                        {/* Inline reply form */}
+                                        {replyToCommentId === comment.id && (
+                                            <div style={{ marginTop: '10px', marginLeft: '36px' }}>
+                                                <textarea 
+                                                    id={`reply-textarea-${comment.id}`}
+                                                    placeholder="Nhập câu trả lời phản hồi..." 
+                                                    value={replyText}
+                                                    onChange={(e) => setReplyText(e.target.value)}
+                                                    style={{ width: '100%', minHeight: '70px', fontSize: '0.82rem', padding: '10px', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-sm)', outline: 'none', fontFamily: 'inherit', background: 'var(--bg-base)', color: 'var(--text-main)' }}
+                                                />
+                                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>
+                                                    <button type="button" className="outline-btn small" onClick={() => { setReplyToCommentId(null); setReplyToUserId(null); }}>Hủy</button>
+                                                    <button type="button" className="primary-btn small" onClick={() => handleSubmitReply(comment.id)}>Gửi phản hồi</button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Child Comments List */}
+                                        {comment.replies && comment.replies.map(reply => (
+                                            <div key={reply.id} style={{ marginLeft: '36px', marginTop: '10px', background: 'var(--bg-base)', padding: '10px 14px', borderLeft: '2px solid var(--sakura-pink)', borderRadius: '4px' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                                    <strong style={{ fontSize: '0.8rem', color: 'var(--text-main)' }}>
+                                                        {reply.author_displayname} <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>@{reply.author_username}</span>
                                                     </strong>
+                                                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                                                        {new Date(reply.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
                                                 </div>
-                                                <span style={{ fontSize: '0.70rem', color: 'var(--text-muted)' }}>
-                                                    {new Date(reply.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                                                </span>
+                                                <p style={{ fontSize: '0.82rem', margin: '2px 0 0 0', lineHeight: 1.45, color: 'var(--text-content)' }}>{parseFormattedContent(reply.text)}</p>
                                             </div>
-                                            <p style={{ fontSize: '0.82rem', marginTop: '4px', lineHeight: 1.4, color: 'var(--text-content)', marginLeft: '26px' }}>{parseFormattedContent(reply.text)}</p>
-                                            {currentUser && (
-                                                <div style={{ marginTop: '4px', display: 'flex', gap: '12px', marginLeft: '26px' }}>
-                                                    <button 
-                                                        type="button" 
-                                                        style={{ background: 'none', border: 'none', color: 'var(--sakura-pink)', cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}
-                                                        onClick={() => {
-                                                            setReplyToCommentId(comment.id);
-                                                            setReplyToUserId(reply.user_id);
-                                                            if (reply.author_username === currentUser.username) {
-                                                                setReplyText("");
-                                                            } else {
-                                                                setReplyText(`@${reply.author_displayname} `);
-                                                            }
-                                                            setTimeout(() => {
-                                                                const el = document.getElementById(`reply-textarea-${comment.id}`);
-                                                                if (el) el.focus();
-                                                            }, 50);
-                                                        }}
-                                                    >
-                                                        Phản hồi
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            ))}
-                            {(!selectedPost.comments || selectedPost.comments.length === 0) && (
-                                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-                                    Chưa có phản hồi nào. Hãy là người đầu tiên trả lời bài viết này!
-                                </div>
-                            )}
-                        </div>
+                                        ))}
+                                    </div>
+                                ))}
 
-                        {/* Comment input form */}
-                        {currentUser ? (
-                            (!selectedPost.restrictComments || isStaff) ? (
-                                <form onSubmit={handleAddComment} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                    <div className="input-field">
-                                        <label style={{ fontSize: '0.85rem' }}>Viết phản hồi</label>
+                                {(!selectedPost.comments || selectedPost.comments.length === 0) && (
+                                    <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                        Chưa có phản hồi nào. Hãy là người đầu tiên trả lời bài viết này!
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Comment Form */}
+                            {currentUser ? (
+                                (!selectedPost.restrictComments || isStaff) ? (
+                                    <form onSubmit={handleAddComment} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                         <RichTextEditor
                                             id="detailed-comment-textarea"
-                                            placeholder="Nhập nội dung câu trả lời hoặc thảo luận..."
+                                            placeholder="Nhập nội dung thảo luận hoặc chia sẻ góc nhìn..."
                                             value={commentText}
                                             onChange={setCommentText}
                                             required
-                                            minHeight="80px"
+                                            minHeight="90px"
                                         />
+                                        <button type="submit" className="primary-btn small" style={{ alignSelf: 'flex-end', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                            <Icons.Send /> Gửi bình luận
+                                        </button>
+                                    </form>
+                                ) : (
+                                    <div style={{ padding: '16px', background: 'var(--bg-base)', borderRadius: '8px', color: 'var(--text-muted)', fontSize: '0.82rem', textAlign: 'center', border: '1px solid var(--border-color)' }}>
+                                        🔒 Chỉ Quản trị viên và Điều phối viên mới được phép bình luận trong bài viết này.
                                     </div>
-                                    <button type="submit" className="primary-btn small" style={{ alignSelf: 'flex-end' }}>Gửi phản hồi</button>
-                                </form>
+                                )
                             ) : (
-                                <div style={{ padding: '16px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '8px', color: 'var(--text-muted)', fontSize: '0.82rem', textAlign: 'center', border: '1px solid var(--border-color)' }}>
-                                    🔒 Chỉ Quản trị viên và Điều phối viên mới được phép bình luận trong bài viết này.
+                                <div style={{ background: 'var(--bg-base)', padding: '16px', borderRadius: 'var(--border-radius-md)', textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                    Vui lòng đăng nhập để gửi phản hồi thảo luận.
                                 </div>
-                            )
-                        ) : (
-                            <div style={{ background: 'var(--bg-base)', padding: '12px', borderRadius: '4px', textAlign: 'center', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                                Vui lòng đăng nhập để gửi câu trả lời thảo luận.
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
-                </div>
                 );
             })()}
 
-            {/* Popup chat kiểu Facebook ở dưới cùng màn hình (chỉ hiển thị khi đang trong subView list) */}
+            {/* 5. CHAT POPUP (Facebook-style) */}
             {subView === 'list' && activeChatFriend && (
                 <div className="fb-chat-popup">
                     <div className="fb-chat-header">
@@ -2131,7 +1853,7 @@ export default function Forum({
                             })
                         ) : (
                             <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>
-                                Bắt đầu trò chuyện wibu wibu với {activeChatFriend.displayname}...
+                                Bắt đầu trò chuyện với {activeChatFriend.displayname}...
                             </div>
                         )}
                     </div>
@@ -2144,15 +1866,13 @@ export default function Forum({
                             onChange={(e) => setChatInputText(e.target.value)}
                         />
                         <button type="submit" className="fb-chat-send-btn" title="Gửi">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-                            </svg>
+                            <Icons.Send />
                         </button>
                     </form>
                 </div>
             )}
 
-            {/* Lightbox for viewing and zooming images */}
+            {/* 6. LIGHTBOX MODAL */}
             {lightboxImage && (
                 <div style={{
                     position: 'fixed',
@@ -2160,7 +1880,7 @@ export default function Forum({
                     left: 0,
                     width: '100vw',
                     height: '100vh',
-                    backgroundColor: 'rgba(0, 0, 0, 0.92)',
+                    backgroundColor: 'rgba(0, 0, 0, 0.94)',
                     zIndex: 99999,
                     display: 'flex',
                     flexDirection: 'column',
@@ -2169,7 +1889,7 @@ export default function Forum({
                     userSelect: 'none',
                     backdropFilter: 'blur(8px)'
                 }} onClick={() => { setLightboxImage(null); setLightboxZoom(1); setLightboxRotation(0); }}>
-                    {/* Image Container */}
+                    
                     <div style={{
                         position: 'relative',
                         width: '90%',
@@ -2193,59 +1913,42 @@ export default function Forum({
                         />
                     </div>
 
-                    {/* Toolbar Controls */}
                     <div style={{
                         position: 'absolute',
                         bottom: '40px',
                         display: 'flex',
                         gap: '16px',
                         alignItems: 'center',
-                        background: 'rgba(0, 0, 0, 0.6)',
-                        padding: '12px 24px',
+                        background: 'rgba(0, 0, 0, 0.65)',
+                        padding: '10px 22px',
                         borderRadius: '30px',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
                         boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
                         zIndex: 100000
                     }} onClick={(e) => e.stopPropagation()}>
                         <button 
-                            className="interaction-btn" 
-                            style={{ color: '#fff', fontSize: '1.2rem', padding: '4px 12px', background: 'rgba(255,255,255,0.1)', borderRadius: '20px', border: 'none', cursor: 'pointer' }}
+                            style={{ color: '#fff', fontSize: '1rem', padding: '4px 10px', background: 'rgba(255,255,255,0.1)', borderRadius: '20px', border: 'none', cursor: 'pointer' }}
                             onClick={() => setLightboxZoom(prev => Math.max(0.5, prev - 0.25))}
-                            title="Thu nhỏ"
                         >
-                            ➖
+                            -
                         </button>
-                        <span style={{ color: '#fff', fontSize: '0.9rem', minWidth: '60px', textAlign: 'center', fontWeight: 600 }}>
+                        <span style={{ color: '#fff', fontSize: '0.85rem', minWidth: '50px', textAlign: 'center', fontWeight: 600 }}>
                             {Math.round(lightboxZoom * 100)}%
                         </span>
                         <button 
-                            className="interaction-btn" 
-                            style={{ color: '#fff', fontSize: '1.2rem', padding: '4px 12px', background: 'rgba(255,255,255,0.1)', borderRadius: '20px', border: 'none', cursor: 'pointer' }}
+                            style={{ color: '#fff', fontSize: '1rem', padding: '4px 10px', background: 'rgba(255,255,255,0.1)', borderRadius: '20px', border: 'none', cursor: 'pointer' }}
                             onClick={() => setLightboxZoom(prev => Math.min(5, prev + 0.25))}
-                            title="Phóng to"
                         >
-                            ➕
-                        </button>
-                        <div style={{ width: '1px', height: '20px', backgroundColor: 'rgba(255,255,255,0.2)' }}></div>
-                        <button 
-                            className="interaction-btn" 
-                            style={{ color: '#fff', fontSize: '1.2rem', padding: '4px 12px', background: 'rgba(255,255,255,0.1)', borderRadius: '20px', border: 'none', cursor: 'pointer' }}
-                            onClick={() => setLightboxRotation(prev => (prev + 90) % 360)}
-                            title="Xoay ảnh 90°"
-                        >
-                            🔄
+                            +
                         </button>
                         <button 
-                            className="interaction-btn" 
-                            style={{ fontSize: '0.85rem', padding: '6px 14px', background: 'var(--sakura-pink)', color: '#fff', borderRadius: '20px', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                            style={{ fontSize: '0.8rem', padding: '6px 14px', background: 'var(--sakura-pink)', color: '#fff', borderRadius: '20px', border: 'none', cursor: 'pointer', fontWeight: 600 }}
                             onClick={() => { setLightboxZoom(1); setLightboxRotation(0); }}
-                            title="Đặt lại zoom & xoay"
                         >
                             Đặt lại
                         </button>
                     </div>
 
-                    {/* Close Button */}
                     <button 
                         style={{
                             position: 'absolute',
@@ -2254,19 +1957,18 @@ export default function Forum({
                             background: 'rgba(255,255,255,0.1)',
                             border: 'none',
                             color: '#fff',
-                            fontSize: '1.5rem',
+                            fontSize: '1.4rem',
                             cursor: 'pointer',
-                            width: '44px',
-                            height: '44px',
+                            width: '40px',
+                            height: '40px',
                             borderRadius: '50%',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            transition: 'background 0.2s',
                             zIndex: 100000
                         }} 
                         onClick={() => { setLightboxImage(null); setLightboxZoom(1); setLightboxRotation(0); }}
-                        title="Đóng (Esc)"
+                        title="Đóng"
                     >
                         ✕
                     </button>
