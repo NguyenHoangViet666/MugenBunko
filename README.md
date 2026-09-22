@@ -6,7 +6,8 @@
 
 <p align="center">
   <b>HỆ THỐNG ĐỌC, XUẤT BẢN VÀ MẠNG XÃ HỘI TIỂU THUYẾT ĐA NỀN TẢNG</b><br>
-  <i>Đề tài Đồ án Chuyên ngành 4 (Đồ án 4) - Ngành Công nghệ Thông tin / Kỹ thuật Phần mềm</i>
+  <i>Đề tài Đồ án Chuyên ngành 4 (Đồ án 4) - Ngành Công nghệ Thông tin / Kỹ thuật Phần mềm</i><br>
+  <b>Trường Đại học Sư phạm Kỹ thuật Hưng Yên (HYUTE / UTEHY)</b>
 </p>
 
 <p align="center">
@@ -316,16 +317,23 @@ cd mobile && npm install && cd ..
 
 ---
 
-## 10. Tác Giả & Bản Quyền
+## 10. Thông Tin Đề Tài & Tác Giả
 
-- **Họ và tên sinh viên:** Nguyễn Hoàng Việt
-- **Mã số sinh viên:** *(Cập nhật theo thông tin cá nhân)*
-- **Lớp / Khóa:** *(Cập nhật theo thông tin cá nhân)*
-- **Giảng viên hướng dẫn:** *(Cập nhật tên GVHD)*
-- **GitHub Repository:** [NguyenHoangViet666/MugenBunko](https://github.com/NguyenHoangViet666/MugenBunko.git)
-- **Tài khoản Admin mặc định:**
-  - Tên đăng nhập: `MugenBunko`
-  - Mật khẩu mặc định: `123456`
+| Hạng mục | Chi tiết |
+| :--- | :--- |
+| **Đề tài** | Hệ thống đọc, xuất bản và mạng xã hội tiểu thuyết đa nền tảng MugenBunko |
+| **Học phần** | Đồ án chuyên ngành 4 (Đồ án 4) |
+| **Trường** | **Trường Đại học Sư phạm Kỹ thuật Hưng Yên (HYUTE / UTEHY)** |
+| **Sinh viên thực hiện** | **Nguyễn Hoàng Việt** |
+| **Mã số sinh viên (MSV)** | **10123357** |
+| **Lớp chuyên ngành** | **12523W.1** |
+| **Giảng viên hướng dẫn (GVHD)** | **TS. Hoàng Quốc Việt** |
+| **Mã nguồn dự án** | [NguyenHoangViet666/MugenBunko](https://github.com/NguyenHoangViet666/MugenBunko.git) |
+
+### 🔑 Tài khoản Quản trị viên mặc định (Seed Data)
+- **Tên đăng nhập (Username):** `MugenBunko`
+- **Mật khẩu (Password):** `123456`
+- **Quyền hạn:** `admin`, `reader`
 
 ---
 
