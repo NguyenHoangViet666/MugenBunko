@@ -7,7 +7,7 @@
 <p align="center">
   <b>HỆ THỐNG ĐỌC, XUẤT BẢN VÀ MẠNG XÃ HỘI TIỂU THUYẾT ĐA NỀN TẢNG</b><br>
   <i>Đề tài Đồ án Chuyên ngành 4 (Đồ án 4) - Ngành Công nghệ Thông tin / Kỹ thuật Phần mềm</i><br>
-  <b>Trường Đại học Sư phạm Kỹ thuật Hưng Yên (HYUTE / UTEHY)</b>
+  <b>Trường Đại học Công nghệ Kỹ thuật Hưng Yên (HYUTE - Hung Yen University of Technology and Engineering)</b>
 </p>
 
 <p align="center">
@@ -323,7 +323,7 @@ cd mobile && npm install && cd ..
 | :--- | :--- |
 | **Đề tài** | Hệ thống đọc, xuất bản và mạng xã hội tiểu thuyết đa nền tảng MugenBunko |
 | **Học phần** | Đồ án chuyên ngành 4 (Đồ án 4) |
-| **Trường** | **Trường Đại học Sư phạm Kỹ thuật Hưng Yên (HYUTE / UTEHY)** |
+| **Trường** | **Trường Đại học Công nghệ Kỹ thuật Hưng Yên (HYUTE - Hung Yen University of Technology and Engineering)** |
 | **Sinh viên thực hiện** | **Nguyễn Hoàng Việt** |
 | **Mã số sinh viên (MSV)** | **10123357** |
 | **Lớp chuyên ngành** | **12523W.1** |
