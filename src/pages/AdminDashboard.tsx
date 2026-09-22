@@ -34,7 +34,7 @@ interface AdminDashboardProps {
     setCurrentView: (view: string) => void;
     activeBannerId: number | null;
     reports: any[];
-    modApproveRejectChapter: (novelId: number, chapterIndex: number, action: 'approve' | 'reject') => void;
+    modApproveRejectChapter?: (chapterId: number, action: 'approve' | 'reject') => void;
     handleCommentReportAction: (index: number, action: 'keep' | 'delete') => void;
     handleRejectAuthorRequest: (userId: number) => void;
     currentUser: User | null;

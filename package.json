@@ -5,8 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:all": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\" \"npm run dev:mobile\"",
     "dev:frontend": "vite",
     "dev:backend": "npm --prefix server run dev",
+    "dev:mobile": "npm --prefix mobile run start",
+    "dev:mobile:android": "npm --prefix mobile run android",
+    "dev:mobile:ios": "npm --prefix mobile run ios",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

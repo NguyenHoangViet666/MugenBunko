@@ -8,6 +8,7 @@ import EditNovelModal from './components/EditNovelModal';
 import ScheduleModal from './components/ScheduleModal';
 import ChatWidget from './components/ChatWidget';
 import MobileGateOverlay from './components/MobileGateOverlay';
+import { Icons } from './components/Icons';
 
 import Home from './pages/Home';
 import Library from './pages/Library';
@@ -174,6 +175,39 @@ interface Petal {
 }
 
 export default function App() {
+    const isSessionExpiringRef = useRef(false);
+
+    const handleSessionExpired = (customMsg?: string) => {
+        if (isSessionExpiringRef.current) return;
+        isSessionExpiringRef.current = true;
+
+        // 1. Xóa sạch token và session khỏi localStorage
+        localStorage.removeItem('mugen_token');
+        localStorage.removeItem(DB_KEYS.session);
+
+        // 2. Reset state người dùng
+        setCurrentUser(null);
+        setProfileDisplayname("");
+        setProfileAvatarSeed("");
+        setProfileBio("");
+        setProfileRoles(['reader']);
+
+        // 3. Hiển thị Toast thông báo nhẹ nhàng thay vì alert lặp vô hạn
+        showToast(customMsg || "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
+
+        // 4. Nếu đang ở các view yêu cầu quyền, đưa về trang chủ
+        setCurrentView(prev => {
+            if (['studio', 'library', 'profile', 'mod-dashboard', 'admin-dashboard'].includes(prev)) {
+                return 'home';
+            }
+            return prev;
+        });
+
+        setTimeout(() => {
+            isSessionExpiringRef.current = false;
+        }, 3000);
+    };
+
     const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
         const token = localStorage.getItem('mugen_token');
         const headers: Record<string, string> = {};
@@ -198,12 +232,27 @@ export default function App() {
         }
         try {
             const res = await window.fetch(url, { ...options, headers });
-            if (res.status === 403) {
+
+            // 401 Unauthorized: Token không hợp lệ hoặc đã hết hạn
+            if (res.status === 401) {
+                const isAuthAttempt = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/send-otp') || url.includes('/auth/reset-password');
+                if (!isAuthAttempt && (token || currentUser)) {
+                    try {
+                        const clone = res.clone();
+                        const data = await clone.json();
+                        handleSessionExpired(data?.error);
+                    } catch {
+                        handleSessionExpired();
+                    }
+                }
+            } else if (res.status === 403) {
                 try {
                     const clone = res.clone();
                     const data = await clone.json();
-                    if (data && data.error) {
-                        alert(data.error);
+                    if (data?.code === 'TOKEN_EXPIRED' || (typeof data?.error === 'string' && data.error.toLowerCase().includes('hết hạn'))) {
+                        handleSessionExpired(data.error);
+                    } else if (data && data.error) {
+                        showToast(data.error);
                     }
                 } catch (jsonErr) {
                     console.error("Failed to parse 403 response JSON:", jsonErr);
@@ -2634,7 +2683,19 @@ export default function App() {
                             {renderBreadcrumbs()}
                         </div>
                         <div className="role-status">
-                            Vai trò: <span className="role-badge" style={{background: currentUser && currentUser.roles.includes('admin') ? '#cc0000' : (currentUser && currentUser.roles.includes('moderator') ? '#1b365d' : 'var(--sakura-pink)')}}>
+                            Vai trò: <span className="role-badge" style={{
+                                background: currentUser && (currentUser.roles.includes('admin') || currentUser.roles.includes('moderator')) 
+                                    ? 'var(--text-main)' 
+                                    : 'var(--bg-base)',
+                                color: currentUser && (currentUser.roles.includes('admin') || currentUser.roles.includes('moderator'))
+                                    ? 'var(--bg-card)'
+                                    : 'var(--text-main)',
+                                border: '1px solid var(--border-color)',
+                                padding: '2px 8px',
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 600
+                            }}>
                                 {currentUser ? (currentUser.roles.includes('admin') ? 'Admin' : (currentUser.roles.includes('moderator') ? 'Mod' : (currentUser.roles.includes('author') ? 'Author' : 'Reader'))) : "Khách"}
                             </span>
                         </div>
@@ -2981,7 +3042,7 @@ export default function App() {
                     <div className="modal-content" style={{ maxWidth: '400px' }}>
                         <div className="modal-header" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                             <h3 style={{ margin: 0, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                ❓ Xác nhận hành động
+                                <Icons.AlertCircle size={18} /> Xác nhận hành động
                             </h3>
                             <button className="close-btn" onClick={() => setConfirmModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}>&times;</button>
                         </div>
@@ -3017,14 +3078,14 @@ export default function App() {
                     <div className="modal-content" style={{ maxWidth: '480px' }}>
                         <div className="modal-header" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                             <h3 style={{ margin: 0, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.05rem', fontWeight: 600 }}>
-                                🖼️ Chèn ảnh minh họa
+                                <Icons.Image size={18} /> Chèn ảnh minh họa
                             </h3>
                             <button className="close-btn" onClick={() => setImageModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}>&times;</button>
                         </div>
                         <div className="modal-body" style={{ padding: '24px' }}>
                             {imageUploading ? (
                                 <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-muted)' }}>
-                                    <div className="loading-spinner" style={{ margin: '0 auto 12px auto', border: '3px solid var(--border-color)', borderTop: '3px solid var(--sakura-pink)', borderRadius: '50%', width: '32px', height: '32px', animation: 'spin 1s linear infinite' }}></div>
+                                    <div className="loading-spinner" style={{ margin: '0 auto 12px auto', border: '3px solid var(--border-color)', borderTop: '3px solid var(--text-main)', borderRadius: '50%', width: '32px', height: '32px', animation: 'spin 1s linear infinite' }}></div>
                                     <style>{`
                                         @keyframes spin {
                                             0% { transform: rotate(0deg); }
@@ -3041,7 +3102,7 @@ export default function App() {
                                             Cách 1: Tải ảnh lên từ thiết bị
                                         </label>
                                         <label 
-                                            className="primary-btn" 
+                                            className="outline-btn" 
                                             style={{ 
                                                 display: 'flex', 
                                                 alignItems: 'center', 
@@ -3052,20 +3113,14 @@ export default function App() {
                                                 borderRadius: '6px',
                                                 fontSize: '0.85rem',
                                                 textAlign: 'center',
-                                                background: 'rgba(224, 82, 117, 0.08)',
-                                                color: 'var(--sakura-pink)',
-                                                border: '1px dashed var(--sakura-pink)',
+                                                background: 'var(--bg-base)',
+                                                color: 'var(--text-main)',
+                                                border: '1px dashed var(--border-color)',
                                                 boxShadow: 'none',
                                                 transition: 'all 0.2s'
                                             }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.background = 'rgba(224, 82, 117, 0.12)';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.background = 'rgba(224, 82, 117, 0.08)';
-                                            }}
                                         >
-                                            📁 Chọn hình ảnh từ máy tính
+                                            <Icons.Image size={16} /> Chọn hình ảnh từ máy tính
                                             <input 
                                                 type="file" 
                                                 accept="image/*" 
@@ -3222,13 +3277,13 @@ export default function App() {
                 <div className="modal-overlay active" onClick={() => setShowPublicProfileModal(false)}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{maxWidth: '420px', padding: '24px', borderRadius: '12px'}}>
                         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
-                            <h3 style={{margin: 0, fontSize: '1.2rem', fontWeight: 650}}>Hồ Sơ Wibu</h3>
+                            <h3 style={{margin: 0, fontSize: '1.2rem', fontWeight: 650}}>Hồ Sơ Thành Viên</h3>
                             <button className="chat-header-btn" style={{color: 'var(--text-muted)'}} onClick={() => setShowPublicProfileModal(false)}>✕</button>
                         </div>
                         {loadingPublicProfile && <div style={{textAlign: 'center', padding: '20px', color: 'var(--text-muted)'}}>Đang tải hồ sơ...</div>}
                         {!loadingPublicProfile && publicProfileData && (
                             <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', textAlign: 'center'}}>
-                                <div style={{width: '90px', height: '90px', borderRadius: '50%', overflow: 'hidden', border: '3px solid var(--sakura-pink)', background: 'var(--bg-base)'}}>
+                                <div style={{width: '90px', height: '90px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--border-color)', background: 'var(--bg-base)'}}>
                                     <img 
                                         src={publicProfileData.avatarSeed && (publicProfileData.avatarSeed.startsWith('http') || publicProfileData.avatarSeed.startsWith('/uploads') || publicProfileData.avatarSeed.startsWith('data:')) 
                                             ? publicProfileData.avatarSeed 
@@ -3238,7 +3293,7 @@ export default function App() {
                                     />
                                 </div>
                                 <div>
-                                    <h4 style={{fontSize: '1.15rem', margin: '0 0 4px 0', fontWeight: 700}}>{publicProfileData.displayname}</h4>
+                                    <h4 style={{fontSize: '1.15rem', margin: '0 0 4px 0', fontWeight: 700, color: 'var(--text-main)'}}>{publicProfileData.displayname}</h4>
                                     <span style={{fontSize: '0.8rem', color: 'var(--text-muted)'}}>@{publicProfileData.username}</span>
                                 </div>
                                 
@@ -3246,14 +3301,20 @@ export default function App() {
                                 <div style={{display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center'}}>
                                     {publicProfileData.roles && publicProfileData.roles.map(role => {
                                         let label = 'Độc giả';
-                                        let color = 'var(--sakura-pink)';
-                                        let bg = 'var(--sakura-pink-light)';
-                                        if (role === 'admin') { label = 'Admin'; color = '#cc0000'; bg = 'rgba(204,0,0,0.1)'; }
-                                        else if (role === 'moderator') { label = 'Kiểm duyệt'; color = 'var(--indigo-blue)'; bg = '#e0e7ff'; }
-                                        else if (role === 'author') { label = 'Tác giả'; color = '#d97706'; bg = 'rgba(217,119,6,0.1)'; }
+                                        if (role === 'admin') label = 'Quản trị viên';
+                                        else if (role === 'moderator') label = 'Kiểm duyệt';
+                                        else if (role === 'author') label = 'Tác giả';
                                         
                                         return (
-                                            <span key={role} style={{fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px', color, background: bg, fontWeight: 600}}>
+                                            <span key={role} style={{
+                                                fontSize: '0.72rem',
+                                                padding: '3px 10px',
+                                                borderRadius: '12px',
+                                                color: 'var(--text-main)',
+                                                background: 'var(--bg-base)',
+                                                border: '1px solid var(--border-color)',
+                                                fontWeight: 600
+                                            }}>
                                                 {label}
                                             </span>
                                         );
@@ -3263,9 +3324,9 @@ export default function App() {
                                 <div style={{width: '100%', height: '1px', background: 'var(--border-color)', margin: '8px 0'}}></div>
 
                                 <div style={{width: '100%', textAlign: 'left'}}>
-                                    <div style={{fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '4px'}}>Giới thiệu wibu:</div>
+                                    <div style={{fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '4px'}}>Giới thiệu thành viên:</div>
                                     <p style={{fontSize: '0.85rem', color: 'var(--text-content)', margin: 0, background: 'var(--bg-base)', padding: '10px', borderRadius: '6px', minHeight: '60px', border: '1px solid var(--border-color)', whiteSpace: 'pre-wrap'}}>
-                                        {publicProfileData.bio || 'Wibu này lười quá, chưa viết lời tự giới thiệu nào...'}
+                                        {publicProfileData.bio || 'Thành viên này chưa cập nhật phần giới thiệu...'}
                                     </p>
                                 </div>
 
@@ -3283,47 +3344,52 @@ export default function App() {
                                         <div style={{display: 'flex', gap: '10px', width: '100%', marginTop: '10px'}}>
                                             <button 
                                                 className="outline-btn small" 
-                                                style={{flex: 1}} 
+                                                style={{flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}} 
                                                 onClick={() => {
                                                     setShowPublicProfileModal(false);
                                                     setProfileViewingUsername(publicProfileData.username);
                                                     setCurrentView('profile');
                                                 }}
                                             >
-                                                🔍 Xem trang cá nhân
+                                                <Icons.User size={14} />
+                                                <span>Xem hồ sơ</span>
                                             </button>
                                             
                                             {isFriend ? (
                                                 <button 
                                                     className="outline-btn small" 
-                                                    style={{flex: 1, borderColor: 'rgba(255, 59, 48, 0.25)', color: '#ff3b30'}} 
+                                                    style={{flex: 1, borderColor: 'rgba(255, 59, 48, 0.25)', color: '#ff3b30', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}} 
                                                     onClick={() => handleDeclineRequest(publicProfileData.id)}
                                                 >
-                                                    💔 Hủy kết bạn
+                                                    <Icons.Trash size={14} />
+                                                    <span>Hủy kết bạn</span>
                                                 </button>
                                             ) : isReceivedPending ? (
                                                 <button 
                                                     className="primary-btn small" 
-                                                    style={{flex: 1}} 
+                                                    style={{flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}} 
                                                     onClick={() => handleAcceptRequest(publicProfileData.id)}
                                                 >
-                                                    🤝 Đồng ý
+                                                    <Icons.CheckCircle size={14} />
+                                                    <span>Đồng ý</span>
                                                 </button>
                                             ) : isSentPending ? (
                                                 <button 
                                                     className="outline-btn small" 
-                                                    style={{flex: 1, color: 'var(--text-muted)'}} 
+                                                    style={{flex: 1, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}} 
                                                     onClick={() => handleDeclineRequest(publicProfileData.id)}
                                                 >
-                                                    ⏱️ Hủy lời mời
+                                                    <Icons.Clock size={14} />
+                                                    <span>Hủy lời mời</span>
                                                 </button>
                                             ) : (
                                                 <button 
                                                     className="primary-btn small" 
-                                                    style={{flex: 1}} 
+                                                    style={{flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}} 
                                                     onClick={() => handleSendRequest(publicProfileData.id)}
                                                 >
-                                                    ➕ Kết bạn
+                                                    <Icons.Plus size={14} />
+                                                    <span>Kết bạn</span>
                                                 </button>
                                             )}
                                         </div>

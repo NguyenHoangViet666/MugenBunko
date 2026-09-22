@@ -75,6 +75,10 @@ const socketUsers = new Map<string, number>(); // socketId -> userId
 const allowedOrigins = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
+    'http://localhost:8081',
+    'http://127.0.0.1:8081',
+    'http://localhost:19006',
+    'http://127.0.0.1:19006',
     `http://localhost:${PORT}`,
     `http://127.0.0.1:${PORT}`,
     process.env.FRONTEND_URL
@@ -140,7 +144,8 @@ const uploadLimiter = rateLimit({
 // Global Middlewares
 app.use(helmet({
     contentSecurityPolicy: false, // Turn off for unified frontend assets hosting / dev mode ease
-    crossOriginEmbedderPolicy: false
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 app.use(cors(corsOptionsDelegate));
 app.use('/api/', generalLimiter);
@@ -155,12 +160,16 @@ app.use(requestLogger);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
+const PUBLIC_DIR = path.join(__dirname, '..', 'public');
+const PUBLIC_ASSETS_DIR = path.join(PUBLIC_DIR, 'assets');
 
 if (!fs.existsSync(UPLOADS_DIR)) {
     fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
 
 app.use('/uploads', express.static(UPLOADS_DIR));
+app.use('/assets', express.static(PUBLIC_ASSETS_DIR));
+app.use(express.static(PUBLIC_DIR));
 
 app.post('/api/upload', async (req, res) => {
     const { image, type } = req.body;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Novel, Comment, Review, Chapter } from '../types';
+import { Icons } from '../components/Icons';
 
 const getWordCount = (content: string | undefined): number => {
     if (!content) return 0;
@@ -211,8 +212,8 @@ export default function NovelDetail({
                     return (
                         <div style={{ maxWidth: '600px', margin: '40px auto', padding: '0 20px', textAlign: 'center' }}>
                             <div className="back-nav-container" style={{ marginBottom: '24px', textAlign: 'left' }}>
-                                <button className="text-link-btn" onClick={() => setCurrentView('home')}>
-                                    ← Quay lại trang chủ
+                                <button className="text-link-btn" onClick={() => setCurrentView('home')} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--text-main)', fontWeight: 600 }}>
+                                    <Icons.ArrowLeft size={16} /> Quay lại trang chủ
                                 </button>
                             </div>
                             <div style={{
@@ -220,10 +221,12 @@ export default function NovelDetail({
                                 border: '1px solid var(--border-color)',
                                 borderRadius: '12px',
                                 padding: '40px 30px',
-                                boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
+                                boxShadow: 'var(--shadow-sm)'
                             }}>
-                                <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🔍</div>
-                                <h3 style={{ color: 'var(--text-main)', marginBottom: '12px' }}>Không tìm thấy tác phẩm</h3>
+                                <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                                    <Icons.Search size={44} />
+                                </div>
+                                <h3 style={{ color: 'var(--text-main)', marginBottom: '12px', fontFamily: 'var(--font-serif)' }}>Không tìm thấy tác phẩm</h3>
                                 <p style={{ color: 'var(--text-muted)', marginBottom: '24px' }}>Tác phẩm không tồn tại hoặc đã bị xóa hoàn toàn khỏi cơ sở dữ liệu.</p>
                                 <button className="primary-btn" onClick={() => setCurrentView('home')} style={{ width: '100%', padding: '12px', borderRadius: '6px' }}>
                                     Quay về trang chủ
@@ -256,54 +259,169 @@ export default function NovelDetail({
 
                 return (
                     <>
-                        <div className="back-nav-container">
-                            <button className="text-link-btn" onClick={() => setCurrentView('home')}>
-                                ← Trở lại danh sách truyện
+                        <div className="back-nav-container" style={{ marginBottom: '20px' }}>
+                            <button className="text-link-btn" onClick={() => setCurrentView('home')} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--text-main)', fontWeight: 600 }}>
+                                <Icons.ArrowLeft size={16} /> Trở lại danh sách truyện
                             </button>
                         </div>
 
-                        {/* Novel General Metadata Block */}
-                        <div className="novel-detail-card">
-                            <div className="detail-cover-wrapper">
-                                <img src={novel.cover} alt={novel.title} className="detail-cover" />
+                        {/* Novel General Metadata Block (Bento Showcase) */}
+                        <div className="novel-detail-card" style={{
+                            background: 'var(--bg-card)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: 'var(--border-radius-lg)',
+                            boxShadow: 'var(--shadow-sm)',
+                            padding: '28px',
+                            display: 'flex',
+                            gap: '32px'
+                        }}>
+                            <div className="detail-cover-wrapper" style={{ flexShrink: 0, position: 'relative' }}>
+                                <img 
+                                    src={novel.cover} 
+                                    alt={novel.title} 
+                                    className="detail-cover" 
+                                    style={{
+                                        width: '180px',
+                                        height: '250px',
+                                        objectFit: 'cover',
+                                        borderRadius: '8px',
+                                        boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+                                        border: '1px solid var(--border-color)'
+                                    }} 
+                                />
                             </div>
-                            <div className="detail-info">
-                                <span className="tag-badge" style={{backgroundColor: 'var(--sakura-pink-light)', color: 'var(--sakura-pink)', borderColor: 'transparent', width: 'fit-content', marginBottom: '8px', fontWeight:600}}>
-                                    {novel.status === 'completed' ? 'HOÀN THÀNH' : novel.status === 'paused' ? 'TẠM NGƯNG' : novel.status === 'suspended' ? 'BỊ KHÓA' : 'ĐANG TIẾN HÀNH'}
-                                </span>
-                                <h2 className="detail-title">{novel.title}</h2>
-                                <div className="detail-meta-row">
-                                    <span>Tác giả: <strong style={{cursor: 'pointer', color: 'var(--sakura-pink)'}} onClick={() => novel.authorId && viewPublicProfile(novel.authorId)}>{novel.author || novel.author_name || "Ẩn danh"}</strong></span>
-                                    <span>Lượt đọc: <strong>{Number(novel.reads).toLocaleString()}</strong></span>
-                                    <span>Đánh giá: <strong>{computeAverageStars(novel.id) === 'N/A' ? 'N/A' : `${computeAverageStars(novel.id)} ★`}</strong></span>
-                                    <span>Số lượt lưu: <strong>{novel.bookmarksCount || 0}</strong></span>
-                                    <span>Tổng số từ: <strong>{Number(totalWordCount).toLocaleString()} từ</strong></span>
+                            <div className="detail-info" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '10px' }}>
+                                    <span style={{
+                                        background: 'var(--text-main)',
+                                        color: 'var(--bg-card)',
+                                        padding: '3px 10px',
+                                        borderRadius: '4px',
+                                        fontSize: '0.72rem',
+                                        fontWeight: 700,
+                                        letterSpacing: '0.5px'
+                                    }}>
+                                        {novel.status === 'completed' ? 'HOÀN THÀNH' : novel.status === 'paused' ? 'TẠM NGƯNG' : novel.status === 'suspended' ? 'BỊ KHÓA' : 'ĐANG TIẾN HÀNH'}
+                                    </span>
+                                    <span style={{
+                                        border: '1px solid var(--border-color)',
+                                        color: 'var(--text-muted)',
+                                        padding: '3px 8px',
+                                        borderRadius: '4px',
+                                        fontSize: '0.72rem',
+                                        fontWeight: 600
+                                    }}>
+                                        {novel.type === 'oneshot' ? 'Oneshot' : 'Series'}
+                                    </span>
                                 </div>
-                                <p className={`detail-summary ${detailSummaryExpanded ? 'expanded' : ''}`}>{novel.summary}</p>
-                                <button className="text-link-btn" style={{width:'fit-content', marginBottom:'16px', padding:0}} onClick={() => setDetailSummaryExpanded(!detailSummaryExpanded)}>
-                                    {detailSummaryExpanded ? 'Thu gọn tóm tắt' : 'Đọc thêm tóm tắt'}
+
+                                <h2 className="detail-title" style={{
+                                    fontSize: '1.65rem',
+                                    fontWeight: 700,
+                                    fontFamily: 'var(--font-serif)',
+                                    color: 'var(--text-main)',
+                                    margin: '0 0 12px 0',
+                                    lineHeight: '1.3'
+                                }}>
+                                    {novel.title}
+                                </h2>
+
+                                <div className="detail-meta-row" style={{
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    gap: '16px',
+                                    fontSize: '0.85rem',
+                                    color: 'var(--text-muted)',
+                                    marginBottom: '14px',
+                                    alignItems: 'center'
+                                }}>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                                        <Icons.User size={15} />
+                                        <span>Tác giả:</span>
+                                        <strong 
+                                            style={{ cursor: 'pointer', color: 'var(--text-main)', textDecoration: 'underline' }} 
+                                            onClick={() => novel.authorId && viewPublicProfile(novel.authorId)}
+                                        >
+                                            {novel.author || novel.author_name || "Ẩn danh"}
+                                        </strong>
+                                    </span>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                                        <Icons.Eye size={15} />
+                                        <strong>{Number(novel.reads).toLocaleString()}</strong> lượt đọc
+                                    </span>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                                        <Icons.Star size={15} filled={true} />
+                                        <strong>{computeAverageStars(novel.id) === 'N/A' ? 'N/A' : computeAverageStars(novel.id)}</strong>
+                                    </span>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                                        <Icons.Bookmark size={15} />
+                                        <strong>{novel.bookmarksCount || 0}</strong> lưu
+                                    </span>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                                        <Icons.Feather size={15} />
+                                        <strong>{Number(totalWordCount).toLocaleString()}</strong> từ
+                                    </span>
+                                </div>
+
+                                <p className={`detail-summary ${detailSummaryExpanded ? 'expanded' : ''}`} style={{
+                                    fontSize: '0.9rem',
+                                    color: 'var(--text-content)',
+                                    lineHeight: '1.6',
+                                    marginBottom: '10px'
+                                }}>
+                                    {novel.summary}
+                                </p>
+
+                                <button 
+                                    className="text-link-btn" 
+                                    style={{ width: 'fit-content', marginBottom: '14px', padding: 0, color: 'var(--text-muted)', fontSize: '0.82rem' }} 
+                                    onClick={() => setDetailSummaryExpanded(!detailSummaryExpanded)}
+                                >
+                                    {detailSummaryExpanded ? '↑ Thu gọn tóm tắt' : '↓ Đọc thêm tóm tắt'}
                                 </button>
-                                <div className="detail-tags-row">
-                                    {(novel.tags || []).map(t => <span key={t} className="tag-badge">#{t}</span>)}
+
+                                <div className="detail-tags-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '20px' }}>
+                                    {(novel.tags || []).map(t => (
+                                        <span key={t} className="tag-badge" style={{
+                                            fontSize: '0.75rem',
+                                            padding: '3px 10px',
+                                            borderRadius: '12px',
+                                            background: 'var(--bg-base)',
+                                            border: '1px solid var(--border-color)',
+                                            color: 'var(--text-muted)'
+                                        }}>
+                                            #{t}
+                                        </span>
+                                    ))}
                                 </div>
-                                <div className="detail-actions">
-                                    <button className="primary-btn" onClick={() => startReading(novel.id, 0)}>Đọc Từ Đầu</button>
+
+                                <div className="detail-actions" style={{ display: 'flex', gap: '12px', marginTop: 'auto', alignItems: 'center' }}>
+                                    <button className="primary-btn" onClick={() => startReading(novel.id, 0)} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                                        <Icons.Book size={16} />
+                                        <span>Đọc Từ Đầu</span>
+                                    </button>
                                     {currentUser && (
-                                        <button className={isSaved ? "outline-btn active" : "primary-btn"} style={{background: isSaved ? 'var(--indigo-blue)' : '', color: isSaved ? 'white' : ''}} onClick={() => toggleBookmark(novel.id)}>
-                                            🔖 {isSaved ? 'Đã Lưu Vào Thư Viện' : 'Lưu Tủ Sách'}
+                                        <button 
+                                            className={isSaved ? "primary-btn" : "outline-btn"} 
+                                            onClick={() => toggleBookmark(novel.id)}
+                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                                        >
+                                            <Icons.Bookmark size={16} filled={Boolean(isSaved)} />
+                                            <span>{isSaved ? 'Đã Lưu Tủ Sách' : 'Lưu Tủ Sách'}</span>
                                         </button>
                                     )}
                                     {currentUser && currentUser.roles && currentUser.roles.includes('admin') && (
-                                         <button 
-                                             className="outline-btn" 
-                                             style={{borderColor: '#dc3545', color: '#dc3545', background: 'transparent'}}
-                                             onClick={() => {
-                                                 setDeleteReason("");
-                                                 setDeleteModalOpen(true);
-                                             }}
-                                         >
-                                             🗑️ Gỡ bỏ tác phẩm (Admin)
-                                         </button>
+                                        <button 
+                                            className="outline-btn" 
+                                            style={{ borderColor: '#dc3545', color: '#dc3545', background: 'transparent', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                                            onClick={() => {
+                                                setDeleteReason("");
+                                                setDeleteModalOpen(true);
+                                            }}
+                                        >
+                                            <Icons.Trash size={15} />
+                                            <span>Gỡ bỏ (Admin)</span>
+                                        </button>
                                     )}
                                 </div>
                             </div>
@@ -382,22 +500,23 @@ export default function NovelDetail({
                                     
                                     {currentUser ? (
                                         (reviews[novel.id] || []).some(r => r.user_id === currentUser.id || r.username === currentUser.username) ? (
-                                            <div className="alert-box success" style={{background:'rgba(39, 148, 80, 0.08)', padding:'10px 16px', borderRadius:'4px', fontSize:'0.82rem', borderLeft:'3px solid #279450', marginBottom:'16px', color:'#279450', fontWeight:500}}>
-                                                ✨ Bạn đã gửi đánh giá cho tác phẩm này rồi. Cảm ơn nhận xét của bạn!
+                                            <div className="alert-box success" style={{background:'var(--bg-base)', padding:'12px 16px', borderRadius:'6px', fontSize:'0.82rem', border:'1px solid var(--border-color)', marginBottom:'16px', color:'var(--text-main)', display:'flex', alignItems:'center', gap:'8px'}}>
+                                                <Icons.CheckCircle size={16} />
+                                                <span>Bạn đã gửi đánh giá cho tác phẩm này rồi. Cảm ơn nhận xét của bạn!</span>
                                             </div>
                                         ) : readCount >= minRequired ? (
                                             <div className="review-form-container">
                                                 <div className="star-rating-selector" style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'12px'}}>
-                                                    <span>Đánh giá của bạn:</span>
-                                                    <div className="stars-stars" style={{color:'#d97706', fontSize:'1.2rem', cursor:'pointer'}}>
+                                                    <span style={{fontSize:'0.85rem', color:'var(--text-muted)'}}>Đánh giá của bạn:</span>
+                                                    <div className="stars-stars" style={{color:'var(--text-main)', display:'flex', gap:'4px', cursor:'pointer'}}>
                                                         {[1,2,3,4,5].map(val => (
                                                             <span 
                                                                 key={val} 
                                                                 className="star-select"
                                                                 onClick={() => setSelectedRatingStars(val)}
-                                                                style={{opacity: val <= selectedRatingStars ? 1 : 0.3, marginRight:'2px'}}
+                                                                style={{opacity: val <= selectedRatingStars ? 1 : 0.25, transition:'opacity 0.2s'}}
                                                             >
-                                                                ★
+                                                                <Icons.Star size={18} filled={val <= selectedRatingStars} />
                                                             </span>
                                                         ))}
                                                     </div>
@@ -413,9 +532,10 @@ export default function NovelDetail({
                                                  </div>
                                             </div>
                                         ) : (
-                                            <div className="alert-box info" style={{background:'var(--sakura-pink-light)', padding:'10px 16px', borderRadius:'4px', fontSize:'0.82rem', borderLeft:'3px solid var(--sakura-pink)', marginBottom:'16px'}}>
-                                                <div style={{ marginBottom: '12px' }}>
-                                                    💡 Bạn cần đọc tối thiểu <strong>{minRequired} chương</strong> để gửi đánh giá. Lịch sử đọc hiện tại: <strong>{readCount}</strong> chương.
+                                            <div className="alert-box info" style={{background:'var(--bg-base)', padding:'12px 16px', borderRadius:'6px', fontSize:'0.82rem', border:'1px solid var(--border-color)', marginBottom:'16px'}}>
+                                                <div style={{ marginBottom: '10px', display:'flex', alignItems:'center', gap:'8px', color:'var(--text-main)' }}>
+                                                    <Icons.AlertCircle size={16} />
+                                                    <span>Bạn cần đọc tối thiểu <strong>{minRequired} chương</strong> để gửi đánh giá. Lịch sử đọc hiện tại: <strong>{readCount}</strong> chương.</span>
                                                 </div>
                                                 <button className="primary-btn small" onClick={() => startReading(novel.id, readCount > 0 ? readCount : 0)}>
                                                     {readCount > 0 ? `Đọc tiếp Chương ${readCount + 1} ngay` : 'Đọc chương 1 ngay'}
@@ -423,8 +543,9 @@ export default function NovelDetail({
                                             </div>
                                         )
                                     ) : (
-                                        <div className="guest-action-alert" style={{background:'var(--bg-base)', padding:'10px 16px', borderRadius:'4px', fontSize:'0.82rem', textAlign:'center'}}>
-                                            🔑 Vui lòng <a href="#" onClick={(e) => { e.preventDefault(); setLoginModalOpen(true); }}>Đăng nhập</a> để bình luận hoặc đánh giá.
+                                        <div className="guest-action-alert" style={{background:'var(--bg-base)', padding:'12px 16px', borderRadius:'6px', fontSize:'0.82rem', textAlign:'center', border:'1px solid var(--border-color)', display:'flex', alignItems:'center', justifyContent:'center', gap:'8px'}}>
+                                            <Icons.Key size={16} />
+                                            <span>Vui lòng <a href="#" onClick={(e) => { e.preventDefault(); setLoginModalOpen(true); }} style={{color:'var(--text-main)', fontWeight:600, textDecoration:'underline'}}>Đăng nhập</a> để bình luận hoặc đánh giá.</span>
                                         </div>
                                     )}
 
@@ -436,15 +557,19 @@ export default function NovelDetail({
                                                 <div key={i} className="review-item-card" style={{borderBottom:'1px solid var(--border-color)', padding:'12px 0'}}>
                                                     <div className="review-author-row flex-row-between" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                                                         <div style={{display:'flex', alignSelf:'center', gap:'8px', alignItems:'center', cursor:'pointer'}} onClick={() => r.username && viewPublicProfile(r.username)}>
-                                                            <img src={r.avatarSeed && (r.avatarSeed.startsWith('http') || r.avatarSeed.startsWith('/uploads') || r.avatarSeed.startsWith('data:')) ? r.avatarSeed : `https://api.dicebear.com/7.x/adventurer/svg?seed=${r.avatarSeed}`} style={{width:'32px', height:'32px', borderRadius:'50%'}} alt="Avatar" />
+                                                            <img src={r.avatarSeed && (r.avatarSeed.startsWith('http') || r.avatarSeed.startsWith('/uploads') || r.avatarSeed.startsWith('data:')) ? r.avatarSeed : `https://api.dicebear.com/7.x/adventurer/svg?seed=${r.avatarSeed}`} style={{width:'32px', height:'32px', borderRadius:'50%', border:'1px solid var(--border-color)'}} alt="Avatar" />
                                                             <div>
-                                                                <strong style={{fontSize:'0.85rem'}}>{r.displayname || r.username}</strong>
-                                                                <div style={{color:'#d97706', fontSize:'0.82rem'}}>{"★".repeat(r.stars) + "☆".repeat(5-r.stars)}</div>
+                                                                <strong style={{fontSize:'0.85rem', color:'var(--text-main)'}}>{r.displayname || r.username}</strong>
+                                                                <div style={{color:'var(--text-main)', display:'flex', gap:'2px', marginTop:'2px'}}>
+                                                                    {[...Array(5)].map((_, sIdx) => (
+                                                                        <Icons.Star key={sIdx} size={12} filled={sIdx < r.stars} />
+                                                                    ))}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                         <span style={{fontSize:'0.75rem', color:'var(--text-muted)'}}>{r.date || new Date(r.created_at).toLocaleDateString('vi-VN')}</span>
                                                     </div>
-                                                    <p style={{fontSize:'0.85rem', marginTop:'8px', lineHeight:1.5}}>{r.text}</p>
+                                                    <p style={{fontSize:'0.85rem', marginTop:'8px', lineHeight:1.5, color:'var(--text-content)'}}>{r.text}</p>
                                                 </div>
                                             ))
                                         )}
@@ -467,66 +592,66 @@ export default function NovelDetail({
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="guest-action-alert" style={{background:'var(--bg-base)', padding:'10px 16px', borderRadius:'4px', fontSize:'0.82rem', textAlign:'center', marginBottom:'16px'}}>
-                                            🔑 Vui lòng <a href="#" onClick={(e) => { e.preventDefault(); setLoginModalOpen(true); }}>Đăng nhập</a> để viết bình luận.
+                                        <div className="guest-action-alert" style={{background:'var(--bg-base)', padding:'12px 16px', borderRadius:'6px', fontSize:'0.82rem', textAlign:'center', marginBottom:'16px', border:'1px solid var(--border-color)', display:'flex', alignItems:'center', justifyContent:'center', gap:'8px'}}>
+                                            <Icons.Key size={16} />
+                                            <span>Vui lòng <a href="#" onClick={(e) => { e.preventDefault(); setLoginModalOpen(true); }} style={{color:'var(--text-main)', fontWeight:600, textDecoration:'underline'}}>Đăng nhập</a> để viết bình luận.</span>
                                         </div>
                                     )}
 
-                                    <div className="comment-tree">
-                                        {(comments[novel.id] || []).length === 0 ? (
-                                            <div style={{fontSize:'0.8rem', color:'var(--text-muted)', padding:'16px 0', textAlign:'center'}}>Chưa có bình luận nào. Hãy bắt đầu cuộc trò chuyện!</div>
+                                    <div className="comments-tree">
+                                        {Object.values(comments[novel.id] || []).length === 0 ? (
+                                            <div style={{fontSize:'0.8rem', color:'var(--text-muted)', padding:'16px 0', textAlign:'center'}}>Chưa có bình luận nào. Hãy là người đầu tiên!</div>
                                         ) : (
-                                            (comments[novel.id] || []).map(c => (
-                                                <div key={c.id} className="comment-item-node" style={{marginBottom:'16px', padding:'10px 0', borderBottom:'1.5px solid var(--border-color)'}}>
-                                                    <div className="flex-row-between" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                                                        <div style={{display:'flex', alignSelf:'center', gap:'8px', alignItems:'center', cursor:'pointer'}} onClick={() => c.username && viewPublicProfile(c.username)}>
-                                                            <img src={c.avatarSeed && (c.avatarSeed.startsWith('http') || c.avatarSeed.startsWith('/uploads') || c.avatarSeed.startsWith('data:')) ? c.avatarSeed : `https://api.dicebear.com/7.x/adventurer/svg?seed=${c.avatarSeed || 'Default'}`} style={{width:'28px', height:'28px', borderRadius:'50%'}} alt="Avatar" />
-                                                            <strong style={{fontSize:'0.82rem'}}>{c.displayname} <span style={{fontSize:'0.72rem', color:'var(--text-muted)', fontWeight:'normal'}}>@{c.username}</span></strong>
+                                            Object.values(comments[novel.id] || []).map((c) => (
+                                                <div key={c.id} className="comment-root-node" style={{borderBottom:'1px dashed var(--border-color)', padding:'14px 0'}}>
+                                                    <div className="comment-meta-row flex-row-between" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                                                        <div style={{display:'flex', gap:'8px', alignItems:'center', cursor:'pointer'}} onClick={() => c.username && viewPublicProfile(c.username)}>
+                                                            <img src={c.avatarSeed && (c.avatarSeed.startsWith('http') || c.avatarSeed.startsWith('/uploads') || c.avatarSeed.startsWith('data:')) ? c.avatarSeed : `https://api.dicebear.com/7.x/adventurer/svg?seed=${c.avatarSeed}`} style={{width:'28px', height:'28px', borderRadius:'50%', border:'1px solid var(--border-color)'}} alt="Avatar" />
+                                                            <strong style={{fontSize:'0.85rem', color:'var(--text-main)'}}>{c.displayname || c.username}</strong>
                                                         </div>
                                                         <span style={{fontSize:'0.72rem', color:'var(--text-muted)'}}>{c.date || new Date(c.created_at).toLocaleDateString('vi-VN')}</span>
                                                     </div>
-                                                    <p style={{fontSize:'0.85rem', marginTop:'6px', lineHeight:1.5}}>{c.text}</p>
-                                                    
-                                                    <div className="comment-actions-bar" style={{marginTop:'6px', display:'flex', gap:'12px'}}>
+                                                    <p style={{fontSize:'0.85rem', marginTop:'6px', lineHeight:1.45, color:'var(--text-content)'}}>{c.text}</p>
+                                                    <div className="comment-actions-bar" style={{marginTop:'6px', display:'flex', gap:'14px'}}>
                                                         {currentUser && (
                                                             <>
-                                                                <button className="text-link-btn" style={{fontSize:'0.75rem', padding:0, height:'auto'}} onClick={() => { setReplyToCommentId(c.id); setReplyToUserId(c.user_id); setReplyText(""); }}>Phản hồi</button>
+                                                                <button 
+                                                                    className="text-link-btn" 
+                                                                    style={{fontSize:'0.75rem', padding:0, height:'auto', color:'var(--text-muted)'}} 
+                                                                    onClick={() => { 
+                                                                        setReplyToCommentId(c.id); 
+                                                                        setReplyToUserId(c.user_id);
+                                                                        if (c.username === currentUser.username) {
+                                                                            setReplyText("");
+                                                                        } else {
+                                                                            setReplyText(`@${c.displayname} `);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    Phản hồi
+                                                                </button>
                                                                 <button className="text-link-btn" style={{fontSize:'0.75rem', padding:0, height:'auto', color:'#cc0000'}} onClick={() => reportComment(c.id)}>Báo cáo</button>
                                                             </>
                                                         )}
                                                     </div>
 
-                                                    {replyToCommentId === c.id && (
-                                                        <div className="reply-form-placeholder" style={{marginTop:'8px', marginLeft:'40px'}}>
-                                                            <textarea 
-                                                                placeholder="Nhập phản hồi..." 
-                                                                value={replyText}
-                                                                onChange={(e) => setReplyText(e.target.value)}
-                                                                style={{width:'100%', minHeight:'50px', fontSize:'0.8rem', padding:'6px', border:'1px solid var(--border-color)', borderRadius:'4px', outline:'none', fontFamily:'inherit', background: 'var(--bg-card)', color: 'var(--text-main)'}}
-                                                            />
-                                                            <div className="flex-row-end" style={{gap:'8px', marginTop:'4px'}}>
-                                                                <button className="outline-btn small" style={{padding:'2px 8px', fontSize:'0.7rem'}} onClick={() => setReplyToCommentId(null)}>Hủy</button>
-                                                                <button className="primary-btn small" style={{padding:'2px 8px', fontSize:'0.7rem'}} onClick={() => submitCommentReply(c.id)}>Gửi phản hồi</button>
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    {c.replies && c.replies.map(reply => (
-                                                        <div key={reply.id} className="comment-reply-node" style={{marginLeft:'40px', marginTop:'12px', background:'rgba(0,0,0,0.02)', padding:'8px 12px', borderLeft:'2px solid var(--sakura-pink)', borderRadius:'4px'}}>
-                                                            <div className="flex-row-between" style={{fontSize:'0.78rem', display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'4px'}}>
+                                                    {/* Replies list */}
+                                                    {(c.replies || []).map((reply: any) => (
+                                                        <div key={reply.id} className="comment-reply-item" style={{marginLeft:'28px', marginTop:'10px', padding:'10px 12px', background:'var(--bg-base)', borderRadius:'6px', border:'1px solid var(--border-color)'}}>
+                                                            <div className="flex-row-between" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                                                                 <div style={{display:'flex', gap:'6px', alignItems:'center', cursor:'pointer'}} onClick={() => reply.username && viewPublicProfile(reply.username)}>
-                                                                    <img src={reply.avatarSeed && (reply.avatarSeed.startsWith('http') || reply.avatarSeed.startsWith('/uploads') || reply.avatarSeed.startsWith('data:')) ? reply.avatarSeed : `https://api.dicebear.com/7.x/adventurer/svg?seed=${reply.avatarSeed || 'Default'}`} style={{width:'20px', height:'20px', borderRadius:'50%'}} alt="Avatar" />
-                                                                    <strong>{reply.displayname} <span style={{fontSize:'0.7rem', color:'var(--text-muted)', fontWeight:'normal'}}>@{reply.username}</span></strong>
+                                                                    <img src={reply.avatarSeed && (reply.avatarSeed.startsWith('http') || reply.avatarSeed.startsWith('/uploads') || reply.avatarSeed.startsWith('data:')) ? reply.avatarSeed : `https://api.dicebear.com/7.x/adventurer/svg?seed=${reply.avatarSeed}`} style={{width:'22px', height:'22px', borderRadius:'50%'}} alt="Avatar" />
+                                                                    <strong style={{fontSize:'0.8rem', color:'var(--text-main)'}}>{reply.displayname || reply.username}</strong>
                                                                 </div>
                                                                 <span style={{fontSize:'0.70rem', color:'var(--text-muted)'}}>{reply.date || new Date(reply.created_at).toLocaleDateString('vi-VN')}</span>
                                                             </div>
-                                                            <p style={{fontSize:'0.82rem', marginTop:'4px', lineHeight:1.4, marginLeft:'26px'}}>{reply.text}</p>
-                                                            <div className="comment-actions-bar" style={{marginTop:'4px', display:'flex', gap:'12px', marginLeft:'26px'}}>
+                                                            <p style={{fontSize:'0.82rem', marginTop:'4px', lineHeight:1.4, marginLeft:'28px', color:'var(--text-content)'}}>{reply.text}</p>
+                                                            <div className="comment-actions-bar" style={{marginTop:'4px', display:'flex', gap:'12px', marginLeft:'28px'}}>
                                                                 {currentUser && (
                                                                     <>
                                                                         <button 
                                                                             className="text-link-btn" 
-                                                                            style={{fontSize:'0.72rem', padding:0, height:'auto'}} 
+                                                                            style={{fontSize:'0.72rem', padding:0, height:'auto', color:'var(--text-muted)'}} 
                                                                             onClick={() => { 
                                                                                 setReplyToCommentId(c.id); 
                                                                                 setReplyToUserId(reply.user_id);
@@ -554,31 +679,46 @@ export default function NovelDetail({
 
                             <div className="sidebar-column">
                                 {/* Author Bio Widget */}
-                                <div className="sidebar-card author-bio-card">
-                                    <h3 className="card-title">Tác giả</h3>
+                                <div className="sidebar-card author-bio-card" style={{
+                                    background: 'var(--bg-card)',
+                                    border: '1px solid var(--border-color)',
+                                    borderRadius: 'var(--border-radius-md)',
+                                    padding: '20px'
+                                }}>
+                                    <h3 className="card-title" style={{ fontSize: '1.05rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', marginBottom: '16px' }}>Tác giả</h3>
                                     <div 
                                         className="author-profile-summary" 
-                                        style={{display:'flex', gap:'8px', alignItems:'center', marginBottom:'12px', cursor:'pointer'}}
+                                        style={{display:'flex', gap:'10px', alignItems:'center', marginBottom:'12px', cursor:'pointer'}}
                                         onClick={() => novel.authorId && viewPublicProfile(novel.authorId)}
                                     >
                                         <img 
                                             src={authorAvatar && (authorAvatar.startsWith('http') || authorAvatar.startsWith('/uploads') || authorAvatar.startsWith('data:')) ? authorAvatar : `https://api.dicebear.com/7.x/adventurer/svg?seed=${authorAvatar}`} 
-                                            style={{width:'40px', height:'40px', borderRadius:'50%'}} 
+                                            style={{width:'44px', height:'44px', borderRadius:'50%', border: '1px solid var(--border-color)'}} 
                                             alt={novel.author}
                                         />
                                         <div>
-                                            <h4 style={{fontSize:'0.9rem', margin:0, color:'var(--sakura-pink)'}}>{novel.author || novel.author_name || "Ẩn danh"}</h4>
-                                            <span style={{fontSize:'0.72rem', color:'var(--text-muted)'}}>Tác giả Mugen</span>
+                                            <h4 style={{fontSize:'0.95rem', margin:0, fontWeight: 700, color:'var(--text-main)'}}>{novel.author || novel.author_name || "Ẩn danh"}</h4>
+                                            <span style={{fontSize:'0.72rem', color:'var(--text-muted)'}}>Tác giả MugenBunko</span>
                                         </div>
                                     </div>
-                                    <p style={{fontSize:'0.82rem', color:'var(--text-content)', lineHeight:1.4}}>{authorBio}</p>
+                                    <p style={{fontSize:'0.82rem', color:'var(--text-content)', lineHeight:1.45}}>{authorBio}</p>
                                     {currentUser && novel.authorId && currentUser.username !== novel.authorId && (
                                         <button 
                                             className={`outline-btn w-100 ${currentUser.followedAuthors && (currentUser.followedAuthors as any).includes(novel.authorId) ? 'active' : ''}`}
-                                            style={{marginTop:'12px'}}
+                                            style={{marginTop:'14px', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px'}}
                                             onClick={() => novel.authorId && toggleFollowAuthor(novel.authorId, novel.author || novel.author_name || "Ẩn danh")}
                                         >
-                                            {currentUser.followedAuthors && (currentUser.followedAuthors as any).includes(novel.authorId) ? '✓ Đang theo dõi' : '+ Theo dõi Tác giả'}
+                                            {currentUser.followedAuthors && (currentUser.followedAuthors as any).includes(novel.authorId) ? (
+                                                <>
+                                                    <Icons.CheckCircle size={14} />
+                                                    <span>Đang theo dõi</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Icons.Plus size={14} />
+                                                    <span>Theo dõi Tác giả</span>
+                                                </>
+                                            )}
                                         </button>
                                     )}
                                 </div>
@@ -590,7 +730,7 @@ export default function NovelDetail({
                                 <div className="modal-content" style={{ maxWidth: '500px' }}>
                                     <div className="modal-header" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                                         <h3 style={{ margin: 0, color: '#dc3545', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            ⚠️ Xác nhận gỡ bỏ tác phẩm
+                                            <Icons.AlertCircle size={18} /> Xác nhận gỡ bỏ tác phẩm
                                         </h3>
                                         <button className="close-btn" onClick={() => setDeleteModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}>&times;</button>
                                     </div>

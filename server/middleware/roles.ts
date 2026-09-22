@@ -24,14 +24,14 @@ export function checkRole(requiredRole: 'reader' | 'author' | 'moderator' | 'adm
                     userPayload = jwt.verify(token, JWT_SECRET);
                     req.user = userPayload;
                 } catch (e) {
-                    return res.status(403).json({ error: "Token xác thực không hợp lệ hoặc đã hết hạn!" });
+                    return res.status(401).json({ error: "Token xác thực không hợp lệ hoặc đã hết hạn!", code: "TOKEN_EXPIRED" });
                 }
             }
         }
 
         const userId = userPayload ? userPayload.id : (req.headers['x-user-id'] || req.body.userId);
         if (!userId) {
-            return res.status(401).json({ error: "Yêu cầu xác thực tài khoản!" });
+            return res.status(401).json({ error: "Yêu cầu xác thực tài khoản!", code: "TOKEN_REQUIRED" });
         }
         try {
             const roles = await db.query<any[]>("SELECT role FROM user_roles WHERE user_id = ?", [userId]);
@@ -41,7 +41,7 @@ export function checkRole(requiredRole: 'reader' | 'author' | 'moderator' | 'adm
             const requiredLevel = ROLE_HIERARCHY[requiredRole] || 0;
             
             if (maxUserLevel < requiredLevel) {
-                return res.status(403).json({ error: `Bạn không có quyền thực hiện hành động này (Yêu cầu vai trò tối thiểu: ${requiredRole})!` });
+                return res.status(403).json({ error: `Bạn không có quyền thực hiện hành động này (Yêu cầu vai trò tối thiểu: ${requiredRole})!`, code: "FORBIDDEN_ROLE" });
             }
             next();
         } catch (err) {

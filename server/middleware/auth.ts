@@ -17,18 +17,18 @@ export function authenticateToken(req: AuthenticatedRequest, res: Response, next
     const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
-        return res.status(401).json({ error: "Yêu cầu xác thực tài khoản qua Token!" });
+        return res.status(401).json({ error: "Yêu cầu xác thực tài khoản qua Token!", code: "TOKEN_REQUIRED" });
     }
 
     jwt.verify(token, JWT_SECRET, async (err, decoded: any) => {
         if (err) {
-            return res.status(403).json({ error: "Token xác thực không hợp lệ hoặc đã hết hạn!" });
+            return res.status(401).json({ error: "Token xác thực không hợp lệ hoặc đã hết hạn!", code: "TOKEN_EXPIRED" });
         }
         try {
             const users = await db.query<any[]>("SELECT status FROM users WHERE id = ?", [decoded.id]);
             if (users.length > 0 && users[0].status === 'suspended') {
                 if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
-                    return res.status(403).json({ error: "Tài khoản của bạn đã bị khóa do vi phạm tiêu chuẩn cộng đồng wibu! Bạn chỉ có quyền đọc nội dung." });
+                    return res.status(403).json({ error: "Tài khoản của bạn đã bị khóa do vi phạm tiêu chuẩn cộng đồng wibu! Bạn chỉ có quyền đọc nội dung.", code: "ACCOUNT_SUSPENDED" });
                 }
             }
         } catch (dbErr) {

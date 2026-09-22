@@ -1,16 +1,143 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import nodemailer from 'nodemailer';
 import db from '../db.js';
 import { addXpToUser } from '../utils/level.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'mugenbunko-super-secret-key-12345';
+
+// Configure Nodemailer for Gmail / SMTP
+const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT || '587'),
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: {
+        user: process.env.SMTP_USER || '',
+        pass: process.env.SMTP_PASS || '',
+    },
+});
+
+// In-memory OTP Cache (email -> { otp, expiresAt, verified })
+interface OtpRecord {
+    otp: string;
+    expiresAt: number;
+    verified: boolean;
+}
+const otpStore = new Map<string, OtpRecord>();
+
+// Auto-migration: Ensure email column exists in users table
+(async () => {
+    try {
+        const cols = await db.query<any[]>("SHOW COLUMNS FROM users LIKE 'email'");
+        if (cols.length === 0) {
+            await db.query("ALTER TABLE users ADD COLUMN `email` VARCHAR(150) NULL UNIQUE AFTER `displayname`");
+            console.log("[Auth DB] Added 'email' column to users table successfully.");
+        }
+    } catch (e) {
+        console.warn("[Auth DB] Email column check note:", e);
+    }
+})();
 
 async function comparePassword(input: string, hash: string): Promise<boolean> {
     return await bcrypt.compare(input, hash);
 }
 
 const router = Router();
+
+// ================= SEND OTP ENDPOINT =================
+router.post('/send-otp', async (req: Request, res: Response) => {
+    const { email } = req.body;
+    const cleanEmail = (email || '').trim().toLowerCase();
+
+    if (!cleanEmail) {
+        return res.status(400).json({ error: "Vui lòng nhập địa chỉ Gmail / Email!" });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+        return res.status(400).json({ error: "Địa chỉ Email không đúng định dạng!" });
+    }
+
+    try {
+        // Check if email already registered
+        const existingUsers = await db.query<any[]>("SELECT id FROM users WHERE email = ?", [cleanEmail]);
+        if (existingUsers.length > 0) {
+            return res.status(400).json({ error: "Email này đã được liên kết với một tài khoản khác!" });
+        }
+
+        // Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes expiry
+
+        otpStore.set(cleanEmail, { otp, expiresAt, verified: false });
+        console.log(`\n========================================`);
+        console.log(`[MUGENBUNKO OTP] Email: ${cleanEmail}`);
+        console.log(`[MUGENBUNKO OTP] Mã OTP của bạn là: >>> ${otp} <<<`);
+        console.log(`========================================\n`);
+
+        // Send real email if SMTP credentials provided
+        if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+            try {
+                await transporter.sendMail({
+                    from: `"MugenBunko" <${process.env.SMTP_USER}>`,
+                    to: cleanEmail,
+                    subject: 'Mã xác thực OTP đăng ký tài khoản MugenBunko',
+                    html: `
+                        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #eae5dc; border-radius: 12px; background: #faf8f5;">
+                            <h2 style="color: #1c2d37; margin-bottom: 8px;">MUGENBUNKO •</h2>
+                            <p style="color: #555; font-size: 14px;">Xin chào! Cảm ơn bạn đã đăng ký tài khoản tại Thư viện Light Novel MugenBunko.</p>
+                            <div style="background: #ffffff; padding: 16px; border-radius: 8px; text-align: center; margin: 20px 0; border: 1px dashed #e05275;">
+                                <span style="font-size: 12px; color: #737b82; text-transform: uppercase; letter-spacing: 1px;">Mã xác thực OTP của bạn</span>
+                                <div style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #e05275; margin-top: 8px;">${otp}</div>
+                            </div>
+                            <p style="color: #888; font-size: 12px;">Mã này có hiệu lực trong vòng 5 phút. Vui lòng không chia sẻ mã này cho bất kỳ ai.</p>
+                        </div>
+                    `,
+                });
+            } catch (mailErr) {
+                console.warn("[Nodemailer] Không thể gửi email trực tiếp qua SMTP, sử dụng OTP hiển thị:", mailErr);
+            }
+        }
+
+        res.json({
+            success: true,
+            message: `Mã OTP đã được gửi đến ${cleanEmail}!`,
+            devOtp: otp, // Trả về devOtp để người dùng test tiện lợi ngay cả khi chưa cài SMTP Gmail
+        });
+    } catch (err) {
+        console.error("Send OTP error:", err);
+        res.status(500).json({ error: "Lỗi khi gửi mã xác thực OTP." });
+    }
+});
+
+// ================= VERIFY OTP ENDPOINT =================
+router.post('/verify-otp', async (req: Request, res: Response) => {
+    const { email, otp } = req.body;
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanOtp = (otp || '').trim();
+
+    if (!cleanEmail || !cleanOtp) {
+        return res.status(400).json({ error: "Vui lòng nhập Email và mã OTP!" });
+    }
+
+    const record = otpStore.get(cleanEmail);
+    if (!record) {
+        return res.status(400).json({ error: "Chưa có mã OTP nào được gửi đến email này hoặc mã đã hết hạn!" });
+    }
+
+    if (Date.now() > record.expiresAt) {
+        otpStore.delete(cleanEmail);
+        return res.status(400).json({ error: "Mã OTP đã hết hạn! Vui lòng yêu cầu mã mới." });
+    }
+
+    if (record.otp !== cleanOtp) {
+        return res.status(400).json({ error: "Mã OTP không chính xác!" });
+    }
+
+    record.verified = true;
+    res.json({ success: true, message: "Xác thực OTP thành công!" });
+});
 
 // Login endpoint
 router.post('/login', async (req: Request, res: Response) => {
@@ -21,8 +148,8 @@ router.post('/login', async (req: Request, res: Response) => {
 
     try {
         const users = await db.query<any[]>(
-            "SELECT * FROM users WHERE username = ?",
-            [username.trim()]
+            "SELECT * FROM users WHERE username = ? OR email = ?",
+            [username.trim(), username.trim().toLowerCase()]
         );
 
         if (users.length === 0) {
@@ -75,7 +202,6 @@ router.get('/refresh/:id', async (req: Request, res: Response) => {
     try {
         const userId = req.params.id;
 
-        // JWT token authorization verification (BOLA and Auth Bypass Fix)
         const authHeader = req.headers['authorization'];
         const token = authHeader && authHeader.split(' ')[1];
         if (!token) {
@@ -84,10 +210,10 @@ router.get('/refresh/:id', async (req: Request, res: Response) => {
         try {
             const decoded: any = jwt.verify(token, JWT_SECRET);
             if (decoded.id !== parseInt(userId)) {
-                return res.status(403).json({ error: "Không được phép truy cập phiên của tài khoản khác!" });
+                return res.status(403).json({ error: "Không được phép truy cập phiên của tài khoản khác!", code: "FORBIDDEN_USER" });
             }
         } catch (e) {
-            return res.status(403).json({ error: "Phiên làm việc đã hết hạn hoặc không hợp lệ!" });
+            return res.status(401).json({ error: "Phiên làm việc đã hết hạn hoặc không hợp lệ!", code: "TOKEN_EXPIRED" });
         }
 
         const users = await db.query<any[]>("SELECT * FROM users WHERE id = ?", [userId]);
@@ -97,15 +223,12 @@ router.get('/refresh/:id', async (req: Request, res: Response) => {
         const user = users[0];
         user.avatarSeed = user.avatar_seed;
 
-        // Get user roles
         const rolesData = await db.query<any[]>("SELECT role FROM user_roles WHERE user_id = ?", [user.id]);
         user.roles = rolesData.map(r => r.role);
 
-        // Get bookmarks
         const bookmarksData = await db.query<any[]>("SELECT novel_id FROM bookmarks WHERE user_id = ?", [user.id]);
         user.bookmarks = bookmarksData.map(b => b.novel_id);
 
-        // Get notifications
         const notifs = await db.query<any[]>(
             "SELECT id, text, is_read as `read`, DATE_FORMAT(created_at, '%d/%m/%Y') as date FROM notifications WHERE user_id = ? ORDER BY created_at DESC", 
             [user.id]
@@ -120,17 +243,41 @@ router.get('/refresh/:id', async (req: Request, res: Response) => {
     }
 });
 
-// Register endpoint
+// Register endpoint with Email & OTP Validation
 router.post('/register', async (req: Request, res: Response) => {
-    const { username, displayname, password, role } = req.body;
-    const cleanUsername = username.trim().toLowerCase();
+    const { username, displayname, password, email, otp, role } = req.body;
+    const cleanUsername = (username || '').trim().toLowerCase();
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanOtp = (otp || '').trim();
 
-    if (!cleanUsername || !displayname.trim() || !password) {
+    if (!cleanUsername || !displayname?.trim() || !password) {
         return res.status(400).json({ error: "Vui lòng điền đầy đủ thông tin đăng ký!" });
     }
 
     if (!/^[a-z0-9_]+$/.test(cleanUsername)) {
         return res.status(400).json({ error: "Tên đăng nhập chỉ gồm chữ thường không dấu, số và dấu gạch dưới!" });
+    }
+
+    if (cleanEmail) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(cleanEmail)) {
+            return res.status(400).json({ error: "Địa chỉ Email không đúng định dạng!" });
+        }
+
+        // Validate OTP if email provided
+        if (!cleanOtp) {
+            return res.status(400).json({ error: "Vui lòng nhập mã xác thực OTP đã gửi đến Gmail của bạn!" });
+        }
+
+        const otpRecord = otpStore.get(cleanEmail);
+        if (!otpRecord || otpRecord.otp !== cleanOtp) {
+            return res.status(400).json({ error: "Mã xác thực OTP không đúng hoặc đã hết hạn!" });
+        }
+
+        if (Date.now() > otpRecord.expiresAt) {
+            otpStore.delete(cleanEmail);
+            return res.status(400).json({ error: "Mã OTP đã hết hạn! Vui lòng yêu cầu mã mới." });
+        }
     }
 
     // Password strength verification
@@ -140,22 +287,35 @@ router.post('/register', async (req: Request, res: Response) => {
     }
 
     try {
-        // Check duplicate
-        const existing = await db.query<any[]>("SELECT id FROM users WHERE username = ?", [cleanUsername]);
-        if (existing.length > 0) {
+        // Check duplicate username
+        const existingUsername = await db.query<any[]>("SELECT id FROM users WHERE username = ?", [cleanUsername]);
+        if (existingUsername.length > 0) {
             return res.status(400).json({ error: "Tên đăng nhập này đã được sử dụng!" });
+        }
+
+        // Check duplicate email
+        if (cleanEmail) {
+            const existingEmail = await db.query<any[]>("SELECT id FROM users WHERE email = ?", [cleanEmail]);
+            if (existingEmail.length > 0) {
+                return res.status(400).json({ error: "Email này đã được liên kết với một tài khoản khác!" });
+            }
         }
 
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Insert user
+        // Insert user with email
         const avatarSeed = cleanUsername + Math.floor(Math.random() * 100);
         const result = await db.query<any>(
-            "INSERT INTO users (username, password, displayname, coins, bio, avatar_seed) VALUES (?, ?, ?, 0, 'Mọt sách chính hiệu của MugenBunko.', ?)",
-            [cleanUsername, hashedPassword, displayname.trim(), avatarSeed]
+            "INSERT INTO users (username, password, displayname, email, coins, bio, avatar_seed) VALUES (?, ?, ?, ?, 0, 'Mọt sách chính hiệu của MugenBunko.', ?)",
+            [cleanUsername, hashedPassword, displayname.trim(), cleanEmail || null, avatarSeed]
         );
         const userId = result.insertId;
+
+        // Clear used OTP
+        if (cleanEmail) {
+            otpStore.delete(cleanEmail);
+        }
 
         // Insert role
         await db.query("INSERT INTO user_roles (user_id, role) VALUES (?, 'reader')", [userId]);
@@ -184,7 +344,7 @@ router.post('/register', async (req: Request, res: Response) => {
         // Sign JWT Token
         const token = jwt.sign({ id: user.id, username: user.username, roles: user.roles }, JWT_SECRET, { expiresIn: '7d' });
 
-        res.json({ user, token });
+        res.json({ success: true, user, token });
     } catch (err) {
         console.error("Register error:", err);
         res.status(500).json({ error: "Lỗi lưu tài khoản mới." });

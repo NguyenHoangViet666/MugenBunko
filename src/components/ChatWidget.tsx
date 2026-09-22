@@ -168,23 +168,23 @@ export default function ChatWidget({ currentUser, fetchWithAuth, API_BASE }: Cha
                     font-family: var(--font-sans);
                 }
                 .chat-bubble-btn {
-                    width: 56px;
-                    height: 56px;
+                    width: 54px;
+                    height: 54px;
                     border-radius: 50%;
-                    background: var(--sakura-pink);
-                    border: none;
-                    box-shadow: 0 4px 16px rgba(224, 82, 117, 0.4);
+                    background: var(--text-main);
+                    border: 1px solid var(--border-color);
+                    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    color: white;
+                    color: var(--bg-card);
                     cursor: pointer;
                     transition: var(--transition-smooth);
                     position: relative;
                 }
                 .chat-bubble-btn:hover {
-                    background: var(--sakura-pink-hover);
-                    transform: scale(1.05);
+                    opacity: 0.92;
+                    transform: scale(1.06);
                 }
                 .chat-bubble-btn svg {
                     width: 26px;
@@ -301,7 +301,7 @@ export default function ChatWidget({ currentUser, fetchWithAuth, API_BASE }: Cha
                     outline: none;
                 }
                 .chat-search-input:focus {
-                    border-color: var(--sakura-pink);
+                    border-color: var(--text-main);
                 }
                 .chat-body {
                     flex: 1;
@@ -404,8 +404,8 @@ export default function ChatWidget({ currentUser, fetchWithAuth, API_BASE }: Cha
                     box-shadow: var(--shadow-sm);
                 }
                 .chat-msg-row.sent .chat-msg-bubble {
-                    background: var(--sakura-pink);
-                    color: white;
+                    background: var(--text-main);
+                    color: var(--bg-card);
                     border-bottom-right-radius: 2px;
                 }
                 .chat-msg-row.received .chat-msg-bubble {
@@ -442,12 +442,12 @@ export default function ChatWidget({ currentUser, fetchWithAuth, API_BASE }: Cha
                     line-height: 1.2;
                 }
                 .chat-textarea:focus {
-                    border-color: var(--sakura-pink);
+                    border-color: var(--text-main);
                 }
                 .chat-send-btn {
-                    background: var(--sakura-pink);
+                    background: var(--text-main);
                     border: none;
-                    color: white;
+                    color: var(--bg-card);
                     width: 36px;
                     height: 36px;
                     border-radius: 50%;
@@ -458,7 +458,7 @@ export default function ChatWidget({ currentUser, fetchWithAuth, API_BASE }: Cha
                     transition: var(--transition-smooth);
                 }
                 .chat-send-btn:hover {
-                    background: var(--sakura-pink-hover);
+                    opacity: 0.9;
                     transform: scale(1.05);
                 }
                 .chat-send-btn svg {

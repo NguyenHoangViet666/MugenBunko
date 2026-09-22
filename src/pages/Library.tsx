@@ -1,5 +1,6 @@
 import React from 'react';
 import { User, Novel } from '../types';
+import { Icons } from '../components/Icons';
 
 interface LibraryProps {
     currentUser: User | null;
@@ -25,7 +26,9 @@ export default function Library({
                     <h2>Tủ Sách Cá Nhân</h2>
                     <p className="subtitle">Lưu trữ các tác phẩm theo dõi và tiến trình đọc của bạn.</p>
                 </div>
-                <button className="outline-btn small" onClick={() => setCurrentView('home')}>← Quay lại thư viện</button>
+                <button className="outline-btn small" onClick={() => setCurrentView('home')} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <Icons.ArrowLeft size={14} /> Quay lại trang chủ
+                </button>
             </div>
 
             <div className="library-full-layout" id="library-full-grid">
@@ -48,27 +51,47 @@ export default function Library({
                         }
 
                         return (
-                            <div key={id} className="library-progress-card" onClick={() => openNovelDetail(id)} style={{background:'var(--bg-card)', border:'1px solid var(--border-color)', borderRadius:'var(--border-radius-md)', padding:'16px', display:'flex', gap:'12px', cursor:'pointer', transition:'var(--transition-smooth)'}}>
-                                <img src={novel.cover} alt="cover" className="lib-card-cover" style={{width:'60px', height:'80px', objectFit:'cover', borderRadius:'4px'}} />
-                                <div className="lib-card-info" style={{flexGrow:1, display:'flex', flexDirection:'column', justifyContent:'center'}}>
-                                    <h4 className="lib-card-title" style={{fontSize:'0.9rem', marginBottom:'6px', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden'}}>{novel.title}</h4>
-                                    <span className="lib-card-progress-lbl flex-row-between" style={{fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'4px'}}>
+                            <div 
+                                key={id} 
+                                className="library-progress-card" 
+                                onClick={() => openNovelDetail(id)} 
+                                style={{
+                                    background: 'var(--bg-card)', 
+                                    border: '1px solid var(--border-color)', 
+                                    borderRadius: 'var(--border-radius-md)', 
+                                    padding: '16px', 
+                                    display: 'flex', 
+                                    gap: '14px', 
+                                    cursor: 'pointer', 
+                                    transition: 'var(--transition-smooth)',
+                                    boxShadow: 'var(--shadow-sm)'
+                                }}
+                            >
+                                <img src={novel.cover} alt="cover" className="lib-card-cover" style={{ width: '64px', height: '88px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border-color)', flexShrink: 0 }} />
+                                <div className="lib-card-info" style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
+                                    <h4 className="lib-card-title" style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '8px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{novel.title}</h4>
+                                    <div className="lib-card-progress-lbl flex-row-between" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px' }}>
                                         <span>{lastChapterText}</span>
-                                        <span>{percentage}%</span>
-                                    </span>
-                                    <div className="lib-progress-bar" style={{height:'6px', background:'var(--bg-base)', borderRadius:'3px', overflow:'hidden'}}>
-                                        <div className="lib-progress-fill" style={{height:'100%', background:'var(--sakura-pink)', width: `${percentage}%`}}></div>
+                                        <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{percentage}%</span>
+                                    </div>
+                                    <div className="lib-progress-bar" style={{ height: '6px', background: 'var(--bg-base)', border: '1px solid var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
+                                        <div className="lib-progress-fill" style={{ height: '100%', background: 'var(--text-main)', width: `${percentage}%`, transition: 'width 0.3s ease' }}></div>
                                     </div>
                                 </div>
                             </div>
                         );
                     })
                 ) : (
-                    <div className="empty-state-card" style={{gridColumn:'1/-1', width:'100%'}}>
-                        <span className="empty-icon">📖</span>
-                        <h4>Tủ sách trống</h4>
-                        <p>Bạn chưa theo dõi tác phẩm nào. Hãy khám phá và lưu những tác phẩm thú vị!</p>
-                        <button className="primary-btn mt-2" onClick={() => setCurrentView('home')}>Trở lại thư viện</button>
+                    <div className="empty-state-card" style={{ gridColumn: '1/-1', width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-lg)', padding: '48px 24px', textAlign: 'center' }}>
+                        <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                            <Icons.Book size={48} />
+                        </div>
+                        <h4 style={{ fontSize: '1.15rem', color: 'var(--text-main)', marginBottom: '8px', fontWeight: 700 }}>Tủ sách của bạn còn trống</h4>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '400px', margin: '0 auto 20px auto' }}>Bạn chưa theo dõi tác phẩm nào. Hãy khám phá và lưu những câu chuyện hấp dẫn để tiếp tục đọc bất cứ lúc nào!</p>
+                        <button className="primary-btn" onClick={() => setCurrentView('explore')} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                            <Icons.Compass size={16} />
+                            <span>Khám Phá Tác Phẩm Ngay</span>
+                        </button>
                     </div>
                 )}
             </div>
