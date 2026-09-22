@@ -23,6 +23,26 @@
 
 ---
 
+## 🎓 Thông Tin Đề Tài & Sinh Viên Thực Hiện
+
+| Hạng mục | Chi tiết |
+| :--- | :--- |
+| **Đề tài** | **Hệ thống đọc, xuất bản và mạng xã hội tiểu thuyết đa nền tảng MugenBunko** |
+| **Học phần** | **Đồ án chuyên ngành 4 (Đồ án 4)** |
+| **Cơ sở đào tạo** | **Trường Đại học Công nghệ Kỹ thuật Hưng Yên (HYUTE - Hung Yen University of Technology and Engineering)** |
+| **Sinh viên thực hiện** | **Nguyễn Hoàng Việt** |
+| **Mã số sinh viên (MSV)** | **10123357** |
+| **Lớp chuyên ngành** | **12523W.1** |
+| **Giảng viên hướng dẫn (GVHD)** | **TS. Hoàng Quốc Việt** |
+| **Mã nguồn dự án** | [NguyenHoangViet666/MugenBunko](https://github.com/NguyenHoangViet666/MugenBunko.git) |
+
+> 🔑 **Tài khoản Quản trị viên mặc định (Seed Data):**
+> - **Username:** `MugenBunko`
+> - **Password:** `123456`
+> - **Quyền hạn:** `admin`, `reader`
+
+---
+
 ## 📌 Mục Lục
 
 1. [Giới Thiệu Đề Tài](#1-giới-thiệu-đề-tài)
@@ -42,7 +62,6 @@
    - [Cấu hình biến môi trường (.env)](#92-cấu-hình-biến-môi-trường-env)
    - [Khởi chạy bằng Docker Compose (Khuyên dùng)](#93-khởi-chạy-bằng-docker-compose-khuyên-dùng)
    - [Khởi chạy thủ công từng dịch vụ (Local Development)](#94-khởi-chạy-thủ-công-từng-dịch-vụ-local-development)
-10. [Tác Giả & Bản Quyền](#10-tác-giả--bản-quyền)
 
 ---
 
@@ -314,26 +333,6 @@ cd mobile && npm install && cd ..
   npm run dev:mobile
   # Sau đó quét mã QR bằng ứng dụng Expo Go trên điện thoại
   ```
-
----
-
-## 10. Thông Tin Đề Tài & Tác Giả
-
-| Hạng mục | Chi tiết |
-| :--- | :--- |
-| **Đề tài** | Hệ thống đọc, xuất bản và mạng xã hội tiểu thuyết đa nền tảng MugenBunko |
-| **Học phần** | Đồ án chuyên ngành 4 (Đồ án 4) |
-| **Trường** | **Trường Đại học Công nghệ Kỹ thuật Hưng Yên (HYUTE - Hung Yen University of Technology and Engineering)** |
-| **Sinh viên thực hiện** | **Nguyễn Hoàng Việt** |
-| **Mã số sinh viên (MSV)** | **10123357** |
-| **Lớp chuyên ngành** | **12523W.1** |
-| **Giảng viên hướng dẫn (GVHD)** | **TS. Hoàng Quốc Việt** |
-| **Mã nguồn dự án** | [NguyenHoangViet666/MugenBunko](https://github.com/NguyenHoangViet666/MugenBunko.git) |
-
-### 🔑 Tài khoản Quản trị viên mặc định (Seed Data)
-- **Tên đăng nhập (Username):** `MugenBunko`
-- **Mật khẩu (Password):** `123456`
-- **Quyền hạn:** `admin`, `reader`
 
 ---
 
