@@ -339,6 +339,25 @@ export default function App() {
     const [toastShow, setToastShow] = useState<boolean>(false);
     const [toastMsg, setToastMsg] = useState<string>("");
 
+    // Back to top floating button state
+    const [showBackToTop, setShowBackToTop] = useState<boolean>(false);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            if (window.scrollY > 380) {
+                setShowBackToTop(true);
+            } else {
+                setShowBackToTop(false);
+            }
+        };
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    const scrollToTop = () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     // Global Confirmation Modal State
     const [confirmModalOpen, setConfirmModalOpen] = useState<boolean>(false);
     const [confirmModalMessage, setConfirmModalMessage] = useState<string>( "");
@@ -2758,6 +2777,7 @@ export default function App() {
                         setActiveNovelId={setActiveNovelId}
                         toggleBookmark={toggleBookmark}
                         openNovelDetail={openNovelDetail}
+                        startReading={startReading}
                     />
                 )}
 
@@ -2981,6 +3001,7 @@ export default function App() {
                         genres={genres}
                         searchQuery={searchQuery}
                         setSearchQuery={setSearchQuery}
+                        startReading={startReading}
                     />
                 )}
                 
@@ -3407,6 +3428,21 @@ export default function App() {
                     fetchWithAuth={fetchWithAuth} 
                     API_BASE={API_BASE} 
                 />
+            )}
+
+            {/* Floating Back to Top Button (Monochrome Arrow) */}
+            {showBackToTop && (
+                <button
+                    className="back-to-top-btn"
+                    onClick={scrollToTop}
+                    title="Cuộn lên đầu trang"
+                    aria-label="Cuộn lên đầu trang"
+                    style={{
+                        bottom: (currentUser && currentView !== 'forum') ? '86px' : '24px'
+                    }}
+                >
+                    <Icons.ArrowUp size={18} />
+                </button>
             )}
         </>
     );

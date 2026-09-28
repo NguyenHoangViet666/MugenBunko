@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import Icons from './Icons';
 
 interface RichTextEditorProps {
     value: string;
@@ -318,7 +319,7 @@ export default function RichTextEditor({
                         className="toolbar-btn"
                         title="Chèn liên kết"
                     >
-                        🔗 Link
+                        <Icons.Link size={13} /> Link
                     </button>
                     <button
                         type="button"
@@ -341,7 +342,7 @@ export default function RichTextEditor({
                         className="toolbar-btn"
                         title="Chèn thẻ Spoiler che nội dung spoil"
                     >
-                        🤫 Spoiler
+                        <Icons.EyeOff size={13} /> Spoiler
                     </button>
                     <button
                         type="button"
@@ -364,7 +365,7 @@ export default function RichTextEditor({
                         className="toolbar-btn"
                         title="Chèn hình ảnh từ link URL"
                     >
-                        🖼️ Ảnh URL
+                        <Icons.Image size={13} /> Ảnh URL
                     </button>
                 </div>
 
@@ -501,7 +502,7 @@ export default function RichTextEditor({
                         gap: '10px'
                     }}>
                         <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--sakura-pink)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            {editorPrompt.type === 'link' ? '🔗 Chèn liên kết' : '🖼️ Chèn ảnh URL'}
+                            {editorPrompt.type === 'link' ? <><Icons.Link size={14} /> Chèn liên kết</> : <><Icons.Image size={14} /> Chèn ảnh URL</>}
                         </h4>
                         
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>

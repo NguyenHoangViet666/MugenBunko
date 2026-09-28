@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Icons from '../components/Icons';
 import { Rule } from '../types';
 
 interface ManageRulesProps {
@@ -95,7 +96,7 @@ export default function ManageRules({ API_BASE, fetchWithAuth, showToast, setCur
 
             const data = await res.json();
             if (res.ok && data.success) {
-                if (showToast) showToast(isAdding ? "Thêm quy định mới thành công! ✨" : "Cập nhật quy định thành công! 💾");
+                if (showToast) showToast(isAdding ? "Thêm quy định mới thành công!" : "Cập nhật quy định thành công!");
                 handleCancel();
                 fetchRules();
             } else {
@@ -139,8 +140,8 @@ export default function ManageRules({ API_BASE, fetchWithAuth, showToast, setCur
                     </p>
                 </div>
                 {!isAdding && !editingRule && (
-                    <button className="btn btn-primary" onClick={handleAdd}>
-                        ➕ Thêm quy định mới
+                    <button className="btn btn-primary" onClick={handleAdd} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Icons.Plus size={16} /> Thêm quy định mới
                     </button>
                 )}
             </div>
@@ -152,8 +153,8 @@ export default function ManageRules({ API_BASE, fetchWithAuth, showToast, setCur
             ) : isAdding || editingRule ? (
                 /* Form soạn thảo */
                 <div className="studio-card" style={{ padding: '30px', borderRadius: '12px', border: '1px solid var(--border-color, rgba(255,255,255,0.08))', background: 'var(--card-bg, rgba(20,20,20,0.6))' }}>
-                    <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px', color: 'var(--text-color, #f8fafc)' }}>
-                        {isAdding ? "🆕 Tạo điều khoản quy định mới" : `📝 Chỉnh sửa: ${editingRule?.title}`}
+                    <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px', color: 'var(--text-color, #f8fafc)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {isAdding ? <><Icons.Plus size={18} /> Tạo điều khoản quy định mới</> : <><Icons.Edit size={18} /> Chỉnh sửa: {editingRule?.title}</>}
                     </h3>
                     <form onSubmit={handleSubmit}>
                         <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: '20px', marginBottom: '20px' }}>
@@ -294,16 +295,16 @@ export default function ManageRules({ API_BASE, fetchWithAuth, showToast, setCur
                                         <button 
                                             className="btn btn-secondary" 
                                             onClick={() => handleEdit(rule)}
-                                            style={{ padding: '6px 12px', fontSize: '13px' }}
+                                            style={{ padding: '6px 12px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '5px' }}
                                         >
-                                            ✏️ Sửa
+                                            <Icons.Edit size={13} /> Sửa
                                         </button>
                                         <button 
                                             className="btn btn-danger" 
                                             onClick={() => handleDelete(rule.id)}
-                                            style={{ padding: '6px 12px', fontSize: '13px', background: '#991b1b', borderColor: '#991b1b' }}
+                                            style={{ padding: '6px 12px', fontSize: '13px', background: '#991b1b', borderColor: '#991b1b', display: 'flex', alignItems: 'center', gap: '5px' }}
                                         >
-                                            🗑️ Xóa
+                                            <Icons.Trash size={13} /> Xóa
                                         </button>
                                     </div>
                                 </div>

@@ -278,30 +278,57 @@ h1, h2, h3, h4 {
     text-transform: uppercase;
 }
 
-/* Header Nav shortcuts bar */
-.header-nav {
-    display: flex;
-    gap: 16px;
-    margin: 0 16px;
+/* Header Nav Desktop & Quick Links */
+.header-nav-desktop {
+    display: none;
+    align-items: center;
+    gap: 4px;
+    margin-left: 18px;
 }
 
-.nav-link {
-    font-size: 0.88rem;
-    font-weight: 500;
+@media (min-width: 992px) {
+    .header-nav-desktop {
+        display: flex;
+    }
+}
+
+.header-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--border-radius-md);
+    font-size: 0.84rem;
+    font-weight: 600;
     color: var(--text-muted);
+    background: transparent;
+    border: 1px solid transparent;
     cursor: pointer;
     transition: var(--transition-smooth);
-    padding: 4px 8px;
-    border-radius: var(--border-radius-sm);
+    white-space: nowrap;
 }
 
-.nav-link:hover, .nav-link.active {
-    color: var(--sakura-pink);
-    background-color: var(--sakura-pink-light);
+.header-nav-btn svg {
+    flex-shrink: 0;
+    stroke: currentColor;
 }
 
-.theme-charcoal .nav-link:hover, .theme-charcoal .nav-link.active {
-    background-color: rgba(224, 82, 117, 0.1);
+.header-nav-btn:hover {
+    color: var(--text-main);
+    background-color: var(--bg-base);
+    border-color: var(--border-color);
+}
+
+.header-nav-btn.active {
+    color: var(--text-main);
+    background-color: var(--bg-base);
+    border-color: var(--border-color);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.theme-charcoal .header-nav-btn.active {
+    background-color: #242428;
+    border-color: #3e3e44;
 }
 
 /* Search bar */
@@ -312,6 +339,24 @@ h1, h2, h3, h4 {
     width: calc(100% - 480px);
     max-width: 700px;
     z-index: 5;
+}
+
+@media (min-width: 1200px) {
+    .header-search {
+        position: relative;
+        left: auto;
+        transform: none;
+        width: 250px;
+        max-width: 320px;
+        margin-left: auto;
+        margin-right: 16px;
+    }
+    .header-search .search-box {
+        transition: width 0.25s ease, border-color 0.25s ease;
+    }
+    .header-search .search-box:focus-within {
+        width: 300px;
+    }
 }
 
 .search-box {
@@ -468,6 +513,54 @@ h1, h2, h3, h4 {
     font-size: 0.75rem;
     color: var(--text-muted);
     margin-top: 4px;
+}
+
+/* Floating Back to Top Button */
+.back-to-top-btn {
+    position: fixed;
+    right: 24px;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background-color: var(--bg-card);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 95;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    animation: fadeInScale 0.25s ease-out;
+}
+
+.back-to-top-btn:hover {
+    transform: translateY(-3px);
+    background-color: var(--text-main);
+    color: var(--bg-card);
+    border-color: var(--text-main);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+.back-to-top-btn svg {
+    stroke: currentColor;
+    transition: transform 0.2s ease;
+}
+
+.back-to-top-btn:hover svg {
+    transform: translateY(-1px);
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.8) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
 }
 
 /* Notif notification badge icon and list */
@@ -1950,6 +2043,46 @@ h1, h2, h3, h4 {
 .reader-content-body p {
     margin-bottom: 24px;
     text-indent: 1.5em;
+}
+
+/* Reader Scroll Progress Line (Phase 2.1) */
+.reader-scroll-progress-line-track {
+    position: sticky;
+    top: 50px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: transparent;
+    z-index: 159;
+}
+
+.reader-scroll-progress-line-fill {
+    height: 100%;
+    background: var(--text-main);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    transition: width 0.1s ease-out;
+}
+
+.reader-progress-indicator-pill {
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    min-width: 36px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Reader Spacing Settings (Phase 2.2) */
+.reader-content-body.reader-spacing-compact p {
+    margin-bottom: 14px;
+}
+
+.reader-content-body.reader-spacing-normal p {
+    margin-bottom: 22px;
+}
+
+.reader-content-body.reader-spacing-relaxed p {
+    margin-bottom: 32px;
 }
 
 .reader-illustration {
@@ -4013,6 +4146,71 @@ h1, h2, h3, h4 {
     font-weight: 700;
     backdrop-filter: blur(4px);
     border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* Quick Read Hover Overlay (Phase 1.3) */
+.novel-card-quick-read-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 20px 10px 10px 10px;
+    background: linear-gradient(to top, rgba(15, 15, 18, 0.88) 0%, rgba(15, 15, 18, 0.5) 60%, transparent 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.22s ease, transform 0.22s ease;
+    z-index: 3;
+    pointer-events: none;
+}
+
+.novel-card-v2:hover .novel-card-quick-read-overlay {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.quick-read-btn-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 14px;
+    border-radius: 20px;
+    background: #ffffff;
+    color: #121214;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+    transition: transform 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+    backdrop-filter: blur(6px);
+}
+
+.theme-charcoal .quick-read-btn-pill {
+    background: #25252b;
+    color: #f0f0f2;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+
+.quick-read-btn-pill:hover {
+    transform: scale(1.06);
+    background: var(--text-main);
+    color: var(--bg-base);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.theme-charcoal .quick-read-btn-pill:hover {
+    background: #ffffff;
+    color: #121214;
+}
+
+.quick-read-btn-pill svg {
+    flex-shrink: 0;
 }
 
 .novel-info-block-v2 {

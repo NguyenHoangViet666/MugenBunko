@@ -133,6 +133,12 @@ const Icons = {
             <line x1="10" y1="3" x2="8" y2="21"></line>
             <line x1="16" y1="3" x2="14" y2="21"></line>
         </svg>
+    ),
+    Search: ({ size = 15 }: { size?: number }) => (
+        <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
     )
 };
 
@@ -245,6 +251,8 @@ export default function Forum({
     const [quickCategory, setQuickCategory] = useState('general');
     const [quickImageUrls, setQuickImageUrls] = useState<string[]>([]);
     const [quickImageFiles, setQuickImageFiles] = useState<File[]>([]);
+    const [forumSearch, setForumSearch] = useState<string>('');
+    const [forumSort, setForumSort] = useState<'newest' | 'hot' | 'pinned'>('newest');
 
     const removeNewImage = (index: number) => {
         setNewImageUrls(prev => prev.filter((_, i) => i !== index));
@@ -836,11 +844,41 @@ export default function Forum({
         }
     };
 
-    // Filter posts using normalized categories (supports both EN & VI)
-    const displayedPosts = posts.filter(post => {
-        if (activeCategory === 'all') return true;
-        return normalizeForumCategory(post.category) === activeCategory;
-    });
+    // Filter & Sort posts using normalized categories, search query, and sort order
+    const displayedPosts = React.useMemo(() => {
+        let result = posts.filter(post => {
+            if (activeCategory !== 'all' && normalizeForumCategory(post.category) !== activeCategory) {
+                return false;
+            }
+            if (forumSearch.trim()) {
+                const q = forumSearch.toLowerCase().trim();
+                const titleMatch = (post.title || '').toLowerCase().includes(q);
+                const contentMatch = (post.content || '').toLowerCase().includes(q);
+                const authorMatch = (post.author_displayname || post.author_name || '').toLowerCase().includes(q);
+                if (!titleMatch && !contentMatch && !authorMatch) return false;
+            }
+            return true;
+        });
+
+        if (forumSort === 'pinned') {
+            result.sort((a, b) => {
+                const aPinned = a.is_pinned ? 1 : 0;
+                const bPinned = b.is_pinned ? 1 : 0;
+                if (bPinned !== aPinned) return bPinned - aPinned;
+                return b.id - a.id;
+            });
+        } else if (forumSort === 'hot') {
+            result.sort((a, b) => {
+                const aScore = (a.likes_count || 0) * 2 + (a.comments_count || 0) * 3;
+                const bScore = (b.likes_count || 0) * 2 + (b.comments_count || 0) * 3;
+                return bScore - aScore;
+            });
+        } else {
+            result.sort((a, b) => b.id - a.id);
+        }
+
+        return result;
+    }, [posts, activeCategory, forumSearch, forumSort]);
 
     const formatCategoryName = (cat: string) => {
         const norm = normalizeForumCategory(cat);
@@ -1164,6 +1202,85 @@ export default function Forum({
                             </div>
                         )}
 
+                        {/* Forum Feed Filter & Search Bar (Phase 3) */}
+                        <div className="forum-feed-controls" style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: '12px',
+                            flexWrap: 'wrap',
+                            padding: '10px 14px',
+                            background: 'var(--bg-card)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: 'var(--border-radius-md)'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Sắp xếp:</span>
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                    {[
+                                        { id: 'newest', name: 'Mới nhất' },
+                                        { id: 'hot', name: 'Sôi nổi' },
+                                        { id: 'pinned', name: 'Được ghim' }
+                                    ].map(s => (
+                                        <button
+                                            key={s.id}
+                                            type="button"
+                                            onClick={() => setForumSort(s.id as any)}
+                                            style={{
+                                                padding: '3px 10px',
+                                                borderRadius: '14px',
+                                                fontSize: '0.74rem',
+                                                border: '1px solid',
+                                                cursor: 'pointer',
+                                                fontWeight: 500,
+                                                background: forumSort === s.id ? 'var(--text-main)' : 'transparent',
+                                                color: forumSort === s.id ? 'var(--bg-base)' : 'var(--text-main)',
+                                                borderColor: forumSort === s.id ? 'var(--text-main)' : 'var(--border-color)'
+                                            }}
+                                        >
+                                            {s.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                background: 'var(--bg-base)',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '16px',
+                                padding: '3px 10px',
+                                minWidth: '180px'
+                            }}>
+                                <Icons.Search size={12} />
+                                <input
+                                    type="text"
+                                    placeholder="Tìm bài viết, tác giả..."
+                                    value={forumSearch}
+                                    onChange={(e) => setForumSearch(e.target.value)}
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        outline: 'none',
+                                        color: 'var(--text-main)',
+                                        fontSize: '0.76rem',
+                                        width: '100%'
+                                    }}
+                                />
+                                {forumSearch && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setForumSearch('')}
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.75rem', padding: 0 }}
+                                    >
+                                        ✕
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
                         {/* Social Feed Post List */}
                         {loading && (
                             <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
@@ -1359,8 +1476,8 @@ export default function Forum({
                                                             </button>
                                                         </form>
                                                     ) : currentUser && (
-                                                        <div style={{ padding: '6px', color: 'var(--text-muted)', fontSize: '0.72rem', textAlign: 'center' }}>
-                                                            🔒 Bình luận tạm khóa cho thành viên.
+                                                        <div style={{ padding: '6px', color: 'var(--text-muted)', fontSize: '0.72rem', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                            <Icons.Lock size={12} /> Bình luận tạm khóa cho thành viên.
                                                         </div>
                                                     )}
                                                 </div>
@@ -1434,8 +1551,8 @@ export default function Forum({
                                             <div className="forum-hot-info">
                                                 <div className="forum-hot-title" title={hp.title}>{hp.title}</div>
                                                 <div className="forum-hot-meta">
-                                                    <span>💖 {hp.likes_count || 0}</span>
-                                                    <span>💬 {hp.comments_count || 0}</span>
+                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}><Icons.Heart size={11} filled={true} /> {hp.likes_count || 0}</span>
+                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}><Icons.MessageSquare size={11} /> {hp.comments_count || 0}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -1624,7 +1741,15 @@ export default function Forum({
                                             className="outline-btn small"
                                             style={{ fontSize: '0.75rem', padding: '4px 10px' }}
                                         >
-                                            {(selectedPost.restrictComments || selectedPost.restrict_comments) ? "🔒 Chỉ BQL" : "🔓 Tự do"}
+                                            {(selectedPost.restrictComments || selectedPost.restrict_comments) ? (
+                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                                    <Icons.Lock size={12} /> Chỉ BQL
+                                                </span>
+                                            ) : (
+                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                                    <Icons.Unlock size={12} /> Tự do
+                                                </span>
+                                            )}
                                         </button>
                                     )}
                                     {currentUser && (selectedPost.author_id === currentUser.id || currentUser.roles.includes('admin')) && (
@@ -1793,8 +1918,8 @@ export default function Forum({
                                         </button>
                                     </form>
                                 ) : (
-                                    <div style={{ padding: '16px', background: 'var(--bg-base)', borderRadius: '8px', color: 'var(--text-muted)', fontSize: '0.82rem', textAlign: 'center', border: '1px solid var(--border-color)' }}>
-                                        🔒 Chỉ Quản trị viên và Điều phối viên mới được phép bình luận trong bài viết này.
+                                    <div style={{ padding: '16px', background: 'var(--bg-base)', borderRadius: '8px', color: 'var(--text-muted)', fontSize: '0.82rem', textAlign: 'center', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                        <Icons.Lock size={14} /> Chỉ Quản trị viên và Điều phối viên mới được phép bình luận trong bài viết này.
                                     </div>
                                 )
                             ) : (

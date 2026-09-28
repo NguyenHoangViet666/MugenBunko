@@ -1,6 +1,7 @@
 import React from 'react';
 import { calculateUserLevel } from '../utils/levelHelper';
 import { User } from '../types';
+import { Icons } from './Icons';
 
 interface HeaderProps {
     currentUser: User | null;
@@ -35,8 +36,6 @@ export default function Header({
     notifDropdownOpen,
     setNotifDropdownOpen,
     markAllNotificationsRead,
-    burgerOpen,
-    setBurgerOpen,
     logoutUser,
     updateUserInDatabase,
     DB_KEYS,
@@ -59,20 +58,86 @@ export default function Header({
         else handleThemeChange('washi');
     };
 
+    const handleNav = (view: string) => {
+        setCurrentView(view);
+        if (setActiveNovelId) setActiveNovelId(null);
+    };
+
     return (
         <header className="app-header">
              <div className="header-container">
-                <div className="header-left" style={{display:'flex', alignItems:'center', gap:'20px'}}>
+                <div className="header-left" style={{display:'flex', alignItems:'center', gap:'16px'}}>
                     <button className="category-burger-btn" onClick={() => setCategoryDrawerOpen(true)} title="Danh mục & Bộ lọc">
                         <svg viewBox="0 0 24 24" width="22" height="22" style={{display:'block', fill:'var(--text-main)'}}>
                             <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
                         </svg>
                     </button>
                     
-                    <div className="header-logo" onClick={() => { setCurrentView('home'); if (setActiveNovelId) setActiveNovelId(null); }}>
+                    <div className="header-logo" onClick={() => handleNav('home')}>
                         <span className="kanji">無限文庫</span>
                         <span className="alphabet">MUGENBUNKO</span>
                     </div>
+
+                    {/* Desktop Navigation Links */}
+                    <nav className="header-nav-desktop" id="header-nav-links">
+                        <button
+                            type="button"
+                            className={`header-nav-btn ${currentView === 'home' ? 'active' : ''}`}
+                            onClick={() => handleNav('home')}
+                            title="Về trang chủ"
+                        >
+                            <Icons.Home size={15} />
+                            <span>Trang Chủ</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            className={`header-nav-btn ${currentView === 'explore' ? 'active' : ''}`}
+                            onClick={() => handleNav('explore')}
+                            title="Khám phá kho truyện"
+                        >
+                            <Icons.Compass size={15} />
+                            <span>Khám Phá</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            className={`header-nav-btn ${currentView === 'library' ? 'active' : ''}`}
+                            onClick={() => {
+                                if (currentUser) {
+                                    handleNav('library');
+                                } else {
+                                    setLoginModalOpen(true);
+                                }
+                            }}
+                            title="Tủ sách cá nhân"
+                        >
+                            <Icons.Bookmark size={15} />
+                            <span>Tủ Sách</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            className={`header-nav-btn ${currentView === 'forum' ? 'active' : ''}`}
+                            onClick={() => handleNav('forum')}
+                            title="Diễn đàn thảo luận"
+                        >
+                            <Icons.MessageSquare size={15} />
+                            <span>Diễn Đàn</span>
+                        </button>
+
+                        {currentUser && (currentUser.roles?.includes('author') || currentUser.roles?.includes('admin') || currentUser.roles?.includes('moderator')) && (
+                            <button
+                                type="button"
+                                className={`header-nav-btn ${currentView === 'studio' ? 'active' : ''}`}
+                                onClick={() => handleNav('studio')}
+                                title="Studio sáng tác"
+                            >
+                                <Icons.Feather size={15} />
+                                <span>Studio</span>
+                            </button>
+                        )}
+                    </nav>
                 </div>
                 
                 <div className="header-search">
@@ -88,10 +153,6 @@ export default function Header({
                         />
                     </form>
                 </div>
-
-                <nav className="header-nav" id="header-nav-links">
-                    {/* Bàn làm việc đã được chuyển vào menu Khám phá */}
-                </nav>
 
                 <div className="header-actions">
                     <button 

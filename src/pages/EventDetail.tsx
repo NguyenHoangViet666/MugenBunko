@@ -36,7 +36,7 @@ export default function EventDetail({
         <div className="page-view active">
             <div className="studio-header">
                 <div>
-                    <h2>🌸 Chi Tiết Sự Kiện Hệ Thống</h2>
+                    <h2>Chi Tiết Sự Kiện Hệ Thống</h2>
                     <p className="subtitle">Cập nhật những hoạt động, thử thách và phần quà hấp dẫn từ MugenBunko.</p>
                 </div>
                 <button className="outline-btn small" onClick={() => setCurrentView(isAdmin ? 'admin-dashboard' : 'home')}>
@@ -60,7 +60,7 @@ export default function EventDetail({
                             fontSize: '0.85rem',
                             fontWeight: 700
                         }}>
-                            {event.status === 'active' ? '🌸 Đang Diễn Ra' : '📝 Bản Nháp (Preview)'}
+                            {event.status === 'active' ? 'Đang Diễn Ra' : 'Bản Nháp (Preview)'}
                         </span>
                     </div>
                 </div>

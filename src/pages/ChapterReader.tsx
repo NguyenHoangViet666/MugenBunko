@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Novel, Chapter } from '../types';
+import { Icons } from '../components/Icons';
 
 interface ChapterReaderProps {
     novels: Novel[];
@@ -57,6 +58,10 @@ export default function ChapterReader({
     const [chapterContent, setChapterContent] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
     const [isZenMode, setIsZenMode] = useState<boolean>(false);
+    const [scrollProgress, setScrollProgress] = useState<number>(0);
+    const [readerSpacing, setReaderSpacing] = useState<'compact' | 'normal' | 'relaxed'>(() => {
+        return (localStorage.getItem('mugen_reader_spacing') as 'compact' | 'normal' | 'relaxed') || 'normal';
+    });
 
     // Group published chapters by volume_name
     const volumes: VolumeGroup = {};
@@ -131,6 +136,29 @@ export default function ChapterReader({
         };
     }, [navigateToChapter, activeChapterIndex, publishedChapters.length]);
 
+    useEffect(() => {
+        const handleScroll = () => {
+            const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
+            if (totalHeight > 0) {
+                const current = Math.min(100, Math.max(0, (window.scrollY / totalHeight) * 100));
+                setScrollProgress(Math.round(current));
+            } else {
+                setScrollProgress(0);
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        handleScroll();
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+        };
+    }, [chapter.id, chapterContent]);
+
+    const handleSpacingChange = (spacing: 'compact' | 'normal' | 'relaxed') => {
+        setReaderSpacing(spacing);
+        localStorage.setItem('mugen_reader_spacing', spacing);
+    };
+
     return (
         <>
             {/* TOC Drawer Backdrop */}
@@ -196,55 +224,93 @@ export default function ChapterReader({
                     `}</style>
                 )}
                 {isZenMode && <div className="reader-toolbar-hit-area" />}
+                
                 {/* Reader Settings Toolbar */}
                 <div className={`reader-toolbar ${isZenMode ? 'zen-mode' : ''}`} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 24px', background:'var(--bg-card)', borderBottom:'1px solid var(--border-color)', position:'sticky', top:0, zIndex:100}}>
-                    <div className="toolbar-left" style={{display:'flex', alignItems:'center', gap:'12px'}}>
-                        <button className="back-btn-reader outline-btn small" onClick={() => { setCurrentView('detail'); if (activeNovelId !== null) openNovelDetail(activeNovelId); }}>
-                            ← Thoát Đọc
+                    <div className="toolbar-left" style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                        <button className="back-btn-reader outline-btn small" onClick={() => { setCurrentView('detail'); if (activeNovelId !== null) openNovelDetail(activeNovelId); }} style={{display:'inline-flex', alignItems:'center', gap:'5px'}}>
+                            <Icons.ArrowLeft size={13} />
+                            <span>Thoát</span>
                         </button>
-                        <button className="outline-btn small" onClick={() => setIsTocOpen(true)} style={{display:'flex', alignItems:'center', gap:'6px'}}>
-                            ☰ Mục lục
+                        <button className="outline-btn small" onClick={() => setIsTocOpen(true)} style={{display:'inline-flex', alignItems:'center', gap:'5px'}}>
+                            <Icons.Book size={13} />
+                            <span>Mục lục</span>
                         </button>
-                        <span className="reader-novel-title" style={{fontWeight:600, fontSize:'0.9rem'}}>{novel.title} - {chapter.title}</span>
+                        <span className="reader-novel-title" style={{fontWeight:600, fontSize:'0.88rem', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'300px'}} title={`${novel.title} - ${chapter.title}`}>
+                            {novel.title} • {chapter.title}
+                        </span>
                     </div>
                     
-                    <div className="toolbar-right" style={{display:'flex', alignItems:'center', gap:'16px'}}>
+                    <div className="toolbar-right" style={{display:'flex', alignItems:'center', gap:'12px'}}>
+                        {/* Spacing selector */}
+                        <div className="reader-spacing-select-wrap" style={{display:'flex', alignItems:'center', gap:'4px'}} title="Khoảng cách dòng & đoạn">
+                            <Icons.AlignLeft size={13} />
+                            <select
+                                value={readerSpacing}
+                                onChange={(e) => handleSpacingChange(e.target.value as any)}
+                                style={{background:'var(--bg-base)', border:'1px solid var(--border-color)', color:'var(--text-main)', padding:'4px 6px', borderRadius:'4px', outline:'none', fontSize:'0.76rem'}}
+                            >
+                                <option value="compact">Gọn (1.6x)</option>
+                                <option value="normal">Chuẩn (1.85x)</option>
+                                <option value="relaxed">Thoáng (2.1x)</option>
+                            </select>
+                        </div>
+
+                        {/* Font Family selector */}
                         <select 
                             value={readerFont} 
                             onChange={(e) => {
                                 setReaderFont(e.target.value);
                                 localStorage.setItem(DB_KEYS.font, e.target.value);
                             }}
-                            style={{background:'var(--bg-base)', border:'1px solid var(--border-color)', color:'var(--text-main)', padding:'4px 8px', borderRadius:'4px', outline:'none'}}
+                            style={{background:'var(--bg-base)', border:'1px solid var(--border-color)', color:'var(--text-main)', padding:'4px 8px', borderRadius:'4px', outline:'none', fontSize:'0.76rem'}}
                         >
                             <option value="font-serif">Phông có chân (Serif)</option>
-                            <option value="font-sans">Phông không chân (Sans-serif)</option>
+                            <option value="font-sans">Phông không chân (Sans)</option>
                         </select>
 
-                        <div className="font-size-adjust" style={{display:'flex', alignItems:'center', gap:'8px'}}>
-                            <button className="outline-btn small" style={{padding:'2px 8px'}} onClick={() => {
+                        {/* Font size adjustment */}
+                        <div className="font-size-adjust" style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                            <button className="outline-btn small" style={{padding:'2px 7px', fontSize:'0.78rem'}} onClick={() => {
                                 const sz = Math.max(12, readerFontSize - 2);
                                 setReaderFontSize(sz);
                                 localStorage.setItem(DB_KEYS.fontSize, String(sz));
                             }}>-</button>
-                            <span style={{fontSize:'0.82rem'}}>{readerFontSize}px</span>
-                            <button className="outline-btn small" style={{padding:'2px 8px'}} onClick={() => {
+                            <span style={{fontSize:'0.78rem', minWidth:'30px', textAlign:'center'}}>{readerFontSize}px</span>
+                            <button className="outline-btn small" style={{padding:'2px 7px', fontSize:'0.78rem'}} onClick={() => {
                                 const sz = Math.min(32, readerFontSize + 2);
                                 setReaderFontSize(sz);
                                 localStorage.setItem(DB_KEYS.fontSize, String(sz));
                             }}>+</button>
                         </div>
 
+                        {/* Zen Mode Button - Monochrome SVG */}
                         <button 
                             className={`outline-btn small ${isZenMode ? 'active' : ''}`} 
                             onClick={() => setIsZenMode(!isZenMode)}
-                            style={{padding:'4px 12px', background: isZenMode ? 'var(--sakura-pink)' : 'transparent', color: isZenMode ? 'white' : 'var(--text-main)', border: isZenMode ? 'none' : '1px solid var(--border-color)'}}
+                            style={{
+                                padding:'4px 10px',
+                                background: isZenMode ? 'var(--text-main)' : 'transparent',
+                                color: isZenMode ? 'var(--bg-base)' : 'var(--text-main)',
+                                border: isZenMode ? 'none' : '1px solid var(--border-color)',
+                                display:'inline-flex',
+                                alignItems:'center',
+                                gap:'5px',
+                                fontSize:'0.76rem'
+                            }}
                             title="Chế độ Zen (Ẩn xao nhãng)"
                         >
-                            🧘 Zen Mode
+                            <Icons.Maximize size={12} />
+                            <span>Zen</span>
                         </button>
 
-                        <div className="reader-themes" style={{display:'flex', gap:'8px'}}>
+                        {/* Reading scroll progress pill */}
+                        <span className="reader-progress-indicator-pill" title="Tiến độ đọc chương">
+                            {scrollProgress}%
+                        </span>
+
+                        {/* Theme dots */}
+                        <div className="reader-themes" style={{display:'flex', gap:'6px'}}>
                             {['washi', 'sepia', 'charcoal'].map(t => (
                                 <button 
                                     key={t}
@@ -256,6 +322,11 @@ export default function ChapterReader({
                             ))}
                         </div>
                     </div>
+                </div>
+
+                {/* Floating scroll progress bar right under toolbar (Phase 2.1) */}
+                <div className="reader-scroll-progress-line-track">
+                    <div className="reader-scroll-progress-line-fill" style={{ width: `${scrollProgress}%` }} />
                 </div>
 
                 <div className={`reader-container-layout ${isZenMode ? 'zen-mode' : ''}`} style={{maxWidth:'1200px', margin:'40px auto 100px auto', padding:'0 24px'}}>
@@ -271,8 +342,12 @@ export default function ChapterReader({
                         </div>
                     ) : (
                         <article 
-                            className={`reader-content-body ${readerFont}`} 
-                            style={{fontSize: `${readerFontSize}px`, lineHeight:1.8, color:'var(--text-content)'}}
+                            className={`reader-content-body ${readerFont} reader-spacing-${readerSpacing}`} 
+                            style={{
+                                fontSize: `${readerFontSize}px`,
+                                lineHeight: readerSpacing === 'compact' ? 1.6 : readerSpacing === 'relaxed' ? 2.15 : 1.85,
+                                color:'var(--text-content)'
+                            }}
                             dangerouslySetInnerHTML={{ __html: chapterContent }}
                         />
                     )}
@@ -282,19 +357,21 @@ export default function ChapterReader({
                             className="outline-btn" 
                             disabled={activeChapterIndex === 0}
                             onClick={() => navigateToChapter('prev')}
-                            style={{opacity: activeChapterIndex === 0 ? 0.5 : 1}}
+                            style={{opacity: activeChapterIndex === 0 ? 0.5 : 1, display:'inline-flex', alignItems:'center', gap:'6px'}}
                             title="Sử dụng nút mũi tên Trái (←) để chuyển về chương trước"
                         >
-                            ← Chương trước
+                            <Icons.ArrowLeft size={14} />
+                            <span>Chương trước</span>
                         </button>
                         <button 
                             className="outline-btn" 
                             disabled={activeChapterIndex === publishedChapters.length - 1}
                             onClick={() => navigateToChapter('next')}
-                            style={{opacity: activeChapterIndex === publishedChapters.length - 1 ? 0.5 : 1}}
+                            style={{opacity: activeChapterIndex === publishedChapters.length - 1 ? 0.5 : 1, display:'inline-flex', alignItems:'center', gap:'6px'}}
                             title="Sử dụng nút mũi tên Phải (→) để chuyển sang chương sau"
                         >
-                            Chương sau →
+                            <span>Chương sau</span>
+                            <Icons.ArrowRight size={14} />
                         </button>
                     </div>
                 </div>

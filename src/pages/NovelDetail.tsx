@@ -86,6 +86,20 @@ export default function NovelDetail({
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [deleteReason, setDeleteReason] = useState("");
 
+    // Quick share state
+    const [linkCopied, setLinkCopied] = useState(false);
+
+    // Chapter list sort order: 'asc' = oldest first, 'desc' = newest first
+    const [chapterSortOrder, setChapterSortOrder] = useState<'asc' | 'desc'>('asc');
+
+    const handleShareNovel = () => {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(window.location.href);
+            setLinkCopied(true);
+            setTimeout(() => setLinkCopied(false), 2500);
+        }
+    };
+
     const [deletedInfo, setDeletedInfo] = useState<{ id: number; title: string; reason: string; deletedAt?: string } | null>(null);
     const [loadingDeleted, setLoadingDeleted] = useState(false);
     const [deletedError, setDeletedError] = useState(false);
@@ -142,12 +156,12 @@ export default function NovelDetail({
                                     boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
                                 }}>
                                     <div style={{
-                                        fontSize: '3.5rem',
-                                        color: 'var(--sakura-pink)',
-                                        marginBottom: '20px',
-                                        lineHeight: 1
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        color: 'var(--text-main)',
+                                        marginBottom: '20px'
                                     }}>
-                                        ⚠️
+                                        <Icons.AlertCircle size={48} />
                                     </div>
                                     <h2 style={{
                                         fontSize: '1.4rem',
@@ -256,6 +270,20 @@ export default function NovelDetail({
                 // Author user info from novel query
                 const authorAvatar = novel.authorAvatarSeed || 'author';
                 const authorBio = novel.authorBio || 'Nhà văn tự do sáng tác tại MugenBunko.';
+
+                const relatedNovels = novels
+                    .filter(n => n.id !== novel.id && (n.chapters || []).some(c => c.status === 'published'))
+                    .map(n => {
+                        let score = 0;
+                        if (n.genre && novel.genre && n.genre.toLowerCase() === novel.genre.toLowerCase()) score += 4;
+                        if ((n.authorId && novel.authorId && n.authorId === novel.authorId) || (n.author && novel.author && n.author === novel.author)) score += 5;
+                        const sharedTags = (n.tags || []).filter(t => (novel.tags || []).includes(t));
+                        score += sharedTags.length * 2;
+                        return { novel: n, score };
+                    })
+                    .sort((a, b) => b.score - a.score || (parseInt(String(b.novel.reads)) || 0) - (parseInt(String(a.novel.reads)) || 0))
+                    .slice(0, 4)
+                    .map(item => item.novel);
 
                 return (
                     <>
@@ -395,11 +423,24 @@ export default function NovelDetail({
                                     ))}
                                 </div>
 
-                                <div className="detail-actions" style={{ display: 'flex', gap: '12px', marginTop: 'auto', alignItems: 'center' }}>
+                                <div className="detail-actions" style={{ display: 'flex', gap: '12px', marginTop: 'auto', alignItems: 'center', flexWrap: 'wrap' }}>
                                     <button className="primary-btn" onClick={() => startReading(novel.id, 0)} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                                         <Icons.Book size={16} />
                                         <span>Đọc Từ Đầu</span>
                                     </button>
+
+                                    {readCount > 0 && publishedChapters.length > readCount && (
+                                        <button 
+                                            className="outline-btn" 
+                                            onClick={() => startReading(novel.id, readCount)} 
+                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', borderColor: 'var(--text-main)' }}
+                                            title={`Tiếp tục đọc chương ${readCount + 1}`}
+                                        >
+                                            <Icons.Play size={14} />
+                                            <span>Đọc Tiếp (Ch.{readCount + 1})</span>
+                                        </button>
+                                    )}
+
                                     {currentUser && (
                                         <button 
                                             className={isSaved ? "primary-btn" : "outline-btn"} 
@@ -410,6 +451,17 @@ export default function NovelDetail({
                                             <span>{isSaved ? 'Đã Lưu Tủ Sách' : 'Lưu Tủ Sách'}</span>
                                         </button>
                                     )}
+
+                                    <button 
+                                        className="outline-btn"
+                                        onClick={handleShareNovel}
+                                        title="Sao chép liên kết tác phẩm để chia sẻ"
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                                    >
+                                        {linkCopied ? <Icons.Check size={15} /> : <Icons.Share size={15} />}
+                                        <span>{linkCopied ? 'Đã sao chép link!' : 'Chia sẻ'}</span>
+                                    </button>
+
                                     {currentUser && currentUser.roles && currentUser.roles.includes('admin') && (
                                         <button 
                                             className="outline-btn" 
@@ -432,10 +484,25 @@ export default function NovelDetail({
                             <div className="main-column">
                                 {/* Chapter Tree rendering */}
                                 <div className="content-box">
-                                    <h3 className="section-title">Danh Sách Tập & Chương</h3>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                                        <h3 className="section-title" style={{ margin: 0 }}>
+                                            Danh Sách Tập & Chương ({publishedChapters.length})
+                                        </h3>
+                                        {publishedChapters.length > 1 && (
+                                            <button
+                                                className="outline-btn small"
+                                                onClick={() => setChapterSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                                                title={chapterSortOrder === 'asc' ? "Đang xếp: Cũ nhất trước. Bấm để đảo thành Mới nhất trước" : "Đang xếp: Mới nhất trước. Bấm để đảo thành Cũ nhất trước"}
+                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 12px', fontSize: '0.78rem' }}
+                                            >
+                                                {chapterSortOrder === 'asc' ? <Icons.SortAsc size={14} /> : <Icons.SortDesc size={14} />}
+                                                <span>Thứ tự: {chapterSortOrder === 'asc' ? 'Cũ nhất trước' : 'Mới nhất trước'}</span>
+                                            </button>
+                                        )}
+                                    </div>
+
                                     <div className="chapter-tree-container">
                                         {(() => {
-                                            const publishedChapters = (novel.chapters || []).filter(ch => ch.status === 'published');
                                             if (publishedChapters.length === 0) {
                                                 return <div style={{fontSize:'0.85rem', color:'var(--text-muted)', padding:'16px 0', textAlign:'center'}}>Tác phẩm chưa có chương công khai.</div>;
                                             }
@@ -450,27 +517,30 @@ export default function NovelDetail({
                                             const sortedVols = Object.entries(vols).sort((a, b) => {
                                                 const minIdA = Math.min(...a[1].map(item => item.ch.id));
                                                 const minIdB = Math.min(...b[1].map(item => item.ch.id));
-                                                return minIdA - minIdB;
+                                                return chapterSortOrder === 'asc' ? minIdA - minIdB : minIdB - minIdA;
                                             });
 
-                                            return sortedVols.map(([volName, list]) => (
-                                                <div key={volName} className="novel-volume-block">
-                                                    <h4 className="volume-title" style={{margin:'16px 0 8px 0', borderBottom:'1.5px solid var(--border-color)', paddingBottom:'6px', fontWeight:600}}>{volName}</h4>
-                                                    <ul className="chapter-list" style={{listStyle:'none', padding:0, margin:0}}>
-                                                        {list.map(item => (
-                                                            <li 
-                                                                key={item.idx} 
-                                                                className="chapter-tree-item"
-                                                                onClick={() => startReading(novel.id, item.idx)}
-                                                                style={{padding:'8px 12px', borderBottom:'1px dashed var(--border-color)', cursor:'pointer', display:'flex', justifyContent:'space-between'}}
-                                                            >
-                                                                <span className="chapter-title-lbl" style={{fontSize:'0.88rem'}}>{item.ch.title}</span>
-                                                                <span className="chapter-date-lbl" style={{fontSize:'0.75rem', color:'var(--text-muted)'}}>{Number(item.ch.word_count || 0).toLocaleString()} từ | {item.ch.date || new Date(item.ch.created_at).toLocaleDateString('vi-VN')}</span>
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            ));
+                                            return sortedVols.map(([volName, list]) => {
+                                                const displayList = chapterSortOrder === 'desc' ? [...list].reverse() : list;
+                                                return (
+                                                    <div key={volName} className="novel-volume-block">
+                                                        <h4 className="volume-title" style={{margin:'16px 0 8px 0', borderBottom:'1.5px solid var(--border-color)', paddingBottom:'6px', fontWeight:600}}>{volName}</h4>
+                                                        <ul className="chapter-list" style={{listStyle:'none', padding:0, margin:0}}>
+                                                            {displayList.map(item => (
+                                                                <li 
+                                                                    key={item.idx} 
+                                                                    className="chapter-tree-item"
+                                                                    onClick={() => startReading(novel.id, item.idx)}
+                                                                    style={{padding:'8px 12px', borderBottom:'1px dashed var(--border-color)', cursor:'pointer', display:'flex', justifyContent:'space-between'}}
+                                                                >
+                                                                    <span className="chapter-title-lbl" style={{fontSize:'0.88rem'}}>{item.ch.title}</span>
+                                                                    <span className="chapter-date-lbl" style={{fontSize:'0.75rem', color:'var(--text-muted)'}}>{Number(item.ch.word_count || 0).toLocaleString()} từ | {item.ch.date || new Date(item.ch.created_at).toLocaleDateString('vi-VN')}</span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                );
+                                            });
                                         })()}
                                     </div>
                                 </div>
@@ -724,6 +794,78 @@ export default function NovelDetail({
                                 </div>
                             </div>
                         </div>
+
+                        {/* Related Novel Recommendations Section (Phase 2.4) */}
+                        {relatedNovels.length > 0 && (
+                            <div className="related-novels-section" style={{ marginTop: '48px', borderTop: '1px solid var(--border-color)', paddingTop: '32px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                    <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)' }}>
+                                        <Icons.Sparkles size={18} />
+                                        <span>Độc Giả Cùng Thích (Tác phẩm tương tự)</span>
+                                    </h3>
+                                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                        {novel.genre ? `Cùng thể loại #${novel.genre}` : 'Gợi ý từ thư viện'}
+                                    </span>
+                                </div>
+
+                                <div className="related-novels-grid" style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+                                    gap: '16px'
+                                }}>
+                                    {relatedNovels.map(rn => {
+                                        const rnStars = computeAverageStars(rn.id);
+                                        return (
+                                            <div
+                                                key={rn.id}
+                                                className="related-novel-card"
+                                                onClick={() => {
+                                                    setActiveNovelId(rn.id);
+                                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                }}
+                                                style={{
+                                                    background: 'var(--bg-card)',
+                                                    border: '1px solid var(--border-color)',
+                                                    borderRadius: 'var(--border-radius-md)',
+                                                    overflow: 'hidden',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    gap: '12px',
+                                                    padding: '12px',
+                                                    transition: 'var(--transition-smooth)',
+                                                    boxShadow: 'var(--shadow-sm)'
+                                                }}
+                                            >
+                                                <img
+                                                    src={rn.cover}
+                                                    alt={rn.title}
+                                                    style={{ width: '64px', height: '90px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border-color)', flexShrink: 0 }}
+                                                    loading="lazy"
+                                                />
+                                                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                                                    <div>
+                                                        <h4 style={{ fontSize: '0.88rem', fontWeight: 600, margin: '0 0 4px 0', color: 'var(--text-main)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.35 }} title={rn.title}>
+                                                            {rn.title}
+                                                        </h4>
+                                                        <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                            {rn.author || rn.author_name || "Ẩn danh"}
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+                                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', color: 'var(--text-main)', fontWeight: 600 }}>
+                                                            <Icons.Star size={11} filled={true} /> {rnStars}
+                                                        </span>
+                                                        <span style={{ background: 'var(--bg-base)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.68rem', border: '1px solid var(--border-color)' }}>
+                                                            {rn.genre || 'Light Novel'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
 
                         {deleteModalOpen && (
                             <div className="modal-overlay" onClick={(e) => { if ((e.target as HTMLElement).className === 'modal-overlay') setDeleteModalOpen(false); }}>

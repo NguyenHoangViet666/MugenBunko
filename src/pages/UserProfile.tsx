@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Icons from '../components/Icons';
 import { calculateUserLevel, getTierName, getTierClassName } from '../utils/levelHelper';
 import { User, Novel, ForumPost } from '../types';
 import { formatDate } from '../utils/dateFormatter';
@@ -166,7 +167,9 @@ export default function UserProfile({
         return (
             <div className="page-view active" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px', color: 'var(--text-muted)' }}>
                 <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '1.5rem', marginBottom: '10px' }}>🌸</div>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px', opacity: 0.6 }}>
+                        <Icons.User size={32} />
+                    </div>
                     <div>Đang tải hồ sơ wibu...</div>
                 </div>
             </div>
@@ -261,15 +264,15 @@ export default function UserProfile({
                                 )}
                                 {currentUser.author_request === 'rejected' && (
                                     <div>
-                                        <div style={{ fontSize: '0.75rem', color: '#cc0000', fontWeight: 600, marginBottom: '6px' }}>
-                                            ❌ Yêu cầu Tác giả bị từ chối
+                                        <div style={{ fontSize: '0.75rem', color: '#cc0000', fontWeight: 600, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <Icons.AlertCircle size={13} /> Yêu cầu Tác giả bị từ chối
                                         </div>
                                         <button className="primary-btn small w-100" style={{ fontSize: '0.75rem', padding: '4px 8px' }} onClick={handleRequestAuthorRole}>Gửi lại yêu cầu</button>
                                     </div>
                                 )}
                                 {(!currentUser.author_request || currentUser.author_request === 'null' || currentUser.author_request === null) && (
-                                    <button className="primary-btn small w-100" style={{ fontSize: '0.75rem', padding: '4px 8px' }} onClick={handleRequestAuthorRole}>
-                                        Đăng ký làm Tác giả 🖋️
+                                    <button className="primary-btn small w-100" style={{ fontSize: '0.75rem', padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }} onClick={handleRequestAuthorRole}>
+                                        <Icons.Edit size={13} /> Đăng ký làm Tác giả
                                     </button>
                                 )}
                             </div>
@@ -287,19 +290,19 @@ export default function UserProfile({
                                 {isFriend ? (
                                     <button
                                         className="outline-btn small w-100"
-                                        style={{ borderColor: 'rgba(255, 59, 48, 0.25)', color: '#ff3b30', fontSize: '0.8rem', padding: '6px 12px' }}
+                                        style={{ borderColor: 'rgba(255, 59, 48, 0.25)', color: '#ff3b30', fontSize: '0.8rem', padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                                         onClick={() => handleDeclineRequest(targetUser.id)}
                                     >
-                                        💔 Hủy kết bạn
+                                        <Icons.UserMinus size={14} /> Hủy kết bạn
                                     </button>
                                 ) : isReceivedPending ? (
                                     <div style={{ display: 'flex', gap: '8px' }}>
                                         <button
                                             className="primary-btn small"
-                                            style={{ flex: 1, fontSize: '0.8rem', padding: '6px 12px' }}
+                                            style={{ flex: 1, fontSize: '0.8rem', padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                                             onClick={() => handleAcceptRequest(targetUser.id)}
                                         >
-                                            🤝 Đồng ý
+                                            <Icons.UserCheck size={14} /> Đồng ý
                                         </button>
                                         <button
                                             className="outline-btn small"
@@ -312,18 +315,18 @@ export default function UserProfile({
                                 ) : isSentPending ? (
                                     <button
                                         className="outline-btn small w-100"
-                                        style={{ color: 'var(--text-muted)', fontSize: '0.8rem', padding: '6px 12px' }}
+                                        style={{ color: 'var(--text-muted)', fontSize: '0.8rem', padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                                         onClick={() => handleDeclineRequest(targetUser.id)}
                                     >
-                                        ⏱️ Hủy yêu cầu kết bạn
+                                        <Icons.Clock size={14} /> Hủy yêu cầu kết bạn
                                     </button>
                                 ) : (
                                     <button
                                         className="primary-btn small w-100"
-                                        style={{ fontSize: '0.8rem', padding: '6px 12px' }}
+                                        style={{ fontSize: '0.8rem', padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                                         onClick={() => handleSendRequest(targetUser.id)}
                                     >
-                                        ➕ Gửi yêu cầu kết bạn
+                                        <Icons.UserPlus size={14} /> Gửi yêu cầu kết bạn
                                     </button>
                                 )}
                             </div>
@@ -347,12 +350,12 @@ export default function UserProfile({
                         {!isPublic && currentUser && (
                             <div className="avatar-badge-grid" style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
                                 <span className="badge-tag label" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>Danh hiệu đã đạt:</span>
-                                <span className={`badge-tag ${currentUser.xp >= 0 ? 'active' : 'lock'}`} style={{ fontSize: '0.75rem', padding: '4px 8px', borderRadius: '4px', backgroundColor: currentUser.xp >= 0 ? 'var(--sakura-pink-light)' : 'var(--bg-base)', color: currentUser.xp >= 0 ? 'var(--sakura-pink)' : 'var(--text-muted)', display: 'inline-block' }}>✓ Tập sự</span>
-                                <span className={`badge-tag ${currentUser.xp >= 500 ? 'active' : 'lock'}`} style={{ fontSize: '0.75rem', padding: '4px 8px', borderRadius: '4px', backgroundColor: currentUser.xp >= 500 ? 'var(--sakura-pink-light)' : 'var(--bg-base)', color: currentUser.xp >= 500 ? 'var(--sakura-pink)' : 'var(--text-muted)', display: 'inline-block' }}>{currentUser.xp >= 500 ? '✓' : '🔒'} C (500 XP)</span>
-                                <span className={`badge-tag ${currentUser.xp >= 2500 ? 'active' : 'lock'}`} style={{ fontSize: '0.75rem', padding: '4px 8px', borderRadius: '4px', backgroundColor: currentUser.xp >= 2500 ? 'var(--sakura-pink-light)' : 'var(--bg-base)', color: currentUser.xp >= 2500 ? 'var(--sakura-pink)' : 'var(--text-muted)', display: 'inline-block' }}>{currentUser.xp >= 2500 ? '✓' : '🔒'} UC (2,500 XP)</span>
-                                <span className={`badge-tag ${currentUser.xp >= 12500 ? 'active' : 'lock'}`} style={{ fontSize: '0.75rem', padding: '4px 8px', borderRadius: '4px', backgroundColor: currentUser.xp >= 12500 ? 'var(--sakura-pink-light)' : 'var(--bg-base)', color: currentUser.xp >= 12500 ? 'var(--sakura-pink)' : 'var(--text-muted)', display: 'inline-block' }}>{currentUser.xp >= 12500 ? '✓' : '🔒'} R (12,500 XP)</span>
-                                <span className={`badge-tag ${currentUser.xp >= 62500 ? 'active' : 'lock'}`} style={{ fontSize: '0.75rem', padding: '4px 8px', borderRadius: '4px', backgroundColor: currentUser.xp >= 62500 ? 'var(--sakura-pink-light)' : 'var(--bg-base)', color: currentUser.xp >= 62500 ? 'var(--sakura-pink)' : 'var(--text-muted)', display: 'inline-block' }}>{currentUser.xp >= 62500 ? '✓' : '🔒'} SR (62,500 XP)</span>
-                                <span className={`badge-tag ${currentUser.xp >= 625000 ? 'active' : 'lock'}`} style={{ fontSize: '0.75rem', padding: '4px 8px', borderRadius: '4px', backgroundColor: currentUser.xp >= 625000 ? 'var(--sakura-pink-light)' : 'var(--bg-base)', color: currentUser.xp >= 625000 ? 'var(--sakura-pink)' : 'var(--text-muted)', display: 'inline-block' }}>{currentUser.xp >= 625000 ? '✓' : '🔒'} SSR (625,000 XP)</span>
+                                <span className={`badge-tag ${currentUser.xp >= 0 ? 'active' : 'lock'}`} style={{ fontSize: '0.75rem', padding: '4px 8px', borderRadius: '4px', backgroundColor: currentUser.xp >= 0 ? 'var(--sakura-pink-light)' : 'var(--bg-base)', color: currentUser.xp >= 0 ? 'var(--sakura-pink)' : 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Icons.Check size={11} /> Tập sự</span>
+                                <span className={`badge-tag ${currentUser.xp >= 500 ? 'active' : 'lock'}`} style={{ fontSize: '0.75rem', padding: '4px 8px', borderRadius: '4px', backgroundColor: currentUser.xp >= 500 ? 'var(--sakura-pink-light)' : 'var(--bg-base)', color: currentUser.xp >= 500 ? 'var(--sakura-pink)' : 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>{currentUser.xp >= 500 ? <Icons.Check size={11} /> : <Icons.Lock size={11} />} C (500 XP)</span>
+                                <span className={`badge-tag ${currentUser.xp >= 2500 ? 'active' : 'lock'}`} style={{ fontSize: '0.75rem', padding: '4px 8px', borderRadius: '4px', backgroundColor: currentUser.xp >= 2500 ? 'var(--sakura-pink-light)' : 'var(--bg-base)', color: currentUser.xp >= 2500 ? 'var(--sakura-pink)' : 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>{currentUser.xp >= 2500 ? <Icons.Check size={11} /> : <Icons.Lock size={11} />} UC (2,500 XP)</span>
+                                <span className={`badge-tag ${currentUser.xp >= 12500 ? 'active' : 'lock'}`} style={{ fontSize: '0.75rem', padding: '4px 8px', borderRadius: '4px', backgroundColor: currentUser.xp >= 12500 ? 'var(--sakura-pink-light)' : 'var(--bg-base)', color: currentUser.xp >= 12500 ? 'var(--sakura-pink)' : 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>{currentUser.xp >= 12500 ? <Icons.Check size={11} /> : <Icons.Lock size={11} />} R (12,500 XP)</span>
+                                <span className={`badge-tag ${currentUser.xp >= 62500 ? 'active' : 'lock'}`} style={{ fontSize: '0.75rem', padding: '4px 8px', borderRadius: '4px', backgroundColor: currentUser.xp >= 62500 ? 'var(--sakura-pink-light)' : 'var(--bg-base)', color: currentUser.xp >= 62500 ? 'var(--sakura-pink)' : 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>{currentUser.xp >= 62500 ? <Icons.Check size={11} /> : <Icons.Lock size={11} />} SR (62,500 XP)</span>
+                                <span className={`badge-tag ${currentUser.xp >= 625000 ? 'active' : 'lock'}`} style={{ fontSize: '0.75rem', padding: '4px 8px', borderRadius: '4px', backgroundColor: currentUser.xp >= 625000 ? 'var(--sakura-pink-light)' : 'var(--bg-base)', color: currentUser.xp >= 625000 ? 'var(--sakura-pink)' : 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>{currentUser.xp >= 625000 ? <Icons.Check size={11} /> : <Icons.Lock size={11} />} SSR (625,000 XP)</span>
                             </div>
                         )}
                     </div>
@@ -473,7 +476,7 @@ export default function UserProfile({
                             <div className="profile-tab-content active" style={{ animation: 'slideUpChat 0.25s ease' }}>
                                 {filteredNovels.length === 0 ? (
                                     <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--text-muted)', background: 'var(--bg-base)', borderRadius: 'var(--border-radius-md)', border: '1px dashed var(--border-color)' }}>
-                                        <div style={{ fontSize: '2rem', marginBottom: '8px' }}>📖</div>
+                                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px', opacity: 0.5 }}><Icons.Book size={36} /></div>
                                         <p style={{ fontSize: '0.85rem' }}>
                                             {isPublic ? 'Wibu này chưa đăng tác phẩm nào.' : 'Bạn chưa đăng tác phẩm nào. Hãy vào Bàn làm việc để bắt đầu nhé!'}
                                         </p>
@@ -493,8 +496,8 @@ export default function UserProfile({
                                                     <h4 className="novel-card-title" style={{ margin: '0 0 6px 0', fontSize: '0.92rem', fontWeight: 650 }}>{novel.title}</h4>
                                                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '8px' }}>Thể loại: {novel.genre}</div>
                                                     <div className="novel-card-meta" style={{ display: 'flex', gap: '10px', fontSize: '0.72rem' }}>
-                                                        <span className="novel-card-reads">👁️ {novel.reads}</span>
-                                                        <span className="novel-card-bookmarks">📚 {novel.bookmarksCount || 0}</span>
+                                                        <span className="novel-card-reads" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Icons.Eye size={12} /> {novel.reads}</span>
+                                                        <span className="novel-card-bookmarks" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Icons.Bookmark size={12} /> {novel.bookmarksCount || 0}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -509,7 +512,7 @@ export default function UserProfile({
                             <div className="profile-tab-content active" style={{ animation: 'slideUpChat 0.25s ease' }}>
                                 {filteredPosts.length === 0 ? (
                                     <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--text-muted)', background: 'var(--bg-base)', borderRadius: 'var(--border-radius-md)', border: '1px dashed var(--border-color)' }}>
-                                        <div style={{ fontSize: '2rem', marginBottom: '8px' }}>💬</div>
+                                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px', opacity: 0.5 }}><Icons.MessageSquare size={36} /></div>
                                         <p style={{ fontSize: '0.85rem' }}>
                                             {isPublic ? 'Wibu này chưa đăng bài thảo luận nào.' : 'Bạn chưa đăng bài viết nào trên diễn đàn. Hãy viết bài thảo luận đầu tiên nhé!'}
                                         </p>
@@ -563,8 +566,8 @@ export default function UserProfile({
                                                     {post.content}
                                                 </p>
                                                 <div style={{ display: 'flex', gap: '16px', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                                                    <span>❤️ {post.likes_count || 0} thích</span>
-                                                    <span>💬 {post.comments_count || 0} bình luận</span>
+                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Icons.Heart size={13} filled={true} /> {post.likes_count || 0} thích</span>
+                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Icons.MessageSquare size={13} /> {post.comments_count || 0} bình luận</span>
                                                 </div>
                                             </div>
                                         ))}
@@ -582,7 +585,7 @@ export default function UserProfile({
                                         <h3 className="section-title" style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '16px' }}>Danh sách bạn bè ({publicFriends.length})</h3>
                                         {publicFriends.length === 0 ? (
                                             <div style={{ textAlign: 'center', padding: '32px 16px', border: '1px dashed var(--border-color)', borderRadius: 'var(--border-radius-md)', color: 'var(--text-muted)', background: 'var(--bg-base)' }}>
-                                                <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🌸</div>
+                                                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px', opacity: 0.5 }}><Icons.Users size={36} /></div>
                                                 <p style={{ fontSize: '0.82rem' }}>Chưa có bạn bè.</p>
                                             </div>
                                         ) : (
@@ -615,8 +618,8 @@ export default function UserProfile({
                                         {/* 1. Lời mời kết bạn đang chờ */}
                                         {receivedRequests.length > 0 && (
                                             <div style={{ marginBottom: '24px', background: 'var(--sakura-pink-light)', padding: '16px', borderRadius: 'var(--border-radius-md)', border: '1px solid rgba(224, 82, 117, 0.2)' }}>
-                                                <h4 style={{ color: 'var(--sakura-pink)', margin: '0 0 12px 0', fontSize: '0.95rem', fontWeight: 600 }}>
-                                                    ✉️ Lời mời kết bạn đang chờ ({receivedRequests.length})
+                                                <h4 style={{ color: 'var(--sakura-pink)', margin: '0 0 12px 0', fontSize: '0.95rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                    <Icons.Mail size={16} /> Lời mời kết bạn đang chờ ({receivedRequests.length})
                                                 </h4>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                                     {receivedRequests.map(req => (
@@ -672,7 +675,9 @@ export default function UserProfile({
                                                                 </div>
 
                                                                 {u.status === 'accepted' ? (
-                                                                    <span style={{ fontSize: '0.75rem', color: '#279450', fontWeight: 600 }}>✓ Bạn bè</span>
+                                                                    <span style={{ fontSize: '0.75rem', color: '#279450', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                                                        <Icons.Check size={12} /> Bạn bè
+                                                                    </span>
                                                                 ) : u.status === 'pending' ? (
                                                                     u.senderId === currentUser?.id ? (
                                                                         <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Đã gửi lời mời</span>
@@ -697,7 +702,7 @@ export default function UserProfile({
                                             <h3 className="section-title" style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '16px' }}>Danh sách bạn bè ({socialFriends.length})</h3>
                                             {socialFriends.length === 0 ? (
                                                 <div style={{ textAlign: 'center', padding: '32px 16px', border: '1px dashed var(--border-color)', borderRadius: 'var(--border-radius-md)', color: 'var(--text-muted)', background: 'var(--bg-base)' }}>
-                                                    <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🌸</div>
+                                                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px', opacity: 0.5 }}><Icons.Users size={36} /></div>
                                                     <p style={{ fontSize: '0.82rem' }}>Chưa có bạn bè. Hãy tìm kiếm độc giả ở trên để làm quen nhé!</p>
                                                 </div>
                                             ) : (

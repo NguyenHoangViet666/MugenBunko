@@ -217,6 +217,11 @@ const Icons = {
             <line x1="10" y1="1" x2="10" y2="4"></line>
             <line x1="14" y1="1" x2="14" y2="4"></line>
         </svg>
+    ),
+    Play: () => (
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" stroke="none">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
     )
 };
 
@@ -733,6 +738,10 @@ export default function Home({
     const renderNovelCard = (novel: Novel) => {
         const isSaved = currentUser && currentUser.bookmarks && currentUser.bookmarks.includes(novel.id);
         const stars = computeAverageStars(novel.id);
+        const historyItem = readingHistory.find(h => h.novelId === novel.id);
+        const publishedChapters = (novel.chapters || []).filter(c => c.status === 'published');
+        const hasChapters = publishedChapters.length > 0;
+        const targetChapterIdx = historyItem ? historyItem.chapterIndex : 0;
 
         return (
             <div key={novel.id} className="novel-card-v2" onClick={() => openNovelDetail(novel.id)}>
@@ -746,6 +755,22 @@ export default function Home({
                             {novel.type === 'oneshot' ? 'Oneshot' : 'Series'}
                         </span>
                     </div>
+
+                    {hasChapters && (
+                        <div className="novel-card-quick-read-overlay">
+                            <button
+                                className="quick-read-btn-pill"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    startReading(novel.id, targetChapterIdx);
+                                }}
+                                title={historyItem ? `Đọc tiếp: ${historyItem.chapterTitle || `Chương ${targetChapterIdx + 1}`}` : 'Bắt đầu đọc'}
+                            >
+                                <Icons.Play />
+                                <span>{historyItem ? `Đọc tiếp C.${targetChapterIdx + 1}` : 'Đọc ngay'}</span>
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <div className="novel-info-block-v2">

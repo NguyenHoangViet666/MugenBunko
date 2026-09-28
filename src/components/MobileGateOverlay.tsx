@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Icons from './Icons';
 
 interface MobileGateOverlayProps {
     onBypass?: () => void;
@@ -37,7 +38,7 @@ export default function MobileGateOverlay({ onBypass }: MobileGateOverlayProps) 
                             <div className="phone-screen">
                                 <div className="phone-screen-notch"></div>
                                 <div className="phone-screen-header">
-                                    <span>🌸 Mugen App</span>
+                                    <span>Mugen App</span>
                                     <span>100%</span>
                                 </div>
                                 <div className="phone-screen-book-preview">
@@ -58,8 +59,8 @@ export default function MobileGateOverlay({ onBypass }: MobileGateOverlayProps) 
                                 </div>
                             </div>
                         </div>
-                        <span className="phone-floating-badge">
-                            ✨ Mobile App Coming Soon
+                        <span className="phone-floating-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <Icons.Sparkles size={13} /> Mobile App Coming Soon
                         </span>
                     </div>
 
@@ -75,7 +76,7 @@ export default function MobileGateOverlay({ onBypass }: MobileGateOverlayProps) 
                     {/* 3-Bento Features Grid */}
                     <div className="mobile-gate-bento-grid">
                         <div className="mobile-gate-bento-item">
-                            <span className="bento-icon">📥</span>
+                            <span className="bento-icon"><Icons.Download size={22} /></span>
                             <div className="bento-text">
                                 <strong>Đọc Offline</strong>
                                 <small>Tải truyện không cần 4G</small>
@@ -83,7 +84,7 @@ export default function MobileGateOverlay({ onBypass }: MobileGateOverlayProps) 
                         </div>
 
                         <div className="mobile-gate-bento-item">
-                            <span className="bento-icon">📖</span>
+                            <span className="bento-icon"><Icons.Book size={22} /></span>
                             <div className="bento-text">
                                 <strong>Lật Trang e-Reader</strong>
                                 <small>Cử chỉ vuốt & Dark OLED</small>
@@ -91,7 +92,7 @@ export default function MobileGateOverlay({ onBypass }: MobileGateOverlayProps) 
                         </div>
 
                         <div className="mobile-gate-bento-item">
-                            <span className="bento-icon">🔔</span>
+                            <span className="bento-icon"><Icons.Bell size={22} /></span>
                             <div className="bento-text">
                                 <strong>Thông Báo Đẩy</strong>
                                 <small>Báo chương mới tức thì</small>

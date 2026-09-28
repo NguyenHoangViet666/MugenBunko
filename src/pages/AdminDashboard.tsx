@@ -211,7 +211,7 @@ export default function AdminDashboard({
                                                     color: ev.status === 'active' ? 'var(--sakura-pink)' : '#d97706',
                                                     border: ev.status === 'active' ? '1px solid var(--sakura-pink)' : '1px solid rgba(217, 119, 6, 0.3)'
                                                 }}>
-                                                    {ev.status === 'active' ? '🌸 Đang Chạy' : '📝 Nháp'}
+                                                    {ev.status === 'active' ? 'Đang Chạy' : 'Bản Nháp'}
                                                 </span>
                                             </div>
                                             <div style={{fontSize:'0.75rem', color:'var(--text-muted)'}}>{ev.desc || ev.description}</div>
