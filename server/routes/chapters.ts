@@ -1,22 +1,25 @@
 import { Router, Response } from 'express';
 import db from '../db.js';
-import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.js';
+import { authenticateToken, optionalAuthentication, AuthenticatedRequest } from '../middleware/auth.js';
+import { cleanHtml } from '../utils/html.js';
 import { snapshotChapter } from '../utils/chapterVersions.js';
 
 const router = Router();
 
 // Get specific chapter content (Public route)
-router.get('/:id', async (req, res) => {
+router.get('/:id', optionalAuthentication, async (req: AuthenticatedRequest, res) => {
     const chapterId = req.params.id;
     try {
         const chapters = await db.query<any[]>(
-            "SELECT id, novel_id, volume_name, title, content, status FROM chapters WHERE id = ?",
-            [chapterId]
+            `SELECT c.id, c.novel_id, c.volume_name, c.title, c.content, c.status FROM chapters c
+             JOIN novels n ON n.id = c.novel_id WHERE c.id = ? AND
+             ((c.status = 'published' AND n.status <> 'suspended') OR n.author_id = ? OR ? = 1)`,
+            [chapterId, req.user?.id || 0, req.user?.roles.some(role => ['admin', 'moderator'].includes(role)) || false]
         );
         if (chapters.length === 0) {
             return res.status(404).json({ error: "Không tìm thấy chương truyện." });
         }
-        res.json(chapters[0]);
+        res.json({ ...chapters[0], content: cleanHtml(chapters[0].content) });
     } catch (err) {
         console.error("Fetch chapter content error:", err);
         res.status(500).json({ error: "Lỗi tải nội dung chương truyện." });
@@ -45,7 +48,7 @@ router.get('/:id/versions/:versionId', async (req: AuthenticatedRequest, res: Re
             JOIN novels n ON n.id = c.novel_id WHERE v.id = ? AND c.id = ? AND (n.author_id = ? OR ? = 1)`,
             [req.params.versionId, req.params.id, req.user!.id, req.user!.roles.includes('admin')]);
         if (!versions.length) return res.status(404).json({ error: 'Không tìm thấy phiên bản.' });
-        res.json(versions[0]);
+        res.json({ ...versions[0], content: cleanHtml(versions[0].content) });
     } catch (error) { console.error(error); res.status(500).json({ error: 'Không thể xem phiên bản.' }); }
 });
 
@@ -56,6 +59,7 @@ router.post('/:id/versions/:versionId/restore', async (req: AuthenticatedRequest
         return res.status(400).json({ error: 'Bản thảo hiện tại không hợp lệ.' });
     }
     try {
+        if (draft) draft.content = cleanHtml(draft.content);
         const restored = await db.transaction(async connection => {
             const [chapters] = await connection.execute<any[]>(`SELECT c.* FROM chapters c JOIN novels n ON n.id = c.novel_id
                 WHERE c.id = ? AND (n.author_id = ? OR ? = 1) FOR UPDATE`, [req.params.id, req.user!.id, req.user!.roles.includes('admin')]);
@@ -63,7 +67,7 @@ router.post('/:id/versions/:versionId/restore', async (req: AuthenticatedRequest
             const [versions] = await connection.execute<any[]>('SELECT * FROM chapter_versions WHERE id = ? AND chapter_id = ?', [req.params.versionId, req.params.id]);
             if (!versions.length) return null;
             const current = chapters[0];
-            const version = versions[0];
+            const version = { ...versions[0], content: cleanHtml(versions[0].content) };
             await snapshotChapter(connection, current, req.user!.id, 'before-restore');
             if (draft && (draft.content !== current.content || draft.title.trim() !== current.title || draft.volumeName.trim() !== current.volume_name)) {
                 const text = draft.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -84,7 +88,8 @@ router.post('/:id/versions/:versionId/restore', async (req: AuthenticatedRequest
 
 // Add or Edit Chapter
 router.post('/', async (req: AuthenticatedRequest, res: Response) => {
-    const { id, novelId, volumeName, title, content, status, scheduledRelease, source } = req.body;
+    const { id, novelId, volumeName, title, status, scheduledRelease, source } = req.body;
+    const content = typeof req.body.content === 'string' ? cleanHtml(req.body.content) : '';
     if (!Number.isInteger(novelId) || typeof volumeName !== 'string' || !volumeName.trim() || volumeName.length > 100 ||
         typeof title !== 'string' || !title.trim() || title.length > 255 || typeof content !== 'string' || !content ||
         !['draft', 'published', 'pending', 'scheduled'].includes(status)) {

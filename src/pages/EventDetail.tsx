@@ -1,4 +1,5 @@
 import React from 'react';
+import DOMPurify from 'dompurify';
 import { User, SystemEvent } from '../types';
 
 interface DetailedSystemEvent extends SystemEvent {
@@ -91,7 +92,7 @@ export default function EventDetail({
                         minHeight:'200px',
                         whiteSpace:'pre-wrap'
                     }}
-                    dangerouslySetInnerHTML={{ __html: event.content || '<p style="color:var(--text-muted)">Không có nội dung chi tiết cho sự kiện này.</p>' }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(event.content || '<p>Không có nội dung chi tiết cho sự kiện này.</p>') }}
                 />
             </div>
         </div>

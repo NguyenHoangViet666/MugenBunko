@@ -4,7 +4,7 @@ export function requestLogger(req: Request, res: Response, next: NextFunction): 
     const start = Date.now();
     res.on('finish', () => {
         const duration = Date.now() - start;
-        console.log(`[API LOG] ${req.method} ${req.originalUrl} - Status: ${res.statusCode} (${duration}ms)`);
+        console.log(`[API LOG] ${req.method} ${req.path} - Status: ${res.statusCode} (${duration}ms)`);
     });
     next();
 }

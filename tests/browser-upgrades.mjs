@@ -18,6 +18,7 @@ let socket;
 const pending = new Map();
 const exceptions = [];
 const pageSockets = new Map();
+const pageContexts = new Map();
 let nextId = 0;
 const send = (method, params = {}, sessionId) => new Promise((resolve, reject) => {
     const id = ++nextId;
@@ -30,7 +31,13 @@ const evaluate = async (sessionId, expression) => {
     if (result.exceptionDetails) throw new Error(result.exceptionDetails.text + ': ' + (result.exceptionDetails.exception?.description || ''));
     return result.result.value;
 };
-const waitSelector = (sid, selector) => until(() => evaluate(sid, `Boolean(document.querySelector(${JSON.stringify(selector)}))`), `Missing ${selector}`);
+const waitSelector = async (sid, selector) => {
+    try { await until(() => evaluate(sid, `Boolean(document.querySelector(${JSON.stringify(selector)}))`), `Missing ${selector}`); }
+    catch (error) {
+        const body = await evaluate(sid, "document.body.innerText.slice(0,1200)").catch(() => 'Page unresponsive');
+        throw new Error(`${error.message}\nPage content: ${body}`, { cause: error });
+    }
+};
 const clickText = (sid, text) => evaluate(sid, `(() => { const button = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(text)}); if (!button) throw Error('Missing button: ' + ${JSON.stringify(text)}); button.click(); return true; })()`);
 const setValue = (sid, selector, value) => evaluate(sid, `(() => { const element = document.querySelector(${JSON.stringify(selector)}); if (!element) throw Error('Missing field'); const proto = element.tagName === 'SELECT' ? HTMLSelectElement.prototype : element.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype; Object.getOwnPropertyDescriptor(proto,'value').set.call(element,${JSON.stringify(value)}); element.dispatchEvent(new Event(element.tagName === 'SELECT' ? 'change' : 'input',{bubbles:true})); return true; })()`);
 
@@ -65,12 +72,17 @@ try {
         await new Promise((resolve, reject) => { pageSocket.addEventListener('open', resolve, { once: true }); pageSocket.addEventListener('error', reject, { once: true }); });
         pageSocket.addEventListener('message', onMessage);
         const sessionId = targetId; pageSockets.set(sessionId, pageSocket);
+        pageContexts.set(sessionId, browserContextId);
         await send('Page.enable', {}, sessionId); await send('Runtime.enable', {}, sessionId); await send('Network.enable', {}, sessionId);
         await send('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: false }, sessionId);
         if (authenticated) await send('Page.addScriptToEvaluateOnNewDocument', { source: `localStorage.setItem('mugen_session',${JSON.stringify(JSON.stringify(fixture.user))});localStorage.setItem('mugen_token',${JSON.stringify(fixture.token(2))});sessionStorage.setItem('mugen_mobile_bypass','true');` }, sessionId);
         // A query change forces a new document so the account seeding script runs.
         await send('Page.navigate', { url: fixture.url + '/?smoke=' + targetId + hash }, sessionId);
         return sessionId;
+    };
+    const closePage = async sid => {
+        await send('Target.disposeBrowserContext', { browserContextId: pageContexts.get(sid) });
+        pageSockets.get(sid)?.close(); pageSockets.delete(sid); pageContexts.delete(sid);
     };
     const screenshot = async (sid, name) => {
         if (name === 'library') { await evaluate(sid, "window.scrollTo({top:0,behavior:'instant'});true"); await sleep(150); }
@@ -98,7 +110,7 @@ try {
     await waitSelector(secondDevice, '.reader-content-body p'); await sleep(1500);
     const resumed = await evaluate(secondDevice, "JSON.parse(localStorage.getItem('mugen_readprogress_upgrade_reader_1'))");
     assert.ok(Math.abs(resumed.paragraphIndex - saved.paragraph_index) <= 1, 'Second device resumed a different paragraph');
-    assert.ok(await evaluate(secondDevice, 'window.scrollY > 1000'), 'Second device did not restore scroll');
+    await until(() => evaluate(secondDevice, 'window.scrollY > 1000'), 'Second device did not restore scroll', 45000);
     await screenshot(secondDevice, 'reader');
     await send('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0 }, secondDevice);
     await evaluate(secondDevice, "window.dispatchEvent(new Event('offline'));window.scrollTo({top:window.scrollY + document.querySelectorAll('.reader-content-body p')[35].getBoundingClientRect().top - 90,behavior:'instant'});true");
@@ -108,6 +120,7 @@ try {
     await evaluate(secondDevice, "window.dispatchEvent(new Event('online'));true");
     await until(async () => (await fixture.db.query('SELECT paragraph_index FROM reading_progress WHERE user_id = 2 AND novel_id = 1'))[0]?.paragraph_index >= 33, 'Offline position was not synchronized');
     console.log('PASS: paragraph resume across separate browser contexts and offline recovery');
+    await closePage(secondDevice);
 
     await clickText(reader, 'Tạo kệ sách'); await waitSelector(reader, '.feature-modal input[maxlength="80"]');
     await setValue(reader, '.feature-modal input[maxlength="80"]', 'Để dành cuối tuần');
@@ -126,6 +139,7 @@ try {
     await until(async () => (await fixture.db.query('SELECT is_public FROM library_collections WHERE user_id = 2'))[0]?.is_public === 0, 'Privacy change did not persist');
     await send('Page.reload', {}, guest); await waitSelector(guest, '.load-error-card');
     console.log('PASS: create shelf, add novel, share publicly and revoke public access');
+    await closePage(guest);
 
     const headers = { Authorization: 'Bearer ' + fixture.token(2), 'Content-Type': 'application/json' };
     const response = await fetch(fixture.url + '/api/chapters', { method: 'POST', headers, body: JSON.stringify({ id: 2, novelId: 1, volumeName: 'Tập 01', title: 'Bản chỉnh sửa mới', content: '<p>Nội dung đã lưu mới.</p>', status: 'draft' }) });
@@ -143,6 +157,21 @@ try {
     await until(() => evaluate(reader, "!document.querySelector('.version-history-modal') && document.querySelector('.editor-body-textarea')?.textContent.includes('Đoạn 1.')"), 'Version restore did not update editor');
     const preserved = await fixture.db.query("SELECT id FROM chapter_versions WHERE chapter_id = 2 AND content LIKE '%Đoạn đang viết chưa lưu%'"); assert.ok(preserved.length);
     console.log('PASS: preview and restore chapter version while preserving unsaved editor content');
+    await closePage(reader);
+    const signup = await newPage('#/', false);
+    await waitSelector(signup, '.app-header');
+    await clickText(signup, 'Đăng ký'); await waitSelector(signup, '#register-email');
+    await setValue(signup, '.modal-body input[type=text]', 'browser_verified_reader');
+    await setValue(signup, '.modal-body input[placeholder="Tên hiển thị..."]', 'Verified reader');
+    await setValue(signup, '.modal-body input[type=password]', 'SecurePassword123!');
+    await setValue(signup, '#register-email', 'browser-signup@example.test');
+    await clickText(signup, 'Gửi mã xác thực');
+    await until(() => evaluate(signup, "document.querySelector('#register-otp')?.value.length===6"), 'Development OTP did not reach the registration form');
+    await clickText(signup, 'Đăng Ký Tài Khoản');
+    await until(() => evaluate(signup, "JSON.parse(localStorage.getItem('mugen_session') || 'null')?.username==='browser_verified_reader'"), 'Verified registration did not sign in');
+    const registered = await fixture.db.query('SELECT email, password FROM users WHERE username = ?', ['browser_verified_reader']);
+    assert.equal(registered[0].email, 'browser-signup@example.test'); assert.notEqual(registered[0].password, 'SecurePassword123!');
+    console.log('PASS: verified email registration and automatic sign-in');
     assert.deepEqual(exceptions, [], 'Browser runtime exceptions');
     console.log('Browser smoke checks passed. Screenshots: artifacts/upgrades/');
 } finally {

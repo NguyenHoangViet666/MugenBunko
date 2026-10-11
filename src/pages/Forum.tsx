@@ -1,3 +1,4 @@
+import { fetchArrayPages } from '../utils/pagedFetch';
 import React, { useState, useEffect } from 'react';
 import { calculateUserLevel } from '../utils/levelHelper';
 import { User, ForumPost, ForumComment, Message } from '../types';
@@ -411,8 +412,7 @@ export default function Forum({
     const fetchPosts = async () => {
         setLoading(true);
         try {
-            const res = await fetchWithAuth(`${API_BASE}/forum/posts`);
-            const data = await res.json();
+            const data = await fetchArrayPages<ForumPost>(fetchWithAuth, `${API_BASE}/forum/posts`);
             if (Array.isArray(data)) {
                 setPosts(data);
             }

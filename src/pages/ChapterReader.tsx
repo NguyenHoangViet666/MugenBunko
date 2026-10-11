@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import DOMPurify from 'dompurify';
 import type { Novel, User } from '../types';
 import { Icons } from '../components/Icons';
 import { PageError, PageLoading, SyncIndicator } from '../components/LoadState';
@@ -219,7 +220,7 @@ function ReaderChapter(props: ChapterReaderProps & { novel: Novel; chapterId: nu
                 <div className="reader-chapter-meta"><SyncIndicator status={syncStatus} onRetry={() => void props.syncNovel(novel)} /><span>{progress}% {completed ? '· Đã đọc xong' : ''}</span></div>
             </header>
             {loading ? <PageLoading reader /> : error ? <PageError message={error} onRetry={() => setAttempt(a => a + 1)} />
-                : <article ref={articleRef} className={'reader-content-body ' + readerFont + ' reader-spacing-' + spacing} style={{ fontSize: readerFontSize, lineHeight: spacing === 'compact' ? 1.6 : spacing === 'relaxed' ? 2.15 : 1.85 }} dangerouslySetInnerHTML={{ __html: content }} />}
+                : <article ref={articleRef} className={'reader-content-body ' + readerFont + ' reader-spacing-' + spacing} style={{ fontSize: readerFontSize, lineHeight: spacing === 'compact' ? 1.6 : spacing === 'relaxed' ? 2.15 : 1.85 }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }} />}
             <nav className="reader-footer-nav" aria-label="Chuyển chương">
                 <button className="outline-btn" disabled={activeChapterIndex === 0} onClick={() => props.navigateToChapter('prev')}><Icons.ArrowLeft size={14} /> Chương trước</button>
                 <button className="primary-btn" disabled={activeChapterIndex >= chapters.length - 1} onClick={() => props.navigateToChapter('next')}>Chương sau <Icons.ArrowRight size={14} /></button>

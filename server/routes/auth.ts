@@ -1,610 +1,186 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
+import rateLimit from 'express-rate-limit';
 import db from '../db.js';
-
-
-const JWT_SECRET = process.env.JWT_SECRET || 'mugenbunko-super-secret-key-12345';
-
-// Configure Nodemailer for Gmail / SMTP
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: {
-        user: process.env.SMTP_USER || '',
-        pass: process.env.SMTP_PASS || '',
-    },
-});
-
-// In-memory OTP Cache (email -> { otp, expiresAt, verified })
-interface OtpRecord {
-    otp: string;
-    expiresAt: number;
-    verified: boolean;
-}
-const otpStore = new Map<string, OtpRecord>();
-
-// Auto-migration: Ensure email column exists in users table
-(async () => {
-    try {
-        const cols = await db.query<any[]>("SHOW COLUMNS FROM users LIKE 'email'");
-        if (cols.length === 0) {
-            await db.query("ALTER TABLE users ADD COLUMN `email` VARCHAR(150) NULL UNIQUE AFTER `displayname`");
-            console.log("[Auth DB] Added 'email' column to users table successfully.");
-        }
-    } catch (e) {
-        console.warn("[Auth DB] Email column check note:", e);
-    }
-})();
-
-async function comparePassword(input: string, hash: string): Promise<boolean> {
-    return await bcrypt.compare(input, hash);
-}
+import { JWT_SECRET, production } from '../config.js';
+import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.js';
+import { checkRole } from '../middleware/roles.js';
+import { issueOtp, verifyOtp } from '../utils/otp.js';
 
 const router = Router();
+const emailPattern = /^[a-zA-Z0-9.!#$%&'*+\-/=?^_`{|}~]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+$/;
+const emailValue = (value: unknown) => typeof value === 'string' ? value.trim().toLowerCase() : '';
+const limitedText = (value: unknown, max: number) => typeof value === 'string' && value.length <= max;
+const otpLimiter = rateLimit({ windowMs: 15 * 60000, limit: 20, standardHeaders: true, legacyHeaders: false });
+const tokenFor = (user: any) => jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { algorithm: 'HS256', expiresIn: '1d' });
 
-// ================= SEND OTP ENDPOINT =================
-router.post('/send-otp', async (req: Request, res: Response) => {
-    const { email } = req.body;
-    const cleanEmail = (email || '').trim().toLowerCase();
+async function userSession(id: number) {
+    const users = await db.query<any[]>(`SELECT id, username, displayname, email, coins, level, xp, bio,
+        avatar_seed AS avatarSeed, status, author_request, date_joined FROM users WHERE id = ?`, [id]);
+    if (!users.length) return null;
+    const [roles, bookmarks, notifications] = await Promise.all([
+        db.query<any[]>('SELECT role FROM user_roles WHERE user_id = ?', [id]),
+        db.query<any[]>('SELECT novel_id FROM bookmarks WHERE user_id = ?', [id]),
+        db.query<any[]>("SELECT id, text, is_read AS `read`, DATE_FORMAT(created_at, '%d/%m/%Y') AS date FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT 100", [id]),
+    ]);
+    return { ...users[0], roles: roles.map(row => row.role), bookmarks: bookmarks.map(row => row.novel_id), notifications };
+}
 
-    if (!cleanEmail) {
-        return res.status(400).json({ error: "Vui lòng nhập địa chỉ Gmail / Email!" });
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(cleanEmail)) {
-        return res.status(400).json({ error: "Địa chỉ Email không đúng định dạng!" });
-    }
-
+router.post('/send-otp', otpLimiter, async (req, res) => {
+    const email = emailValue(req.body.email);
+    if (email.length > 150 || !emailPattern.test(email)) return res.status(400).json({ error: 'Email không hợp lệ.' });
+    const hasSmtp = Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
+    const developmentOtp = !production && process.env.DEV_OTP === 'true';
+    if (!hasSmtp && !developmentOtp) return res.status(503).json({ error: 'Dịch vụ gửi email chưa được cấu hình.' });
     try {
-        // Check if email already registered
-        const existingUsers = await db.query<any[]>("SELECT id FROM users WHERE email = ?", [cleanEmail]);
-        if (existingUsers.length > 0) {
-            return res.status(400).json({ error: "Email này đã được liên kết với một tài khoản khác!" });
+        if ((await db.query<any[]>('SELECT id FROM users WHERE email = ?', [email])).length) return res.status(400).json({ error: 'Email đã được sử dụng.' });
+        const code = await issueOtp(email);
+        if (!code) return res.status(429).json({ error: 'Vui lòng chờ 60 giây trước khi gửi lại mã.' });
+        if (hasSmtp) {
+            const transporter = nodemailer.createTransport({ host: process.env.SMTP_HOST || 'smtp.gmail.com', port: Number(process.env.SMTP_PORT || 587),
+                secure: process.env.SMTP_SECURE === 'true', requireTLS: process.env.SMTP_SECURE !== 'true',
+                connectionTimeout: 10000, socketTimeout: 15000,
+                auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }, disableFileAccess: true, disableUrlAccess: true });
+            try { await transporter.sendMail({ from: process.env.SMTP_USER, to: email, subject: 'Mã xác thực MugenBunko', text: `Mã xác thực: ${code}. Có hiệu lực trong 5 phút. Không chia sẻ mã này.` }); }
+            catch { await db.query('DELETE FROM email_otps WHERE email = ?', [email]); return res.status(503).json({ error: 'Không thể gửi email. Vui lòng thử lại.' }); }
+            finally { transporter.close(); }
         }
-
-        // Generate 6-digit OTP
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes expiry
-
-        otpStore.set(cleanEmail, { otp, expiresAt, verified: false });
-        console.log(`\n========================================`);
-        console.log(`[MUGENBUNKO OTP] Email: ${cleanEmail}`);
-        console.log(`[MUGENBUNKO OTP] Mã OTP của bạn là: >>> ${otp} <<<`);
-        console.log(`========================================\n`);
-
-        // Send real email if SMTP credentials provided
-        if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-            try {
-                await transporter.sendMail({
-                    from: `"MugenBunko" <${process.env.SMTP_USER}>`,
-                    to: cleanEmail,
-                    subject: 'Mã xác thực OTP đăng ký tài khoản MugenBunko',
-                    html: `
-                        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #eae5dc; border-radius: 12px; background: #faf8f5;">
-                            <h2 style="color: #1c2d37; margin-bottom: 8px;">MUGENBUNKO •</h2>
-                            <p style="color: #555; font-size: 14px;">Xin chào! Cảm ơn bạn đã đăng ký tài khoản tại Thư viện Light Novel MugenBunko.</p>
-                            <div style="background: #ffffff; padding: 16px; border-radius: 8px; text-align: center; margin: 20px 0; border: 1px dashed #e05275;">
-                                <span style="font-size: 12px; color: #737b82; text-transform: uppercase; letter-spacing: 1px;">Mã xác thực OTP của bạn</span>
-                                <div style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #e05275; margin-top: 8px;">${otp}</div>
-                            </div>
-                            <p style="color: #888; font-size: 12px;">Mã này có hiệu lực trong vòng 5 phút. Vui lòng không chia sẻ mã này cho bất kỳ ai.</p>
-                        </div>
-                    `,
-                });
-            } catch (mailErr) {
-                console.warn("[Nodemailer] Không thể gửi email trực tiếp qua SMTP, sử dụng OTP hiển thị:", mailErr);
-            }
-        }
-
-        res.json({
-            success: true,
-            message: `Mã OTP đã được gửi đến ${cleanEmail}!`,
-            devOtp: otp, // Trả về devOtp để người dùng test tiện lợi ngay cả khi chưa cài SMTP Gmail
-        });
-    } catch (err) {
-        console.error("Send OTP error:", err);
-        res.status(500).json({ error: "Lỗi khi gửi mã xác thực OTP." });
-    }
+        res.json({ success: true, message: 'Mã xác thực đã được gửi.', ...(developmentOtp ? { devOtp: code } : {}) });
+    } catch { res.status(503).json({ error: 'Không thể gửi mã xác thực lúc này.' }); }
 });
-
-// ================= VERIFY OTP ENDPOINT =================
-router.post('/verify-otp', async (req: Request, res: Response) => {
-    const { email, otp } = req.body;
-    const cleanEmail = (email || '').trim().toLowerCase();
-    const cleanOtp = (otp || '').trim();
-
-    if (!cleanEmail || !cleanOtp) {
-        return res.status(400).json({ error: "Vui lòng nhập Email và mã OTP!" });
-    }
-
-    const record = otpStore.get(cleanEmail);
-    if (!record) {
-        return res.status(400).json({ error: "Chưa có mã OTP nào được gửi đến email này hoặc mã đã hết hạn!" });
-    }
-
-    if (Date.now() > record.expiresAt) {
-        otpStore.delete(cleanEmail);
-        return res.status(400).json({ error: "Mã OTP đã hết hạn! Vui lòng yêu cầu mã mới." });
-    }
-
-    if (record.otp !== cleanOtp) {
-        return res.status(400).json({ error: "Mã OTP không chính xác!" });
-    }
-
-    record.verified = true;
-    res.json({ success: true, message: "Xác thực OTP thành công!" });
+router.post('/verify-otp', otpLimiter, async (req, res) => {
+    const email = emailValue(req.body.email);
+    const code = typeof req.body.otp === 'string' ? req.body.otp.trim() : '';
+    if (email.length > 150 || !emailPattern.test(email) || !/^\d{6}$/.test(code)) return res.status(400).json({ error: 'Email hoặc mã xác thực không hợp lệ.' });
+    try {
+        if (!await verifyOtp(email, code)) return res.status(400).json({ error: 'Mã không đúng, hết hạn hoặc đã vượt số lần thử.' });
+        res.json({ success: true, message: 'Xác thực thành công.' });
+    } catch { res.status(503).json({ error: 'Không thể xác thực lúc này.' }); }
 });
-
-// Login endpoint
-router.post('/login', async (req: Request, res: Response) => {
+router.post('/login', async (req, res) => {
     const { username, password } = req.body;
-    if (!username || !password) {
-        return res.status(400).json({ error: "Vui lòng nhập tên đăng nhập và mật khẩu!" });
-    }
-
+    if (!limitedText(username, 150) || !username.trim() || !limitedText(password, 200) || !password) return res.status(400).json({ error: 'Thông tin đăng nhập không hợp lệ.' });
     try {
-        const users = await db.query<any[]>(
-            "SELECT * FROM users WHERE username = ? OR email = ?",
-            [username.trim(), username.trim().toLowerCase()]
-        );
-
-        if (users.length === 0) {
-            return res.status(401).json({ error: "Sai tên đăng nhập hoặc mật khẩu!" });
-        }
-
-        const user = users[0];
-        
-        // Verify password
-        const isMatch = await comparePassword(password, user.password);
-        if (!isMatch) {
-            return res.status(401).json({ error: "Sai tên đăng nhập hoặc mật khẩu!" });
-        }
-
-        user.avatarSeed = user.avatar_seed;
-        if (user.status === 'suspended') {
-            return res.status(403).json({ error: "🚫 TÀI KHOẢN BỊ KHÓA: Tài khoản đã bị khóa do vi phạm chính sách cộng đồng." });
-        }
-
-        // Get user roles
-        const rolesData = await db.query<any[]>("SELECT role FROM user_roles WHERE user_id = ?", [user.id]);
-        user.roles = rolesData.map(r => r.role);
-
-        // Get bookmarks
-        const bookmarksData = await db.query<any[]>("SELECT novel_id FROM bookmarks WHERE user_id = ?", [user.id]);
-        user.bookmarks = bookmarksData.map(b => b.novel_id);
-
-        // Get notifications
-        const notifs = await db.query<any[]>(
-            "SELECT id, text, is_read as `read`, DATE_FORMAT(created_at, '%d/%m/%Y') as date FROM notifications WHERE user_id = ? ORDER BY created_at DESC", 
-            [user.id]
-        );
-        user.notifications = notifs;
-
-        // Strip password for security
-        delete user.password;
-
-        // Sign JWT Token
-        const token = jwt.sign({ id: user.id, username: user.username, roles: user.roles }, JWT_SECRET, { expiresIn: '7d' });
-
-        res.json({ user, token });
-    } catch (err) {
-        console.error("Login error:", err);
-        res.status(500).json({ error: "Lỗi kết nối cơ sở dữ liệu." });
-    }
+        const users = await db.query<any[]>('SELECT id, password, status FROM users WHERE username = ? OR email = ? LIMIT 1', [username.trim(), username.trim().toLowerCase()]);
+        if (!users.length || !await bcrypt.compare(password, users[0].password)) return res.status(401).json({ error: 'Sai tài khoản hoặc mật khẩu.' });
+        if (users[0].status !== 'active') return res.status(403).json({ error: 'Tài khoản đã bị khóa.' });
+        const user = await userSession(users[0].id);
+        res.json({ user, token: tokenFor(user) });
+    } catch { res.status(503).json({ error: 'Không thể đăng nhập lúc này.' }); }
 });
-
-// Refresh session endpoint
-router.get('/refresh/:id', async (req: Request, res: Response) => {
+router.post('/register', async (req, res) => {
+    const username = emailValue(req.body.username);
+    const email = emailValue(req.body.email);
+    const { displayname, password } = req.body;
+    if (!/^[a-z0-9_]{3,50}$/.test(username) || !limitedText(displayname, 100) || !displayname.trim() ||
+        !limitedText(password, 72) || Buffer.byteLength(password, 'utf8') > 72 || !/^(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/.test(password) ||
+        (email && (email.length > 150 || !emailPattern.test(email))) || (production && !email)) return res.status(400).json({ error: 'Thông tin đăng ký không hợp lệ. Mật khẩu cần 8–72 byte, chữ hoa, số và ký tự đặc biệt.' });
     try {
-        const userId = req.params.id;
-
-        const authHeader = req.headers['authorization'];
-        const token = authHeader && authHeader.split(' ')[1];
-        if (!token) {
-            return res.status(401).json({ error: "Yêu cầu xác thực tài khoản qua Token!" });
-        }
-        try {
-            const decoded: any = jwt.verify(token, JWT_SECRET);
-            if (decoded.id !== parseInt(userId)) {
-                return res.status(403).json({ error: "Không được phép truy cập phiên của tài khoản khác!", code: "FORBIDDEN_USER" });
-            }
-        } catch (e) {
-            return res.status(401).json({ error: "Phiên làm việc đã hết hạn hoặc không hợp lệ!", code: "TOKEN_EXPIRED" });
-        }
-
-        const users = await db.query<any[]>("SELECT * FROM users WHERE id = ?", [userId]);
-        if (users.length === 0) {
-            return res.status(404).json({ error: "Không tìm thấy người dùng." });
-        }
-        const user = users[0];
-        user.avatarSeed = user.avatar_seed;
-
-        const rolesData = await db.query<any[]>("SELECT role FROM user_roles WHERE user_id = ?", [user.id]);
-        user.roles = rolesData.map(r => r.role);
-
-        const bookmarksData = await db.query<any[]>("SELECT novel_id FROM bookmarks WHERE user_id = ?", [user.id]);
-        user.bookmarks = bookmarksData.map(b => b.novel_id);
-
-        const notifs = await db.query<any[]>(
-            "SELECT id, text, is_read as `read`, DATE_FORMAT(created_at, '%d/%m/%Y') as date FROM notifications WHERE user_id = ? ORDER BY created_at DESC", 
-            [user.id]
-        );
-        user.notifications = notifs;
-
-        delete user.password;
-        res.json({ user });
-    } catch (err) {
-        console.error("Refresh session error:", err);
-        res.status(500).json({ error: "Lỗi làm mới phiên làm việc." });
-    }
+        const duplicate = await db.query<any[]>('SELECT id FROM users WHERE username = ? OR (email = ? AND ? <> ?) LIMIT 1', [username, email, email, '']);
+        if (duplicate.length) return res.status(409).json({ error: 'Tài khoản hoặc email đã được sử dụng.' });
+        if (email && (typeof req.body.otp !== 'string' || !await verifyOtp(email, req.body.otp.trim(), true))) return res.status(400).json({ error: 'Mã xác thực không hợp lệ.' });
+        const passwordHash = await bcrypt.hash(password, 12);
+        const userId = await db.transaction(async connection => {
+            const [insert] = await connection.execute<any>(`INSERT INTO users (username, password, displayname, email, coins, avatar_seed, author_request)
+                VALUES (?, ?, ?, ?, 0, ?, ?)`, [username, passwordHash, displayname.trim(), email || null, username, req.body.role === 'author' ? 'pending' : null]);
+            await connection.execute("INSERT INTO user_roles (user_id, role) VALUES (?, 'reader')", [insert.insertId]);
+            await connection.execute("INSERT INTO notifications (user_id, text) VALUES (?, 'Chào mừng bạn đến MugenBunko!')", [insert.insertId]);
+            return insert.insertId;
+        });
+        const user = await userSession(userId); res.json({ success: true, user, token: tokenFor(user) });
+    } catch { res.status(503).json({ error: 'Không thể tạo tài khoản lúc này.' }); }
 });
-
-// Register endpoint with Email & OTP Validation
-router.post('/register', async (req: Request, res: Response) => {
-    const { username, displayname, password, email, otp, role } = req.body;
-    const cleanUsername = (username || '').trim().toLowerCase();
-    const cleanEmail = (email || '').trim().toLowerCase();
-    const cleanOtp = (otp || '').trim();
-
-    if (!cleanUsername || !displayname?.trim() || !password) {
-        return res.status(400).json({ error: "Vui lòng điền đầy đủ thông tin đăng ký!" });
-    }
-
-    if (!/^[a-z0-9_]+$/.test(cleanUsername)) {
-        return res.status(400).json({ error: "Tên đăng nhập chỉ gồm chữ thường không dấu, số và dấu gạch dưới!" });
-    }
-
-    if (cleanEmail) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(cleanEmail)) {
-            return res.status(400).json({ error: "Địa chỉ Email không đúng định dạng!" });
-        }
-
-        // Validate OTP if email provided
-        if (!cleanOtp) {
-            return res.status(400).json({ error: "Vui lòng nhập mã xác thực OTP đã gửi đến Gmail của bạn!" });
-        }
-
-        const otpRecord = otpStore.get(cleanEmail);
-        if (!otpRecord || otpRecord.otp !== cleanOtp) {
-            return res.status(400).json({ error: "Mã xác thực OTP không đúng hoặc đã hết hạn!" });
-        }
-
-        if (Date.now() > otpRecord.expiresAt) {
-            otpStore.delete(cleanEmail);
-            return res.status(400).json({ error: "Mã OTP đã hết hạn! Vui lòng yêu cầu mã mới." });
-        }
-    }
-
-    // Password strength verification
-    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
-    if (!passwordRegex.test(password)) {
-        return res.status(400).json({ error: "Mật khẩu không hợp lệ! Yêu cầu tối thiểu 8 ký tự, bao gồm ít nhất 1 chữ cái viết hoa, 1 chữ số và 1 ký tự đặc biệt!" });
-    }
-
+router.get('/refresh/:id', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    if (Number(req.params.id) !== req.user!.id) return res.status(403).json({ error: 'Không có quyền truy cập phiên khác.' });
+    try { res.json({ user: await userSession(req.user!.id) }); }
+    catch { res.status(503).json({ error: 'Không thể làm mới phiên.' }); }
+});
+router.post('/update-profile', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    const { displayname, bio = '', avatarSeed = '' } = req.body;
+    if (req.body.userId !== undefined && Number(req.body.userId) !== req.user!.id) return res.status(403).json({ error: 'Không thể sửa hồ sơ người khác.' });
+    if (!limitedText(displayname, 100) || !displayname.trim() || !limitedText(bio, 5000) || !limitedText(avatarSeed, 100)) return res.status(400).json({ error: 'Hồ sơ không hợp lệ.' });
     try {
-        // Check duplicate username
-        const existingUsername = await db.query<any[]>("SELECT id FROM users WHERE username = ?", [cleanUsername]);
-        if (existingUsername.length > 0) {
-            return res.status(400).json({ error: "Tên đăng nhập này đã được sử dụng!" });
-        }
-
-        // Check duplicate email
-        if (cleanEmail) {
-            const existingEmail = await db.query<any[]>("SELECT id FROM users WHERE email = ?", [cleanEmail]);
-            if (existingEmail.length > 0) {
-                return res.status(400).json({ error: "Email này đã được liên kết với một tài khoản khác!" });
-            }
-        }
-
-        // Hash password
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        // Insert user with email
-        const avatarSeed = cleanUsername + Math.floor(Math.random() * 100);
-        const result = await db.query<any>(
-            "INSERT INTO users (username, password, displayname, email, coins, bio, avatar_seed) VALUES (?, ?, ?, ?, 0, 'Mọt sách chính hiệu của MugenBunko.', ?)",
-            [cleanUsername, hashedPassword, displayname.trim(), cleanEmail || null, avatarSeed]
-        );
-        const userId = result.insertId;
-
-        // Clear used OTP
-        if (cleanEmail) {
-            otpStore.delete(cleanEmail);
-        }
-
-        // Insert role
-        await db.query("INSERT INTO user_roles (user_id, role) VALUES (?, 'reader')", [userId]);
-        if (role === 'author') {
-            await db.query("INSERT INTO user_roles (user_id, role) VALUES (?, 'author')", [userId]);
-        }
-
-        // Insert welcome notification
-        await db.query(
-            "INSERT INTO notifications (user_id, text) VALUES (?, 'Chào mừng bạn gia nhập MugenBunko! Hãy cùng khám phá thế giới truyện Light Novel kỳ ảo nhé.')",
-            [userId]
-        );
-
-        // Fetch created user
-        const users = await db.query<any[]>("SELECT * FROM users WHERE id = ?", [userId]);
-        const user = users[0];
-        user.avatarSeed = user.avatar_seed;
-
-        const rolesData = await db.query<any[]>("SELECT role FROM user_roles WHERE user_id = ?", [userId]);
-        user.roles = rolesData.map(r => r.role);
-        user.bookmarks = [];
-        user.notifications = [{ id: 1, text: "Chào mừng bạn gia nhập MugenBunko! Hãy cùng khám phá thế giới truyện Light Novel kỳ ảo nhé.", read: false, date: "Hôm nay" }];
-        
-        delete user.password;
-
-        // Sign JWT Token
-        const token = jwt.sign({ id: user.id, username: user.username, roles: user.roles }, JWT_SECRET, { expiresIn: '7d' });
-
-        res.json({ success: true, user, token });
-    } catch (err) {
-        console.error("Register error:", err);
-        res.status(500).json({ error: "Lỗi lưu tài khoản mới." });
-    }
+        await db.query('UPDATE users SET displayname = ?, bio = ?, avatar_seed = ? WHERE id = ?', [displayname.trim(), bio, avatarSeed, req.user!.id]);
+        res.json({ user: await userSession(req.user!.id) });
+    } catch { res.status(503).json({ error: 'Không thể cập nhật hồ sơ.' }); }
 });
-
-// Update Profile endpoint
-router.post('/update-profile', async (req: Request, res: Response) => {
-    const { userId, displayname, bio, avatarSeed } = req.body;
-    if (!userId || !displayname.trim()) {
-        return res.status(400).json({ error: "Thiếu dữ liệu cập nhật thông tin!" });
-    }
-
+router.post('/update-roles', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+    const target = Number(req.body.userId);
+    const roles = req.body.roles;
+    if (!Number.isSafeInteger(target) || target <= 0 || !Array.isArray(roles) || roles.length > 4 || !roles.includes('reader') ||
+        roles.some(role => !['reader', 'author', 'moderator', 'admin'].includes(role)) || new Set(roles).size !== roles.length ||
+        (roles.includes('admin') && roles.includes('moderator'))) return res.status(400).json({ error: 'Vai trò không hợp lệ.' });
     try {
-        await db.query(
-            "UPDATE users SET displayname = ?, bio = ?, avatar_seed = ? WHERE id = ?",
-            [displayname.trim(), bio, avatarSeed, userId]
-        );
-
-        const users = await db.query<any[]>("SELECT * FROM users WHERE id = ?", [userId]);
-        const user = users[0];
-        user.avatarSeed = user.avatar_seed;
-
-        const rolesData = await db.query<any[]>("SELECT role FROM user_roles WHERE user_id = ?", [userId]);
-        user.roles = rolesData.map(r => r.role);
-
-        const bookmarksData = await db.query<any[]>("SELECT novel_id FROM bookmarks WHERE user_id = ?", [userId]);
-        user.bookmarks = bookmarksData.map(b => b.novel_id);
-
-        const notifs = await db.query<any[]>("SELECT id, text, is_read as `read`, DATE_FORMAT(created_at, '%d/%m/%Y') as date FROM notifications WHERE user_id = ? ORDER BY created_at DESC", [userId]);
-        user.notifications = notifs;
-
-        delete user.password;
-        res.json({ user });
-    } catch (err) {
-        console.error("Update profile error:", err);
-        res.status(500).json({ error: "Lỗi cập nhật hồ sơ cá nhân." });
-    }
+        const outcome = await db.transaction(async connection => {
+            const [admins] = await connection.execute<any[]>("SELECT user_id FROM user_roles WHERE role = 'admin' FOR UPDATE");
+            const [users] = await connection.execute<any[]>('SELECT id FROM users WHERE id = ? FOR UPDATE', [target]);
+            if (!users.length) return 404;
+            const [current] = await connection.execute<any[]>('SELECT role FROM user_roles WHERE user_id = ?', [target]);
+            const currentRoles = current.map(row => row.role);
+            const isAdmin = req.user!.roles.includes('admin');
+            // A reader may relinquish their own author role, but cannot grant new roles.
+            if (!isAdmin && (target !== req.user!.id || roles.some(role => !currentRoles.includes(role)) ||
+                currentRoles.some(role => role !== 'author' && !roles.includes(role)))) return 403;
+            if (currentRoles.includes('admin') && !roles.includes('admin') && admins.length <= 1) return 409;
+            await connection.execute('DELETE FROM user_roles WHERE user_id = ?', [target]);
+            for (const role of roles) await connection.execute('INSERT INTO user_roles (user_id, role) VALUES (?, ?)', [target, role]);
+            if (roles.includes('author')) await connection.execute("UPDATE users SET author_request = 'approved' WHERE id = ?", [target]);
+            return 200;
+        });
+        if (outcome !== 200) return res.status(outcome).json({ error: 'Không thể thay đổi vai trò này.' });
+        res.json({ user: await userSession(target) });
+    } catch { res.status(503).json({ error: 'Không thể cập nhật vai trò.' }); }
 });
-
-// Update User Roles with Mutual Exclusion logic and RBAC requesterId checks
-router.post('/update-roles', async (req: Request, res: Response) => {
-    const { userId, roles, requesterId } = req.body; // roles: Array of strings
-    if (!userId || !Array.isArray(roles)) {
-        return res.status(400).json({ error: "Thông tin vai trò không hợp lệ!" });
-    }
-
-    // Enforce Mutual Exclusion
-    if (roles.includes('admin') && roles.includes('moderator')) {
-        return res.status(400).json({ error: "Không thể nhận cùng lúc hai chức năng Admin và Moderator!" });
-    }
-
+router.post('/request-author-role', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    if (req.body.userId !== undefined && Number(req.body.userId) !== req.user!.id) return res.status(403).json({ error: 'Không thể gửi thay người khác.' });
     try {
-        let isRequesterAdmin = false;
-        if (requesterId) {
-            const requesterRoles = await db.query<any[]>("SELECT role FROM user_roles WHERE user_id = ?", [requesterId]);
-            isRequesterAdmin = requesterRoles.map(r => r.role).includes('admin');
+        if (!req.user!.roles.includes('author')) {
+            const result = await db.query<any>("UPDATE users SET author_request = 'pending' WHERE id = ? AND COALESCE(author_request, '') <> 'pending'", [req.user!.id]);
+            if (result.affectedRows) await db.query("INSERT INTO notifications (user_id, text) SELECT user_id, ? FROM user_roles WHERE role = 'admin'", [`@${req.user!.username} xin cấp quyền tác giả.`]);
         }
-
-        const currentRolesData = await db.query<any[]>("SELECT role FROM user_roles WHERE user_id = ?", [userId]);
-        const currentRoles = currentRolesData.map(r => r.role);
-        
-        const addsAdminOrMod = (roles.includes('admin') && !currentRoles.includes('admin')) || (roles.includes('moderator') && !currentRoles.includes('moderator'));
-        const removesAdminOrMod = (!roles.includes('admin') && currentRoles.includes('admin')) || (!roles.includes('moderator') && currentRoles.includes('moderator'));
-        
-        if ((addsAdminOrMod || removesAdminOrMod) && !isRequesterAdmin) {
-            return res.status(403).json({ error: "Bạn không có thẩm quyền thay đổi chức danh Admin/Moderator!" });
-        }
-
-        const addsAuthor = roles.includes('author') && !currentRoles.includes('author');
-        const removesAuthor = !roles.includes('author') && currentRoles.includes('author');
-        if ((addsAuthor || removesAuthor) && !isRequesterAdmin && requesterId !== userId) {
-            return res.status(403).json({ error: "Bạn không có quyền thay đổi chức danh Tác giả cho người dùng khác!" });
-        }
-
-        // Delete current roles
-        await db.query("DELETE FROM user_roles WHERE user_id = ?", [userId]);
-
-        // Insert new roles in a single batch query
-        if (roles.length > 0) {
-            const valuesPlaceholder = roles.map(() => "(?, ?)").join(", ");
-            const params: any[] = [];
-            roles.forEach((r: string) => {
-                params.push(userId, r);
-            });
-            await db.query(`INSERT INTO user_roles (user_id, role) VALUES ${valuesPlaceholder}`, params);
-        }
-
-        // Handle author_request status sync
-        if (addsAuthor) {
-            const users = await db.query<any[]>("SELECT author_request FROM users WHERE id = ?", [userId]);
-            if (users.length > 0 && users[0].author_request === 'pending') {
-                await db.query("UPDATE users SET author_request = 'approved' WHERE id = ?", [userId]);
-                await db.query(
-                    "INSERT INTO notifications (user_id, text) VALUES (?, '🎉 Chúc mừng! Yêu cầu cấp quyền Tác giả của bạn đã được Admin phê duyệt.')",
-                    [userId]
-                );
-            }
-        }
-
-        // Fetch updated user
-        const users = await db.query<any[]>("SELECT * FROM users WHERE id = ?", [userId]);
-        const user = users[0];
-        user.avatarSeed = user.avatar_seed;
-
-        const rolesData = await db.query<any[]>("SELECT role FROM user_roles WHERE user_id = ?", [userId]);
-        user.roles = rolesData.map(r => r.role);
-
-        const bookmarksData = await db.query<any[]>("SELECT novel_id FROM bookmarks WHERE user_id = ?", [userId]);
-        user.bookmarks = bookmarksData.map(b => b.novel_id);
-
-        const notifs = await db.query<any[]>("SELECT id, text, is_read as `read`, DATE_FORMAT(created_at, '%d/%m/%Y') as date FROM notifications WHERE user_id = ? ORDER BY created_at DESC", [userId]);
-        user.notifications = notifs;
-
-        delete user.password;
-        res.json({ user });
-    } catch (err) {
-        console.error("Update roles error:", err);
-        res.status(500).json({ error: "Lỗi cập nhật chức vụ người dùng." });
-    }
+        res.json({ user: await userSession(req.user!.id) });
+    } catch { res.status(503).json({ error: 'Không thể gửi yêu cầu.' }); }
 });
-
-// Request author role
-router.post('/request-author-role', async (req: Request, res: Response) => {
-    const { userId } = req.body;
-    if (!userId) {
-        return res.status(400).json({ error: "Thông tin tài khoản không hợp lệ!" });
-    }
-
+router.post('/reject-author-request', authenticateToken, checkRole('admin'), async (req, res) => {
+    const target = Number(req.body.targetUserId);
+    if (!Number.isSafeInteger(target) || target <= 0) return res.status(400).json({ error: 'Tài khoản không hợp lệ.' });
+    try { await db.query("UPDATE users SET author_request = 'rejected' WHERE id = ?", [target]); res.json({ success: true }); }
+    catch { res.status(503).json({ error: 'Không thể xử lý yêu cầu.' }); }
+});
+router.post('/notifications/read-all', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    if (req.body.userId !== undefined && Number(req.body.userId) !== req.user!.id) return res.status(403).json({ error: 'Không có quyền.' });
+    try { await db.query('UPDATE notifications SET is_read = TRUE WHERE user_id = ?', [req.user!.id]); res.json({ success: true }); }
+    catch { res.status(503).json({ error: 'Không thể cập nhật thông báo.' }); }
+});
+router.post('/follow-author', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    if (req.body.followerId !== undefined && Number(req.body.followerId) !== req.user!.id) return res.status(403).json({ error: 'Không có quyền.' });
+    if (!limitedText(req.body.authorUsername, 50)) return res.status(400).json({ error: 'Tác giả không hợp lệ.' });
     try {
-        await db.query("UPDATE users SET author_request = 'pending' WHERE id = ?", [userId]);
-        
-        // Fetch requester username for notification
-        const users = await db.query<any[]>("SELECT username, displayname FROM users WHERE id = ?", [userId]);
-        if (users.length > 0) {
-            const username = users[0].username;
-            // Notify all admins using a single SQL INSERT SELECT query (database-side bulk insert)
-            await db.query(
-                `INSERT INTO notifications (user_id, text)
-                 SELECT user_id, ? FROM user_roles WHERE role = 'admin'`,
-                [`🔔 Người dùng @${username} vừa gửi yêu cầu xin cấp quyền Tác giả (Author).`]
-            );
-        }
-
-        // Return updated user
-        const refreshed = await db.query<any[]>("SELECT * FROM users WHERE id = ?", [userId]);
-        const user = refreshed[0];
-        user.avatarSeed = user.avatar_seed;
-        const rolesData = await db.query<any[]>("SELECT role FROM user_roles WHERE user_id = ?", [userId]);
-        user.roles = rolesData.map(r => r.role);
-        const bookmarksData = await db.query<any[]>("SELECT novel_id FROM bookmarks WHERE user_id = ?", [userId]);
-        user.bookmarks = bookmarksData.map(b => b.novel_id);
-        const notifs = await db.query<any[]>("SELECT id, text, is_read as `read`, DATE_FORMAT(created_at, '%d/%m/%Y') as date FROM notifications WHERE user_id = ? ORDER BY created_at DESC", [userId]);
-        user.notifications = notifs;
-        delete user.password;
-
-        res.json({ user });
-    } catch (err) {
-        console.error("Request author role error:", err);
-        res.status(500).json({ error: "Lỗi gửi yêu cầu làm tác giả." });
-    }
+        const authors = await db.query<any[]>('SELECT id FROM users WHERE username = ?', [req.body.authorUsername]);
+        if (!authors.length) return res.status(404).json({ error: 'Không tìm thấy tác giả.' });
+        await db.transaction(async connection => {
+            await connection.execute('SELECT id FROM users WHERE id = ? FOR UPDATE', [req.user!.id]);
+            const [existing] = await connection.execute<any[]>('SELECT 1 FROM follows WHERE follower_id = ? AND author_id = ?', [req.user!.id, authors[0].id]);
+            await connection.execute(existing.length ? 'DELETE FROM follows WHERE follower_id = ? AND author_id = ?' : 'INSERT INTO follows (follower_id, author_id) VALUES (?, ?)', [req.user!.id, authors[0].id]);
+        });
+        const followed = await db.query<any[]>('SELECT u.username FROM follows f JOIN users u ON u.id = f.author_id WHERE f.follower_id = ?', [req.user!.id]);
+        res.json({ followedAuthors: followed.map(row => row.username) });
+    } catch { res.status(503).json({ error: 'Không thể theo dõi tác giả.' }); }
 });
-
-// Reject author request
-router.post('/reject-author-request', async (req: Request, res: Response) => {
-    const { targetUserId, requesterId } = req.body;
-    if (!targetUserId || !requesterId) {
-        return res.status(400).json({ error: "Dữ liệu không hợp lệ!" });
-    }
-
+router.get('/user/:username', async (req, res) => {
     try {
-        // RBAC check: requester must be admin
-        const requesterRoles = await db.query<any[]>("SELECT role FROM user_roles WHERE user_id = ?", [requesterId]);
-        const isRequesterAdmin = requesterRoles.map(r => r.role).includes('admin');
-        if (!isRequesterAdmin) {
-            return res.status(403).json({ error: "Chỉ Admin mới có quyền từ chối yêu cầu!" });
-        }
-
-        await db.query("UPDATE users SET author_request = 'rejected' WHERE id = ?", [targetUserId]);
-        await db.query(
-            "INSERT INTO notifications (user_id, text) VALUES (?, '❌ Rất tiếc, yêu cầu cấp quyền Tác giả của bạn đã bị Quản trị viên từ chối.')",
-            [targetUserId]
-        );
-
-        res.json({ success: true });
-    } catch (err) {
-        console.error("Reject author request error:", err);
-        res.status(500).json({ error: "Lỗi xử lý từ chối yêu cầu." });
-    }
+        const users = await db.query<any[]>("SELECT id, username, displayname, avatar_seed AS avatarSeed, bio, xp, DATE_FORMAT(date_joined, '%d/%m/%Y') AS dateJoined FROM users WHERE username = ?", [req.params.username]);
+        if (!users.length) return res.status(404).json({ error: 'Không tìm thấy người dùng.' });
+        const roles = await db.query<any[]>('SELECT role FROM user_roles WHERE user_id = ?', [users[0].id]);
+        res.json({ user: { ...users[0], roles: roles.map(row => row.role) } });
+    } catch { res.status(503).json({ error: 'Không thể tải hồ sơ.' }); }
 });
-
-// Get user detail (for public profile display)
-router.get('/user/:username', async (req: Request, res: Response) => {
-    try {
-        const users = await db.query<any[]>("SELECT id, username, displayname, avatar_seed as avatarSeed, bio, xp, DATE_FORMAT(date_joined, '%d/%m/%Y') as dateJoined FROM users WHERE username = ?", [req.params.username]);
-        if (users.length === 0) {
-            return res.status(404).json({ error: "Không tìm thấy người dùng." });
-        }
-        const user = users[0];
-        const rolesData = await db.query<any[]>("SELECT role FROM user_roles WHERE user_id = ?", [user.id]);
-        user.roles = rolesData.map(r => r.role);
-        res.json({ user });
-    } catch (err) {
-        console.error("Get user public profile error:", err);
-        res.status(500).json({ error: "Lỗi truy vấn thông tin người dùng." });
-    }
+router.get('/follows/:id', async (req, res) => {
+    try { res.json((await db.query<any[]>('SELECT u.username FROM follows f JOIN users u ON u.id = f.author_id WHERE f.follower_id = ? LIMIT 1000', [req.params.id])).map(row => row.username)); }
+    catch { res.status(503).json({ error: 'Không thể tải danh sách theo dõi.' }); }
 });
-
-// Notifications Read mark
-router.post('/notifications/read-all', async (req: Request, res: Response) => {
-    const { userId } = req.body;
-    try {
-        await db.query("UPDATE notifications SET is_read = TRUE WHERE user_id = ?", [userId]);
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: "Lỗi đánh dấu thông báo." });
-    }
-});
-
-// Coin deposits (Disabled - MugenBunko is now non-profit)
-router.post('/deposit-coins', async (req: Request, res: Response) => {
-    return res.status(403).json({ error: "Chức năng nạp coin đã bị tắt do nền tảng đã chuyển đổi thành phi lợi nhuận!" });
-});
-
-// Reading rewards are issued once per completed chapter by /api/reader/complete.
-router.post('/add-xp', (_req: Request, res: Response) => {
-    res.status(410).json({ error: 'Kinh nghiệm đọc được ghi nhận tự động khi hoàn thành chương.' });
-});
-
-// Follow author
-router.post('/follow-author', async (req: Request, res: Response) => {
-    const { followerId, authorUsername } = req.body;
-    try {
-        const authors = await db.query<any[]>("SELECT id FROM users WHERE username = ?", [authorUsername]);
-        if (authors.length === 0) return res.status(404).json({ error: "Không tìm thấy tác giả." });
-        const authorId = authors[0].id;
-
-        const check = await db.query<any[]>("SELECT 1 FROM follows WHERE follower_id = ? AND author_id = ?", [followerId, authorId]);
-        if (check.length > 0) {
-            await db.query("DELETE FROM follows WHERE follower_id = ? AND author_id = ?", [followerId, authorId]);
-        } else {
-            await db.query("INSERT INTO follows (follower_id, author_id) VALUES (?, ?)", [followerId, authorId]);
-        }
-        
-        // Return followed list
-        const follows = await db.query<any[]>("SELECT u.username FROM follows f JOIN users u ON f.author_id = u.id WHERE f.follower_id = ?", [followerId]);
-        res.json({ followedAuthors: follows.map(f => f.username) });
-    } catch (err) {
-        res.status(500).json({ error: "Lỗi theo dõi tác giả." });
-    }
-});
-
-// Get author followed list
-router.get('/follows/:id', async (req: Request, res: Response) => {
-    try {
-        const follows = await db.query<any[]>("SELECT u.username FROM follows f JOIN users u ON f.author_id = u.id WHERE f.follower_id = ?", [req.params.id]);
-        res.json(follows.map(f => f.username));
-    } catch (err) {
-        res.status(500).json({ error: "Lỗi lấy danh sách theo dõi." });
-    }
-});
-
+router.post('/add-xp', (_req, res) => res.status(410).json({ error: 'Kinh nghiệm đọc được ghi nhận tự động khi hoàn thành chương.' }));
+router.post('/deposit-coins', (_req, res) => res.status(403).json({ error: 'Chức năng nạp coin đã tắt.' }));
 export default router;

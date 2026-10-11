@@ -17,9 +17,14 @@ async function getProgress(userId: number, novelId?: number) {
         ${novelId ? 'AND p.novel_id = ?' : ''}`, novelId ? [userId, novelId] : [userId]);
     const completed = await db.query<any[]>(`SELECT c.novel_id AS novelId, r.chapter_id AS chapterId
         FROM chapter_reads r JOIN chapters c ON c.id = r.chapter_id
-        WHERE r.user_id = ? AND c.status = 'published'`, [userId]);
+        WHERE r.user_id = ? AND c.status = 'published' ${novelId ? 'AND c.novel_id = ?' : ''}`, novelId ? [userId, novelId] : [userId]);
+    const completedByNovel = new Map<number, number[]>();
+    for (const chapter of completed) {
+        const ids = completedByNovel.get(chapter.novelId) || [];
+        ids.push(chapter.chapterId); completedByNovel.set(chapter.novelId, ids);
+    }
     return rows.map(row => ({ ...row, updatedAt: Number(row.updatedAt),
-        completedChapterIds: completed.filter(c => c.novelId === row.novelId).map(c => c.chapterId) }));
+        completedChapterIds: completedByNovel.get(row.novelId) || [] }));
 }
 
 router.get('/progress', async (req: AuthenticatedRequest, res: Response) => {

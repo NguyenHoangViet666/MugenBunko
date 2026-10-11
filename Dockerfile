@@ -1,52 +1,22 @@
-# Step 1: Build stage
-FROM node:20-alpine AS builder
-
+FROM node:24-alpine AS builder
 WORKDIR /app
-
-# Copy package configurations for root and server
 COPY package*.json ./
 COPY server/package*.json ./server/
-
-# Install dependencies for both frontend and backend
-RUN npm install
-RUN npm install --prefix server
-
-# Copy the rest of the application source code
+RUN npm ci && npm ci --prefix server
 COPY . .
+RUN npm run build && npm run build --prefix server
 
-# Build Vite frontend (outputs to /app/dist)
-RUN npm run build
-
-# Build Express backend (outputs to /app/server/dist)
-RUN npm run build --prefix server
-
-# Step 2: Production runtime stage
-FROM node:20-alpine
-
+FROM node:24-alpine
 WORKDIR /app
-
-# Copy package configurations
-COPY package*.json ./
+ENV NODE_ENV=production PORT=5000
 COPY server/package*.json ./server/
-
-# Install only production dependencies
-RUN npm install --only=production
-RUN npm install --only=production --prefix server
-
-# Copy build output from builder stage
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/server/dist ./server/dist
-
-# Copy non-compiled JS utility files, DB schema, migration scripts and config
-COPY --from=builder /app/server/*.js ./server/
-COPY --from=builder /app/server/*.sql ./server/
-COPY --from=builder /app/server/.env* ./server/
-
-# Expose backend port
+RUN npm ci --omit=dev --prefix server && npm cache clean --force
+COPY --from=builder --chown=node:node /app/dist ./dist
+COPY --from=builder --chown=node:node /app/public ./public
+COPY --from=builder --chown=node:node /app/server/dist ./server/dist
+COPY --from=builder --chown=node:node /app/server/schema.sql ./server/schema.sql
+RUN mkdir -p /app/server/dist/uploads && chown -R node:node /app/server/dist/uploads
+USER node
 EXPOSE 5000
-
-ENV PORT=5000
-ENV NODE_ENV=production
-
-# Start Express server (serves API and front-end static files)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD node -e "fetch('http://127.0.0.1:5000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "server/dist/server.js"]

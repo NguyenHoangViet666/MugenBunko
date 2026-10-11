@@ -250,7 +250,7 @@ mugenbunko-react/
 ## 9. Hướng Dẫn Cài Đặt & Triển Khai
 
 ### 9.1. Yêu cầu tiên quyết
-- **Node.js** >= 20.x và **npm** >= 10.x
+- **Node.js** 24.x và **npm** >= 10.x
 - **MySQL** >= 8.0 (nếu chạy local không qua Docker)
 - **Docker** & **Docker Compose** (khuyên dùng để chạy tự động toàn bộ)
 - Thiết bị di động cài đặt app **Expo Go** (nếu muốn test Mobile App)
@@ -262,7 +262,7 @@ Tạo file `.env` tại thư mục gốc của dự án:
 # Server Configuration
 PORT=5000
 HOST_PORT=5000
-JWT_SECRET=mugenbunko_super_secret_jwt_key_2026
+JWT_SECRET=
 
 # Database Configuration (Local hoặc Docker)
 DB_HOST=localhost
@@ -338,7 +338,7 @@ cd mobile && npm install && cd ..
 
 ## Kiểm tra các nâng cấp Reader, Tủ sách và Studio
 
-Backend tự tạo các bảng tiến độ đọc, kệ sách và lịch sử bản thảo khi khởi động. Khởi động lại backend sau khi cập nhật mã nguồn để áp dụng thay đổi này.
+Backend development tự tạo các bảng tiến độ đọc, kệ sách và lịch sử bản thảo khi khởi động. Production chạy migration riêng trước khi khởi động ứng dụng theo hướng dẫn dưới đây.
 
 - **Reader:** lưu đoạn đang đọc và đồng bộ theo tài khoản; vị trí khi mất mạng được gửi lại khi có kết nối. Khách chưa đăng nhập lưu trên thiết bị.
 - **Tủ sách:** tạo kệ, chọn bìa từ truyện, quản lý tác phẩm và chia sẻ kệ công khai. Đổi sang riêng tư sẽ chặn liên kết công khai.
@@ -352,6 +352,46 @@ npm run test:upgrades:browser
 ```
 
 Bộ test dùng database riêng có tên `mugenbunko_test_*`, yêu cầu tài khoản MySQL có quyền tạo/xóa database và tự dọn sau khi chạy. Kiểm thử trình duyệt sử dụng Edge headless trên Windows; có thể đặt `UPGRADE_BROWSER_PATH` để chọn executable Chromium khác. Ảnh kiểm tra nằm trong `artifacts/upgrades/` và được Git bỏ qua.
+
+## Đưa lên production
+
+Sử dụng Node.js 24. Docker image chạy bằng user `node`, chỉ chứa dependency backend cần lúc chạy và không đóng gói file `.env`. MySQL chỉ nối mạng nội bộ; cổng ứng dụng mặc định bind `127.0.0.1` để đặt sau reverse proxy HTTPS.
+
+Sao chép `.env.production.example` thành `.env.production`, điền domain, SMTP và ba secret riêng biệt: mật khẩu quản trị DB, mật khẩu DB của ứng dụng, JWT secret. Sinh mỗi secret bằng `node -e "console.log(require('node:crypto').randomBytes(48).toString('hex'))"`. `FRONTEND_URL` là danh sách origin HTTPS cách nhau bằng dấu phẩy; `PUBLIC_URL` là URL HTTPS công khai của backend. Đặt `TRUST_PROXY` đúng với proxy thực tế và chỉ cho proxy truy cập cổng app. SMTP chưa cấu hình sẽ trả 503; production không trả OTP qua JSON, kể cả khi đặt `DEV_OTP=true`.
+
+Với **database mới**, chạy:
+
+```bash
+docker compose --env-file .env.production up -d db
+docker compose --env-file .env.production --profile tools run --rm --build migrate
+docker compose --env-file .env.production up -d --build app
+```
+
+Migration chạy bằng tài khoản quản trị; sau đó thu hẹp `mugen_app` về SELECT/INSERT/UPDATE/DELETE trên database ứng dụng. Startup production không tự sửa schema và từ chối DB user `root`. Migration không chạy phần seed/TRUNCATE của `server/schema.sql`, không tạo admin có mật khẩu mặc định.
+
+Tạo admin đầu tiên bằng cách đặt `ADMIN_USERNAME` và `ADMIN_PASSWORD` trong shell quản trị, rồi chạy:
+
+```bash
+docker compose --env-file .env.production exec -e ADMIN_USERNAME -e ADMIN_PASSWORD app node server/dist/createAdmin.js
+```
+
+Mật khẩu admin phải có ít nhất 16 ký tự, tối đa 72 byte. Lệnh không ghi đè hay nâng quyền tài khoản đã tồn tại. Không lưu mật khẩu vào lịch sử lệnh hoặc repository.
+
+Với **database đang có dữ liệu**, backup và thử migration trên bản sao trước, kể cả bước nâng MySQL 8.0 lên 8.4. Đặt `DB_ADMIN_PASSWORD` khớp mật khẩu root hiện tại; đổi biến môi trường không tự đổi mật khẩu trong volume cũ. Volume MySQL cũ không tự tạo user từ `MYSQL_USER`: cần tạo tài khoản `DB_APP_USER` với mật khẩu `DB_PASSWORD` trước khi chạy migration. Nếu chuyển từ Compose cũ, sao chép ảnh từ thư mục bind `server/uploads` sang volume `uploads_data` trước khi chuyển traffic. Khi thay JWT secret, các phiên đăng nhập và OTP đang chờ sẽ hết hiệu lực. Không import trực tiếp `server/schema.sql` lên production vì file đó vẫn chứa seed dành cho development/test.
+
+Ứng dụng có `/healthz`, giới hạn payload và tốc độ request, CORS allowlist, CSP, OTP lưu hash trong DB và xác thực quyền từ DB ở mỗi request. Upload tối đa 5 MB, kiểm tra MIME/signature và dùng tên file UUID. Backup cả database lẫn volume `uploads_data`; nếu sử dụng Cloudinary thì quản lý backup media tại dịch vụ đó.
+
+Cấu hình hiện tại dành cho một instance. Presence socket và các rate limiter HTTP nằm trong bộ nhớ tiến trình; cần shared store/Socket.IO adapter khi chạy nhiều instance. API danh mục và diễn đàn đã phân trang, nhưng các view hiện tại vẫn ghép các trang để giữ tìm kiếm/lọc toàn bộ dữ liệu. Khi dữ liệu lớn cần chuyển tìm kiếm/lọc sang server, phân trang chương/bình luận và kiểm thử tải trên staging trước khi quyết định cấu hình máy.
+
+Kiểm tra hồi quy (test dùng database tạm, không gửi email thật):
+
+```bash
+npm run test:upgrades
+npm --prefix server run test:security
+npm run test:upgrades:browser
+npm audit --omit=dev
+npm audit --prefix server --omit=dev
+```
 
 <p align="center">
   <i>Được xây dựng với niềm đam mê dành cho cộng đồng yêu thích Light Novel & Công nghệ phần mềm.</i><br>

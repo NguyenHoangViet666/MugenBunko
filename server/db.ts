@@ -1,14 +1,9 @@
 import mysql, { Pool, PoolConnection } from 'mysql2/promise';
 import { readerSchema } from './readerSchema.js';
-import dotenv from 'dotenv';
+import { production } from './config.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-
-const envPath = fs.existsSync(path.join(process.cwd(), '.env'))
-    ? path.join(process.cwd(), '.env')
-    : path.join(process.cwd(), 'server', '.env');
-dotenv.config({ path: envPath });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,12 +19,29 @@ const dbConfig = {
     port: parseInt(process.env.DB_PORT || '3306'),
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
+    connectTimeout: 10000,
 };
 
 let pool: Pool | null = null;
 
-export async function initializeDbConnection(): Promise<void> {
+export async function initializeDbConnection(options: { migrate?: boolean } = {}): Promise<void> {
+    const database = process.env.DB_NAME || 'mugenbunko';
+    if (!/^[a-zA-Z0-9_]{1,64}$/.test(database)) throw new Error('Invalid DB_NAME');
+    const migrate = options.migrate ?? !production;
+    const connectionLimit = Number(process.env.DB_POOL_SIZE || 10);
+    const queueLimit = Number(process.env.DB_QUEUE_LIMIT || 100);
+    if (!Number.isSafeInteger(connectionLimit) || connectionLimit < 1 || connectionLimit > 100 ||
+        !Number.isSafeInteger(queueLimit) || queueLimit < 1 || queueLimit > 10000) throw new Error('Invalid database pool limits.');
+    const openPool = () => mysql.createPool({ ...dbConfig, database, waitForConnections: true,
+        connectionLimit, queueLimit, maxIdle: Math.min(5, connectionLimit), idleTimeout: 60000 });
     try {
+        if (!migrate) {
+            if (!process.env.DB_USER || process.env.DB_USER === 'root') throw new Error('Production requires a restricted DB_USER.');
+            pool = openPool();
+            await pool.execute('SELECT id, email FROM users LIMIT 0');
+            await pool.execute('SELECT email FROM email_otps LIMIT 0');
+            return;
+        }
         console.log(`Connecting to MySQL server at ${dbConfig.host}:${dbConfig.port}...`);
         const connection = await mysql.createConnection(dbConfig);
         
@@ -54,15 +66,20 @@ export async function initializeDbConnection(): Promise<void> {
             ];
             const schemaSqlPath = possibleSchemaPaths.find(p => fs.existsSync(p)) || path.join(__dirname, 'schema.sql');
             if (fs.existsSync(schemaSqlPath)) {
-                const schemaSql = fs.readFileSync(schemaSqlPath, 'utf8');
+                // Bootstrap only table definitions: no hardcoded USE, destructive seed or default admin.
+                const schemaSql = fs.readFileSync(schemaSqlPath, 'utf8').split('-- Disable constraints')[0]
+                    .replace(/^CREATE DATABASE[^\n]+\r?$/gm, '').replace(/^USE[^\n]+\r?$/gm, '');
                 await connectionWithDb.query(schemaSql);
-                console.log("schema.sql executed and database seeded successfully!");
+                console.log("Schema created without sample users or destructive seed statements.");
             } else {
                 console.warn("schema.sql file not found! Please check path.");
             }
         } else {
             console.log("Existing tables found. Database already initialized.");
         }
+
+        const [emailColumns] = await connectionWithDb.query<any[]>("SHOW COLUMNS FROM users LIKE 'email'");
+        if (!emailColumns.length) await connectionWithDb.query('ALTER TABLE users ADD COLUMN email VARCHAR(150) NULL UNIQUE AFTER displayname');
 
         // Ensure read_cooldowns table exists (migration)
         console.log("Ensuring read_cooldowns migration table exists...");
@@ -340,18 +357,15 @@ export async function initializeDbConnection(): Promise<void> {
         await ensureIndexExists('forum_posts', 'idx_forum_posts_author', 'CREATE INDEX idx_forum_posts_author ON forum_posts (author_id)');
         await ensureIndexExists('messages', 'idx_messages_unread', 'CREATE INDEX idx_messages_unread ON messages (receiver_id, is_read)');
         await ensureIndexExists('notifications', 'idx_notifications_user_created', 'CREATE INDEX idx_notifications_user_created ON notifications (user_id, created_at DESC)');
+        await ensureIndexExists('messages', 'idx_messages_conversation', 'CREATE INDEX idx_messages_conversation ON messages (sender_id, receiver_id, id)');
+        await ensureIndexExists('messages', 'idx_messages_sender_created', 'CREATE INDEX idx_messages_sender_created ON messages (sender_id, created_at)');
+        await ensureIndexExists('novels', 'idx_novels_reads', 'CREATE INDEX idx_novels_reads ON novels (`reads` DESC, id DESC)');
         console.log("Performance indexes verification completed.");
 
         await connectionWithDb.query(readerSchema);
         await connectionWithDb.end();
 
-        pool = mysql.createPool({
-            ...dbConfig,
-            database: process.env.DB_NAME || 'mugenbunko',
-            waitForConnections: true,
-            connectionLimit: 10,
-            queueLimit: 0
-        });
+        pool = openPool();
 
         console.log("MySQL connection pool established.");
     } catch (err: any) {
@@ -365,7 +379,7 @@ export async function query<T = any>(sql: string, params?: any[]): Promise<T> {
     if (!pool) {
         throw new Error("Database pool not initialized. Call initializeDbConnection first.");
     }
-    const [results] = await pool.execute(sql, params);
+    const [results] = await pool.execute({ sql, timeout: 15000 }, params);
     return results as T;
 }
 

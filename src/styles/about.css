@@ -1,0 +1,29 @@
+.about-reader-page .about-hero-section { min-height: auto; padding: 52px 28px 36px; }
+.about-reader-page .about-hero-title { font-family: var(--font-serif); font-weight: 600; }
+.about-reader-page .about-hero-actions { flex-wrap: wrap; }
+.about-reader-note { margin: 22px 0 0; color: var(--text-muted); font-size: .8rem; line-height: 1.6; }
+.about-reader-features { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.about-reader-features .about-pillar-card { justify-content: flex-start; }
+.about-reader-tip { display: flex; align-items: flex-start; gap: 9px; margin: 22px 0 0; padding-top: 16px; border-top: 1px solid var(--border-color); font-size: .8rem; line-height: 1.6; color: var(--text-main); }
+.about-reader-tip svg { flex-shrink: 0; margin-top: 3px; }
+.about-reading-guide { scroll-margin-top: 100px; }
+.about-reader-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; list-style: none; padding: 0; margin: 0; }
+.about-reader-steps li { padding: 24px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); }
+.about-reader-steps li > span { font-family: var(--font-serif); font-size: 2rem; color: var(--text-muted); }
+.about-reader-steps h3 { margin: 14px 0 10px; font-size: 1rem; }
+.about-reader-steps p { margin: 0; color: var(--text-muted); font-size: .85rem; line-height: 1.7; }
+.about-reader-shortcuts { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.about-reader-faq { max-width: 840px; margin: auto; border: 1px solid var(--border-color); border-radius: var(--border-radius-md); background: var(--bg-card); overflow: hidden; }
+.about-reader-faq details + details { border-top: 1px solid var(--border-color); }
+.about-reader-faq summary { padding: 20px 24px; cursor: pointer; font-weight: 600; line-height: 1.6; }
+.about-reader-faq details[open] summary { padding-bottom: 10px; }
+.about-reader-faq p { margin: 0; padding: 0 24px 22px; color: var(--text-muted); font-size: .9rem; line-height: 1.8; }
+.about-reader-page :is(button, summary):focus-visible { outline: 2px solid var(--sakura-pink); outline-offset: 4px; }
+@media (max-width: 600px) {
+    .about-reader-page { padding: 16px 0 40px; }
+    .about-reader-page .about-hero-section { padding: 32px 18px; }
+    .about-reader-page .about-section, .about-reader-page .about-cta-banner { margin-top: 36px; }
+    .about-reader-features, .about-reader-steps { grid-template-columns: 1fr; gap: 14px; }
+    .about-reader-faq summary { padding: 18px; }
+    .about-reader-faq p { padding: 0 18px 20px; }
+}

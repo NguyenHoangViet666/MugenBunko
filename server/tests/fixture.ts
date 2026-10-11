@@ -1,7 +1,8 @@
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 import express from 'express';
-import cors from 'cors';
+import { Server } from 'socket.io';
+import os from 'node:os';
 import jwt from 'jsonwebtoken';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,6 +14,8 @@ export async function startFixture() {
     const root = fs.existsSync(path.join(base, 'src')) ? base : path.dirname(base);
     dotenv.config({ path: path.join(root, 'server/.env'), quiet: true } as any);
     dotenv.config({ path: path.join(root, '.env'), quiet: true } as any);
+    // Tests never contact SMTP or send real messages.
+    process.env.SMTP_USER = ''; process.env.SMTP_PASS = ''; process.env.DEV_OTP = 'true';
     const database = `mugenbunko_test_${randomBytes(8).toString('hex')}`;
     const admin = await mysql.createConnection({ host: process.env.DB_HOST || 'localhost', port: Number(process.env.DB_PORT || 3306),
         user: process.env.DB_USER || 'root', password: process.env.DB_PASSWORD || '', multipleStatements: true });
@@ -24,6 +27,7 @@ export async function startFixture() {
         .replace(/^CREATE DATABASE[^\n]+\r?$/gm, '').replace(/^USE[^\n]+\r?$/gm, '');
     await admin.query(schema);
     const { default: db } = await import('../db.js');
+    const { JWT_SECRET } = await import('../config.js');
     await db.initializeDbConnection();
     await db.query(`INSERT INTO users (id, username, password, displayname, xp, status) VALUES
         (2, 'upgrade_reader', 'test-only', 'Độc giả thử nghiệm', 0, 'active'),
@@ -38,21 +42,30 @@ export async function startFixture() {
         (2, 1, 'Tập 01', 'Chương 2: Khu vườn sau thư viện', ?, 'published', 3000),
         (3, 2, 'Tập 01', 'Chương chưa xuất bản', '<p>Riêng tư</p>', 'draft', 2)`, [content, content]);
     await db.query('INSERT INTO bookmarks (user_id, novel_id) VALUES (2, 1)');
-    const app = express(); app.use(cors()); app.use(express.json({ limit: '10mb' }));
+    const { configureSecurity, apiErrorHandler } = await import('../middleware/security.js');
+    const { uploadRouter } = await import('../routes/upload.js');
+    const { registerRealtime } = await import('../realtime.js');
+    const uploadDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'mugenbunko-upload-test-'));
+    const app = express(); configureSecurity(app);
+    app.use('/api/upload', uploadRouter(uploadDirectory, false));
     for (const name of ['reader', 'library', 'chapters', 'auth', 'novels', 'events', 'announcements', 'comments', 'reviews', 'social', 'forum']) {
         const route = await import(`../routes/${name}.js`); app.use(`/api/${name}`, route.default);
     }
     app.get('/api/genres', (_req, res) => res.json([{ name: 'Fantasy' }, { name: 'Romance' }]));
+    app.use(apiErrorHandler);
     app.use(express.static(path.join(root, 'public'))); app.use(express.static(path.join(root, 'dist')));
     const server = app.listen(0, '127.0.0.1'); await new Promise<void>(resolve => server.once('listening', resolve));
+    const io = new Server(server); registerRealtime(io);
     const address = server.address(); if (!address || typeof address === 'string') throw new Error('No fixture port');
     const url = `http://127.0.0.1:${address.port}`;
     const token = (id: number) => jwt.sign({ id, username: id === 2 ? 'upgrade_reader' : 'upgrade_other', roles: id === 2 ? ['reader', 'author'] : ['reader'] },
-        process.env.JWT_SECRET || 'mugenbunko-super-secret-key-12345', { expiresIn: '1h' });
+        JWT_SECRET, { expiresIn: '1h' });
     const user = { id: 2, username: 'upgrade_reader', displayname: 'Độc giả thử nghiệm', coins: 0, xp: 0, level: 1,
         status: 'active', roles: ['reader', 'author'], bookmarks: [1], notifications: [], avatarSeed: 'reader', bio: '', author_request: null };
-    return { url, db, token, user, root, async close() {
-        await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    return { url, db, token, user, root, uploadDirectory, async close() {
+        await new Promise<void>(resolve => io.close(() => resolve()));
+        if (path.dirname(uploadDirectory) !== os.tmpdir() || !path.basename(uploadDirectory).startsWith('mugenbunko-upload-test-')) throw new Error('Unsafe upload cleanup');
+        fs.rmSync(uploadDirectory, { recursive: true, force: true });
         await db.closeDbConnection();
         if (!/^mugenbunko_test_[a-f0-9]{16}$/.test(database)) throw new Error('Unsafe test database name');
         await admin.query(`DROP DATABASE \`${database}\``); await admin.end();

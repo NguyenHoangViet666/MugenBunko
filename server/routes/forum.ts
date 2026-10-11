@@ -1,64 +1,42 @@
 import { Router, Request, Response } from 'express';
 import db from '../db.js';
-import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.js';
-import jwt from 'jsonwebtoken';
+import { authenticateToken, optionalAuthentication, AuthenticatedRequest } from '../middleware/auth.js';
+import { pagination } from '../utils/pagination.js';
 import { addXpToUser } from '../utils/level.js';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'mugenbunko-super-secret-key-12345';
 
 // Get all forum posts (Public route with optional token)
-router.get('/posts', async (req: Request, res: Response) => {
-    let userId: number | null = null;
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    
-    if (token) {
-        try {
-            const decoded = jwt.verify(token, JWT_SECRET) as any;
-            userId = decoded.id;
-        } catch (err) {
-            // Bỏ qua lỗi token hết hạn hoặc không hợp lệ
-        }
-    }
-
+router.get('/posts', optionalAuthentication, async (req: AuthenticatedRequest, res: Response) => {
+    const paging = pagination(req, 50);
+    if (!paging) return res.status(400).json({ error: 'Phân trang không hợp lệ.' });
+    const userId = req.user?.id || null;
     try {
-        const posts = await db.query<any[]>(
-            `SELECT p.*, u.username as author_username, u.displayname as author_displayname, u.avatar_seed as author_avatar_seed,
-                    (SELECT COUNT(*) FROM forum_comments c WHERE c.post_id = p.id) as comments_count,
-                    (SELECT COUNT(*) FROM forum_post_likes l WHERE l.post_id = p.id) as likes_count,
-                    IF(? IS NULL, 0, EXISTS(SELECT 1 FROM forum_post_likes l WHERE l.post_id = p.id AND l.user_id = ?)) as is_liked
-             FROM forum_posts p
-             JOIN users u ON p.author_id = u.id
-             ORDER BY p.created_at DESC`,
-            [userId, userId]
-        );
-
-        // Tải kèm toàn bộ bình luận cho các bài viết diễn đàn
-        const allComments = await db.query<any[]>(
-            `SELECT c.*, u.username as author_username, u.displayname as author_displayname, u.avatar_seed as author_avatar_seed
-             FROM forum_comments c
-             JOIN users u ON c.user_id = u.id
-             ORDER BY c.created_at ASC`
-        );
-
-        posts.forEach(post => {
-            const postComments = allComments.filter(comment => comment.post_id === post.id);
-            // Structure nested 2-level comments
-            const roots = postComments.filter(c => c.parent_id === null);
-            const replies = postComments.filter(c => c.parent_id !== null);
-            roots.forEach(r => {
-                r.replies = replies.filter(rep => rep.parent_id === r.id);
-            });
-            post.comments = roots;
+        const posts = await db.query<any[]>(`SELECT p.*, u.username AS author_username, u.displayname AS author_displayname, u.avatar_seed AS author_avatar_seed,
+            (SELECT COUNT(*) FROM forum_comments c WHERE c.post_id = p.id) AS comments_count,
+            (SELECT COUNT(*) FROM forum_post_likes l WHERE l.post_id = p.id) AS likes_count,
+            EXISTS(SELECT 1 FROM forum_post_likes l WHERE l.post_id = p.id AND l.user_id = ?) AS is_liked
+            FROM forum_posts p JOIN users u ON p.author_id = u.id ORDER BY p.created_at DESC, p.id DESC LIMIT ? OFFSET ?`,
+            [userId, paging.limit + 1, paging.offset]);
+        res.set('X-Next-Page', posts.length > paging.limit ? String(paging.page + 1) : '');
+        res.set('Cache-Control', 'private, no-store');
+        posts.splice(paging.limit);
+        if (!posts.length) return res.json([]);
+        const ids = posts.map(p => p.id);
+        const comments = await db.query<any[]>(`SELECT c.*, u.username AS author_username, u.displayname AS author_displayname, u.avatar_seed AS author_avatar_seed
+            FROM forum_comments c JOIN users u ON c.user_id = u.id WHERE c.post_id IN (${ids.map(() => '?').join(',')}) ORDER BY c.created_at ASC, c.id ASC`, ids);
+        const roots = new Map<number, any[]>(); const replies = new Map<number, any[]>();
+        for (const comment of comments) {
+            const map = comment.parent_id === null ? roots : replies;
+            const key = comment.parent_id === null ? comment.post_id : comment.parent_id;
+            const list = map.get(key) || []; list.push(comment); map.set(key, list);
+        }
+        for (const post of posts) {
+            post.comments = (roots.get(post.id) || []).map(c => ({ ...c, replies: replies.get(c.id) || [] }));
             post.restrictComments = post.restrict_comments === 1;
-        });
-
+        }
         res.json(posts);
-    } catch (err) {
-        console.error("Get forum posts error:", err);
-        res.status(500).json({ error: "Lỗi tải bài viết diễn đàn." });
-    }
+    } catch { res.status(503).json({ error: 'Không thể tải diễn đàn.' }); }
 });
 
 // Create a new forum post
@@ -120,20 +98,9 @@ router.post('/posts/:id/like', authenticateToken, async (req: AuthenticatedReque
 });
 
 // Get single forum post with comments (Public route)
-router.get('/posts/:id', async (req: Request, res: Response) => {
+router.get('/posts/:id', optionalAuthentication, async (req: AuthenticatedRequest, res: Response) => {
     const postId = req.params.id;
-    
-    let userId: number | null = null;
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    
-    if (token) {
-        try {
-            const decoded = jwt.verify(token, JWT_SECRET) as any;
-            userId = decoded.id;
-        } catch (err) {}
-    }
-
+    const userId = req.user?.id || null;
     try {
         const posts = await db.query<any[]>(
             `SELECT p.*, u.username as author_username, u.displayname as author_displayname, u.avatar_seed as author_avatar_seed,

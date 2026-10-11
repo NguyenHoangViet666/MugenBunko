@@ -1,40 +1,40 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import db from '../db.js';
+import { JWT_SECRET } from '../config.js';
 
 export interface AuthenticatedRequest extends Request {
-    user?: {
-        id: number;
-        username: string;
-        roles: string[];
-    };
+    user?: { id: number; username: string; roles: string[] };
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'mugenbunko-super-secret-key-12345';
+export async function resolveUser(token: string) {
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
+    if (typeof decoded === 'string' || !Number.isSafeInteger(decoded.id) || decoded.id <= 0) throw new Error('Invalid token subject');
+    const users = await db.query<any[]>('SELECT id, username, status FROM users WHERE id = ?', [decoded.id]);
+    if (!users.length || users[0].status !== 'active') return null;
+    const roles = await db.query<any[]>('SELECT role FROM user_roles WHERE user_id = ?', [decoded.id]);
+    return { id: users[0].id as number, username: users[0].username as string, roles: roles.map(row => row.role as string) };
+}
 
-export function authenticateToken(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (!token) {
-        return res.status(401).json({ error: "Yêu cầu xác thực tài khoản qua Token!", code: "TOKEN_REQUIRED" });
-    }
-
-    jwt.verify(token, JWT_SECRET, async (err, decoded: any) => {
-        if (err) {
-            return res.status(401).json({ error: "Token xác thực không hợp lệ hoặc đã hết hạn!", code: "TOKEN_EXPIRED" });
-        }
-        try {
-            const users = await db.query<any[]>("SELECT status FROM users WHERE id = ?", [decoded.id]);
-            if (users.length > 0 && users[0].status === 'suspended') {
-                if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
-                    return res.status(403).json({ error: "Tài khoản của bạn đã bị khóa do vi phạm tiêu chuẩn cộng đồng wibu! Bạn chỉ có quyền đọc nội dung.", code: "ACCOUNT_SUSPENDED" });
-                }
-            }
-        } catch (dbErr) {
-            console.error("Auth middleware DB query error:", dbErr);
-        }
-        req.user = decoded;
+export async function authenticateToken(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    const header = req.get('authorization');
+    const token = header?.match(/^Bearer ([^\s]+)$/i)?.[1];
+    if (!token) return res.status(401).json({ error: 'Yêu cầu đăng nhập.', code: 'TOKEN_REQUIRED' });
+    try {
+        const user = await resolveUser(token);
+        if (!user) return res.status(403).json({ error: 'Tài khoản không còn hoạt động.', code: 'ACCOUNT_SUSPENDED' });
+        req.user = user;
         next();
-    });
+    } catch (error) {
+        if (error instanceof jwt.JsonWebTokenError || error instanceof jwt.TokenExpiredError || (error instanceof Error && error.message === 'Invalid token subject')) {
+            return res.status(401).json({ error: 'Phiên đăng nhập không hợp lệ.', code: 'TOKEN_EXPIRED' });
+        }
+        console.error('Authentication database unavailable');
+        return res.status(503).json({ error: 'Không thể xác thực lúc này. Vui lòng thử lại.' });
+    }
+}
+
+export function optionalAuthentication(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    if (req.get('authorization')) return authenticateToken(req, res, next);
+    next();
 }

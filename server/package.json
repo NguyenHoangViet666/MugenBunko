@@ -8,7 +8,10 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "tsx watch server.ts",
-    "test:upgrades": "npm run build && node --test dist/tests/upgrades.test.js"
+    "test:upgrades": "npm run build && node --test dist/tests/upgrades.test.js",
+    "migrate:production": "node dist/migrateProduction.js",
+    "create:admin": "node dist/createAdmin.js",
+    "test:security": "npm run build && node --test dist/tests/security.test.js"
   },
   "dependencies": {
     "@types/nodemailer": "^8.0.1",
@@ -21,7 +24,8 @@
     "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.11.0",
-    "nodemailer": "^9.0.5",
+    "nodemailer": "^10.1.0",
+    "sanitize-html": "^2.18.0",
     "socket.io": "^4.8.3"
   },
   "devDependencies": {
@@ -30,6 +34,7 @@
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.11.24",
+    "@types/sanitize-html": "^2.16.2",
     "tsx": "^4.7.1",
     "typescript": "^5.3.3"
   }

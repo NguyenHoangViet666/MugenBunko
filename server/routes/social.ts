@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import db from '../db.js';
 import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.js';
 
+import { sendMessage } from '../utils/messages.js';
 const router = Router();
 
 // Lấy bảng xếp hạng wibu tuần (top users theo XP)
@@ -261,6 +262,8 @@ router.get('/messages/unread-count', authenticateToken, async (req: Authenticate
 router.get('/messages/chat/:friendId', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user?.id;
     const friendId = req.params.friendId;
+    const before = req.query.before === undefined ? Number.MAX_SAFE_INTEGER : Number(req.query.before);
+    if (!Number.isSafeInteger(before) || before <= 0) return res.status(400).json({ error: 'Cursor không hợp lệ.' });
 
     if (!userId) return res.status(401).json({ error: "Chưa đăng nhập!" });
 
@@ -269,10 +272,10 @@ router.get('/messages/chat/:friendId', authenticateToken, async (req: Authentica
         const messages = await db.query<any[]>(
             `SELECT m.*, DATE_FORMAT(m.created_at, '%d/%m/%Y %H:%i') as date
              FROM messages m
-             WHERE (m.sender_id = ? AND m.receiver_id = ?) OR (m.sender_id = ? AND m.receiver_id = ?)
-             ORDER BY m.created_at ASC
+             WHERE ((m.sender_id = ? AND m.receiver_id = ?) OR (m.sender_id = ? AND m.receiver_id = ?))
+             AND m.id < ? ORDER BY m.id DESC
              LIMIT 100`,
-            [userId, friendId, friendId, userId]
+            [userId, friendId, friendId, userId, before]
         );
 
         // Đánh dấu đã đọc các tin nhắn do friendId gửi tới mình
@@ -282,55 +285,18 @@ router.get('/messages/chat/:friendId', authenticateToken, async (req: Authentica
             [friendId, userId]
         );
 
-        res.json(messages);
+        res.json(messages.reverse());
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Lỗi tải tin nhắn." });
     }
 });
 
-// 8. Gửi tin nhắn mới
 router.post('/messages/send', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user?.id;
-    const { receiverId, messageText } = req.body;
-
-    if (!userId) return res.status(401).json({ error: "Chưa đăng nhập!" });
-    if (!receiverId || !messageText || !messageText.trim()) {
-        return res.status(400).json({ error: "Nội dung tin nhắn không hợp lệ!" });
-    }
-
-    try {
-        // Kiểm tra xem có phải là bạn bè hay không
-        const isFriend = await db.query<any[]>(
-            `SELECT 1 FROM friends 
-             WHERE ((user_id_1 = ? AND user_id_2 = ?) OR (user_id_1 = ? AND user_id_2 = ?)) AND status = 'accepted'`,
-            [userId, receiverId, receiverId, userId]
-        );
-
-        if (isFriend.length === 0) {
-            return res.status(403).json({ error: "Bạn chỉ có thể gửi tin nhắn cho bạn bè!" });
-        }
-
-        const result = await db.query<any>(
-            `INSERT INTO messages (sender_id, receiver_id, message_text) VALUES (?, ?, ?)`,
-            [userId, receiverId, messageText.trim()]
-        );
-
-        res.json({
-            success: true,
-            message: {
-                id: result.insertId,
-                sender_id: userId,
-                receiver_id: receiverId,
-                message_text: messageText.trim(),
-                is_read: false,
-                date: "Vừa xong"
-            }
-        });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Lỗi gửi tin nhắn." });
-    }
-});
-
-export default router;
+        try {
+            const result = await sendMessage(req.user!.id, req.body.receiverId, req.body.messageText);
+            if (!('message' in result)) return res.status(result.status).json({ error: result.error });
+            res.json({ success: true, message: result.message });
+        } catch { res.status(503).json({ error: 'Không thể gửi tin nhắn lúc này.' }); }
+    });
+    export default router;

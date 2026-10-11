@@ -305,14 +305,6 @@ export default function NovelDetail({
                                     src={novel.cover} 
                                     alt={novel.title} 
                                     className="detail-cover" 
-                                    style={{
-                                        width: '180px',
-                                        height: '250px',
-                                        objectFit: 'cover',
-                                        borderRadius: '8px',
-                                        boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
-                                        border: '1px solid var(--border-color)'
-                                    }} 
                                 />
                             </div>
                             <div className="detail-info" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>

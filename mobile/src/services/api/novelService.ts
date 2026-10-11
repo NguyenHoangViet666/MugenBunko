@@ -1,10 +1,18 @@
 import apiClient from './client';
+import type { AxiosResponse } from 'axios';
 import { Novel, Chapter } from '@/types';
 
 export const getNovels = async (): Promise<Novel[]> => {
   try {
-    const response = await apiClient.get<Novel[]>('/novels');
-    return Array.isArray(response.data) ? response.data : [];
+    const novels: Novel[] = [];
+    let page: string | undefined = '1';
+    while (page) {
+      const response: AxiosResponse<Novel[]> = await apiClient.get<Novel[]>('/novels', { params: { page, limit: 100 } });
+      if (!Array.isArray(response.data)) throw new Error('Invalid catalog response');
+      novels.push(...response.data);
+      page = response.headers['x-next-page'] || undefined;
+    }
+    return novels;
   } catch (error) {
     console.error('Error fetching novels:', error);
     return [];

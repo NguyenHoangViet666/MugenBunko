@@ -1,63 +1,53 @@
 import { Router, Request, Response } from 'express';
 import db from '../db.js';
-import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.js';
+import { authenticateToken, optionalAuthentication, AuthenticatedRequest } from '../middleware/auth.js';
 
+import { pagination } from '../utils/pagination.js';
 const router = Router();
 
-// Get all novels (Public route)
-router.get('/', async (req: Request, res: Response) => {
-    try {
-        const novelsList = await db.query<any[]>(
-            `SELECT n.*, u.username as authorId, u.displayname as author, u.avatar_seed as authorAvatarSeed, u.bio as authorBio,
-                     (SELECT COUNT(*) FROM chapters c WHERE c.novel_id = n.id AND c.status = 'published') as chapters_count,
-                     (SELECT COUNT(*) FROM reviews r WHERE r.novel_id = n.id) as reviews_count
-             FROM novels n
-             JOIN users u ON n.author_id = u.id
-             ORDER BY n.reads DESC`
-        );
-
-        if (novelsList.length > 0) {
-            // Fetch and group tags
-            const allTags = await db.query<any[]>("SELECT novel_id, tag FROM novel_tags");
-            const tagsMap: Record<number, string[]> = {};
-            for (const t of allTags) {
-                if (!tagsMap[t.novel_id]) tagsMap[t.novel_id] = [];
-                tagsMap[t.novel_id].push(t.tag);
-            }
-
-            // Fetch and group chapters (excluding 'content' field to minimize payload size)
-            const allChapters = await db.query<any[]>(
-                `SELECT id, novel_id, volume_name, title, status, word_count, DATE_FORMAT(created_at, '%d/%m/%Y %H:%i') as date, scheduled_release 
-                 FROM chapters`
-            );
-            const chaptersMap: Record<number, any[]> = {};
-            for (const c of allChapters) {
-                if (!chaptersMap[c.novel_id]) chaptersMap[c.novel_id] = [];
-                chaptersMap[c.novel_id].push(c);
-            }
-
-            // Map grouped tags and chapters back to each novel
-            for (const n of novelsList) {
-                n.tags = tagsMap[n.id] || [];
-                n.chapters = chaptersMap[n.id] || [];
-                
-                n.reads = parseInt(n.reads);
-                n.bookmarksCount = parseInt(n.bookmarks_count);
-                n.reviewsCount = parseInt(n.reviews_count);
-            }
-        }
-
-        res.json(novelsList);
-    } catch (err) {
-        console.error("Get novels error:", err);
-        res.status(500).json({ error: "Lỗi tải danh mục truyện." });
-    }
-});
+router.get('/', optionalAuthentication, async (req: AuthenticatedRequest, res: Response) => {
+        const paging = pagination(req, 100);
+        if (!paging) return res.status(400).json({ error: 'Phân trang không hợp lệ.' });
+        const userId = req.user?.id || 0;
+        const staff = req.user?.roles.some(role => ['admin', 'moderator'].includes(role)) || false;
+        try {
+            const novels = await db.query<any[]>(                `SELECT n.*, u.username AS authorId, u.displayname AS author, u.avatar_seed AS authorAvatarSeed, u.bio AS authorBio,
+                (SELECT COUNT(*) FROM chapters c WHERE c.novel_id = n.id AND c.status = 'published') AS chapters_count,
+                (SELECT COUNT(*) FROM reviews r WHERE r.novel_id = n.id) AS reviews_count
+                FROM novels n JOIN users u ON n.author_id = u.id
+                WHERE (n.author_id = ? OR ? = 1 OR (n.status <> 'suspended' AND EXISTS(SELECT 1 FROM chapters c WHERE c.novel_id = n.id AND c.status = 'published')))
+                ORDER BY n.reads DESC, n.id DESC LIMIT ? OFFSET ?`,
+                [userId, staff, paging.limit + 1, paging.offset]);
+            const hasMore = novels.length > paging.limit;
+            novels.splice(paging.limit);
+            res.set('Cache-Control', 'private, no-store');
+            res.set('X-Next-Page', hasMore ? String(paging.page + 1) : '');
+            if (!novels.length) return res.json([]);
+            const ids = novels.map(n => n.id);
+            const placeholders = ids.map(() => '?').join(',');
+            const [tags, chapters] = await Promise.all([
+                db.query<any[]>(`SELECT novel_id, tag FROM novel_tags WHERE novel_id IN (${placeholders})`, ids),
+                db.query<any[]>(`SELECT c.id, c.novel_id, c.volume_name, c.title, c.status, c.word_count,
+                    DATE_FORMAT(c.created_at, '%d/%m/%Y %H:%i') AS date, c.scheduled_release
+                    FROM chapters c JOIN novels n ON n.id = c.novel_id WHERE c.novel_id IN (${placeholders})
+                    AND (c.status = 'published' OR n.author_id = ? OR ? = 1) ORDER BY c.id`, [...ids, userId, staff]),
+            ]);
+            const tagMap = new Map<number, string[]>(); const chapterMap = new Map<number, any[]>();
+            for (const tag of tags) { const list = tagMap.get(tag.novel_id) || []; list.push(tag.tag); tagMap.set(tag.novel_id, list); }
+            for (const chapter of chapters) { const list = chapterMap.get(chapter.novel_id) || []; list.push(chapter); chapterMap.set(chapter.novel_id, list); }
+            res.json(novels.map(n => ({ ...n, tags: tagMap.get(n.id) || [], chapters: chapterMap.get(n.id) || [],
+                reads: Number(n.reads), bookmarksCount: Number(n.bookmarks_count), reviewsCount: Number(n.reviews_count) })));
+        } catch { res.status(503).json({ error: 'Không thể tải danh mục truyện.' }); }
+    });
 
 // Add Novel
 router.post('/', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
     const { title, cover, summary, genre, tags, type, status } = req.body;
-    if (!title || !genre) {
+    if (typeof title !== 'string' || !title.trim() || title.length > 255 || typeof genre !== 'string' || !genre.trim() || genre.length > 500 ||
+        (cover !== undefined && (typeof cover !== 'string' || cover.length > 255 || !/^(https?:\/\/|\/?assets\/|\/uploads\/)/.test(cover))) ||
+        (summary !== undefined && (typeof summary !== 'string' || summary.length > 20000)) ||
+        (tags !== undefined && (!Array.isArray(tags) || tags.length > 20 || tags.some(tag => typeof tag !== 'string' || tag.length > 50))) ||
+        (type && !['series', 'oneshot'].includes(type)) || (status && !['active', 'ongoing', 'completed', 'paused', 'suspended'].includes(status))) {
         return res.status(400).json({ error: "Vui lòng nhập tên tác phẩm và thể loại!" });
     }
 
@@ -67,20 +57,16 @@ router.post('/', authenticateToken, async (req: AuthenticatedRequest, res: Respo
             return res.status(401).json({ error: "Tài khoản không hợp lệ!" });
         }
 
-        const result = await db.query<any>(
-            "INSERT INTO novels (title, author_id, cover, summary, genre, type, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            [title.trim(), userId, cover, summary, genre, type || 'series', status || 'active']
-        );
-        const novelId = result.insertId;
-
-        // Insert tags
-        if (Array.isArray(tags)) {
-            for (const t of tags) {
-                if (t.trim()) {
-                    await db.query("INSERT INTO novel_tags (novel_id, tag) VALUES (?, ?)", [novelId, t.trim()]);
-                }
+        if (status === 'suspended' && !req.user!.roles.includes('admin')) return res.status(403).json({ error: 'Không có quyền khóa truyện.' });
+        const novelId = await db.transaction(async connection => {
+            const [result] = await connection.execute<any>(
+                "INSERT INTO novels (title, author_id, cover, summary, genre, type, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [title.trim(), userId, cover || 'assets/default_novel_cover.png', summary || '', genre.trim(), type || 'series', status || 'active']);
+            for (const tag of new Set<string>((tags || []).map((t: string) => t.trim()).filter(Boolean))) {
+                await connection.execute('INSERT INTO novel_tags (novel_id, tag) VALUES (?, ?)', [result.insertId, tag]);
             }
-        }
+            return result.insertId;
+        });
 
         res.json({ success: true, novelId });
     } catch (err) {
@@ -98,13 +84,17 @@ router.put('/:id', authenticateToken, async (req: AuthenticatedRequest, res: Res
     if (!userId) {
         return res.status(401).json({ error: "Tài khoản không hợp lệ!" });
     }
-    if (!title || !genre) {
+    if (typeof title !== 'string' || !title.trim() || title.length > 255 || typeof genre !== 'string' || !genre.trim() || genre.length > 500 ||
+        (cover !== undefined && (typeof cover !== 'string' || cover.length > 255 || !/^(https?:\/\/|\/?assets\/|\/uploads\/)/.test(cover))) ||
+        (summary !== undefined && (typeof summary !== 'string' || summary.length > 20000)) ||
+        (tags !== undefined && (!Array.isArray(tags) || tags.length > 20 || tags.some(tag => typeof tag !== 'string' || tag.length > 50))) ||
+        (type && !['series', 'oneshot'].includes(type)) || (status && !['active', 'ongoing', 'completed', 'paused', 'suspended'].includes(status))) {
         return res.status(400).json({ error: "Vui lòng nhập tên tác phẩm và thể loại!" });
     }
 
     try {
         // Verify ownership
-        const novelsList = await db.query<any[]>("SELECT author_id FROM novels WHERE id = ?", [novelId]);
+        const novelsList = await db.query<any[]>("SELECT author_id, status FROM novels WHERE id = ?", [novelId]);
         if (novelsList.length === 0) {
             return res.status(404).json({ error: "Không tìm thấy tác phẩm này." });
         }
@@ -116,22 +106,28 @@ router.put('/:id', authenticateToken, async (req: AuthenticatedRequest, res: Res
             return res.status(403).json({ error: "Bạn không có quyền chỉnh sửa tác phẩm này!" });
         }
 
+        if (!isAdmin && (novel.status === 'suspended' || status === 'suspended')) return res.status(403).json({ error: 'Trạng thái khóa chỉ do quản trị viên quản lý.' });
         // Update novel
-        await db.query(
-            "UPDATE novels SET title = ?, cover = ?, summary = ?, genre = ?, type = ?, status = ? WHERE id = ?",
-            [title.trim(), cover, summary, genre, type || 'series', status || 'active', novelId]
+        const updated = await db.transaction(async connection => {
+        const [result] = await connection.execute<any>(
+            "UPDATE novels SET title = ?, cover = ?, summary = ?, genre = ?, type = ?, status = ? WHERE id = ? AND (? = 1 OR status <> 'suspended')",
+            [title.trim(), cover || 'assets/default_novel_cover.png', summary || '', genre, type || 'series', status || 'active', novelId, Boolean(isAdmin)]
         );
 
+        if (!result.affectedRows) return false;
         // Re-sync tags: Delete old and insert new
-        await db.query("DELETE FROM novel_tags WHERE novel_id = ?", [novelId]);
+        await connection.execute("DELETE FROM novel_tags WHERE novel_id = ?", [novelId]);
         if (Array.isArray(tags)) {
-            for (const t of tags) {
+            for (const t of new Set<string>(tags)) {
                 if (t.trim()) {
-                    await db.query("INSERT INTO novel_tags (novel_id, tag) VALUES (?, ?)", [novelId, t.trim()]);
+                    await connection.execute("INSERT IGNORE INTO novel_tags (novel_id, tag) VALUES (?, ?)", [novelId, t.trim()]);
                 }
             }
         }
 
+        return true;
+        });
+        if (!updated) return res.status(403).json({ error: 'Truyện đã bị khóa.' });
         res.json({ success: true });
     } catch (err) {
         console.error("Edit novel error:", err);
@@ -251,33 +247,25 @@ router.post('/:id/bookmark', authenticateToken, async (req: AuthenticatedRequest
 router.post('/:id/read-increment', async (req: Request, res: Response) => {
     const novelId = req.params.id;
     // Get client IP address safely
-    const ipAddress = (req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || '127.0.0.1').split(',')[0].trim();
+    const ipAddress = req.ip || req.socket.remoteAddress || '127.0.0.1';
 
     try {
-        // Check if there is an active cooldown for this IP and novel in the last 10 minutes
-        const cooldowns = await db.query<any[]>(
-            `SELECT last_read_at, TIMESTAMPDIFF(MINUTE, last_read_at, NOW()) AS diff_minutes 
-             FROM read_cooldowns 
-             WHERE ip_address = ? AND novel_id = ?`,
-            [ipAddress, novelId]
-        );
-
-        if (cooldowns.length > 0 && cooldowns[0].diff_minutes < 10) {
-            // Under cooldown, return success: true but do NOT increment reads
-            return res.json({ success: true, cooldown: true });
-        }
-
-        // Not under cooldown: update or insert cooldown record
-        await db.query(
-            `INSERT INTO read_cooldowns (ip_address, novel_id, last_read_at) 
-             VALUES (?, ?, NOW()) 
-             ON DUPLICATE KEY UPDATE last_read_at = NOW()`,
-            [ipAddress, novelId]
-        );
-
-        // Increment the novel's reads counter
-        await db.query("UPDATE novels SET `reads` = `reads` + 1 WHERE id = ?", [novelId]);
-        res.json({ success: true, cooldown: false });
+        const visible = await db.query<any[]>(`SELECT id FROM novels n WHERE id = ? AND status <> 'suspended'
+            AND EXISTS(SELECT 1 FROM chapters c WHERE c.novel_id = n.id AND c.status = 'published')`, [novelId]);
+        if (!visible.length) return res.status(404).json({ error: 'Không tìm thấy truyện đã xuất bản.' });
+        // Create the row in autocommit so duplicate-insert shared locks are released
+        // before taking the exclusive cooldown lock inside the transaction.
+        await db.query(`INSERT IGNORE INTO read_cooldowns (ip_address, novel_id, last_read_at)
+            VALUES (?, ?, '2000-01-01 00:00:00')`, [ipAddress, novelId]);
+        const outcome = await db.transaction(async connection => {
+            const [rows] = await connection.execute<any[]>(`SELECT TIMESTAMPDIFF(SECOND, last_read_at, NOW()) AS elapsed
+                FROM read_cooldowns WHERE ip_address = ? AND novel_id = ? FOR UPDATE`, [ipAddress, novelId]);
+            if (Number(rows[0].elapsed) < 600) return { success: true, cooldown: true };
+            await connection.execute('UPDATE read_cooldowns SET last_read_at = NOW() WHERE ip_address = ? AND novel_id = ?', [ipAddress, novelId]);
+            await connection.execute('UPDATE novels SET `reads` = `reads` + 1 WHERE id = ?', [novelId]);
+            return { success: true, cooldown: false };
+        });
+        return res.json(outcome);
     } catch (err) {
         console.error("Increment reads count error:", err);
         res.status(500).json({ error: "Lỗi cập nhật lượt đọc." });

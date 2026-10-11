@@ -1,5 +1,10 @@
 // Applied on startup for both existing databases and fresh installations.
 export const readerSchema = `
+CREATE TABLE IF NOT EXISTS email_otps (
+    email VARCHAR(150) PRIMARY KEY, code_hash CHAR(64) NOT NULL,
+    expires_at BIGINT NOT NULL, sent_at BIGINT NOT NULL, attempts INT NOT NULL DEFAULT 0,
+    INDEX idx_email_otps_expiry (expires_at)
+) ENGINE=InnoDB;
 CREATE TABLE IF NOT EXISTS reading_progress (
     user_id INT NOT NULL, novel_id INT NOT NULL, chapter_id INT NOT NULL,
     scroll_ratio DOUBLE NOT NULL DEFAULT 0, paragraph_index INT NOT NULL DEFAULT 0,

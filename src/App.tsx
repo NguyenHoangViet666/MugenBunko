@@ -1,3 +1,4 @@
+import { fetchArrayPages } from './utils/pagedFetch';
 import React, { useState, useEffect, useRef } from 'react';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -85,7 +86,9 @@ const setCachedData = (key: string, data: any): void => {
 };
 
 const clearCache = (key: string): void => {
-    sessionStorage.removeItem(key);
+    for (const storedKey of Object.keys(sessionStorage)) {
+        if (storedKey === key || storedKey.startsWith(key + ':')) sessionStorage.removeItem(storedKey);
+    }
 };
 
 interface InitialRoute {
@@ -524,7 +527,7 @@ export default function App() {
             fetchNovels();
             fetchForumPosts();
         }
-    }, [currentView]);
+    }, [currentView, currentUser?.id]);
 
     // ----------------------------------------------------
     // BIDIRECTIONAL HASH ROUTER
@@ -734,7 +737,7 @@ export default function App() {
     // ----------------------------------------------------
     const fetchNovels = async (forceRefresh = false): Promise<Novel[]> => {
         if (!forceRefresh) {
-            const cached = getCachedData(CACHE_KEYS.novels, 120000);
+            const cached = getCachedData(CACHE_KEYS.novels + ':' + (currentUser?.id || 'guest'), 120000);
             if (cached) {
                 setNovels(cached);
                 setNovelsLoading(false); setNovelsError('');
@@ -743,12 +746,9 @@ export default function App() {
         }
         setNovelsLoading(true); setNovelsError('');
         try {
-            const res = await fetchWithAuth(`${API_BASE}/novels`);
-            const data = await res.json();
-            if (!res.ok || !Array.isArray(data)) throw new Error(data.error || 'Không thể tải thư viện tác phẩm.');
-            const list = data;
+            const list = await fetchArrayPages<Novel>(fetchWithAuth, `${API_BASE}/novels`);
             setNovels(list);
-            setCachedData(CACHE_KEYS.novels, list);
+            setCachedData(CACHE_KEYS.novels + ':' + (currentUser?.id || 'guest'), list);
             return list;
         } catch (err) {
             console.error("Error fetching novels:", err);
@@ -781,7 +781,7 @@ export default function App() {
 
     const fetchEvents = async (forceRefresh = false) => {
         if (!forceRefresh) {
-            const cached = getCachedData(CACHE_KEYS.events, 120000);
+            const cached = getCachedData(CACHE_KEYS.events + ':' + (currentUser?.id || 'guest'), 120000);
             if (cached) {
                 setEvents(cached);
                 return;
@@ -795,11 +795,11 @@ export default function App() {
                 title: ev.title,
                 description: ev.description || null,
                 content: ev.content || null,
-                status: 'active',
+                status: ev.status === 'active' || ev.status === 'published' ? ev.status : 'draft',
                 created_at: ev.created_at || new Date().toISOString()
             }));
             setEvents(mapped);
-            setCachedData(CACHE_KEYS.events, mapped);
+            setCachedData(CACHE_KEYS.events + ':' + (currentUser?.id || 'guest'), mapped);
         } catch (err) {
             console.error("Error fetching events:", err);
             setEvents([]);
@@ -808,18 +808,16 @@ export default function App() {
 
     const fetchForumPosts = async (forceRefresh = false) => {
         if (!forceRefresh) {
-            const cached = getCachedData(CACHE_KEYS.forumPosts, 45000);
+            const cached = getCachedData(CACHE_KEYS.forumPosts + ':' + (currentUser?.id || 'guest'), 45000);
             if (cached) {
                 setForumPosts(cached);
                 return;
             }
         }
         try {
-            const res = await fetchWithAuth(`${API_BASE}/forum/posts`);
-            const data = await res.json();
-            const list = Array.isArray(data) ? data : [];
+            const list = await fetchArrayPages<ForumPost>(fetchWithAuth, `${API_BASE}/forum/posts`);
             setForumPosts(list);
-            setCachedData(CACHE_KEYS.forumPosts, list);
+            setCachedData(CACHE_KEYS.forumPosts + ':' + (currentUser?.id || 'guest'), list);
         } catch (err) {
             console.error("Error fetching forum posts:", err);
             setForumPosts([]);
@@ -1073,7 +1071,15 @@ export default function App() {
         }
     };
 
-    const handleRegisterSubmit = async () => {
+    const sendRegistrationOtp = async (email: string): Promise<string | undefined> => {
+        const response = await fetchWithAuth(`${API_BASE}/auth/send-otp`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Không thể gửi mã xác thực.');
+        return data.devOtp;
+    };
+    const handleRegisterSubmit = async (email: string, otp: string) => {
         const nameClean = regUsername.trim().toLowerCase();
         if (!nameClean || !regDisplayname.trim() || !regPassword) {
             alert("Vui lòng nhập đầy đủ thông tin đăng ký!");
@@ -1089,7 +1095,7 @@ export default function App() {
             const res = await fetchWithAuth(`${API_BASE}/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: nameClean, displayname: regDisplayname, password: regPassword, role: regRole })
+                body: JSON.stringify({ username: nameClean, displayname: regDisplayname, password: regPassword, role: regRole, email, otp })
             });
             const data = await res.json();
             if (!res.ok) {
@@ -3304,6 +3310,7 @@ export default function App() {
                     regRole={regRole}
                     setRegRole={setRegRole as any}
                     handleRegisterSubmit={handleRegisterSubmit}
+                    sendRegistrationOtp={sendRegistrationOtp}
                 />
             )}
 
