@@ -1,15 +1,14 @@
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import jwt from 'jsonwebtoken';
-import cors from 'cors';
-import dotenv from 'dotenv';
+import { registerRealtime } from './realtime.js';
+import { configureSecurity, apiErrorHandler } from './middleware/security.js';
+import { isAllowedOrigin } from './config.js';
+import { uploadRouter } from './routes/upload.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { v2 as cloudinary } from 'cloudinary';
-import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
 import db, { initializeDbConnection } from './db.js';
 import { requestLogger } from './middleware/logger.js';
 
@@ -32,10 +31,6 @@ import libraryRouter from './routes/library.js';
 import { authenticateToken } from './middleware/auth.js';
 import { checkRole } from './middleware/roles.js';
 
-const envPath = fs.existsSync(path.join(process.cwd(), '.env'))
-    ? path.join(process.cwd(), '.env')
-    : path.join(process.cwd(), 'server', '.env');
-dotenv.config({ path: envPath });
 
 // Configure Cloudinary if credentials are present
 const isCloudinaryConfigured = !!(
@@ -61,108 +56,22 @@ const PORT = process.env.PORT || 5000;
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
-    cors: {
-        origin: (origin, callback) => {
-            callback(null, true);
-        },
-        credentials: true
-    }
-});
-
-// Active Socket Connections map
-const activeSockets = new Map<number, string>(); // userId -> socketId
-const socketUsers = new Map<string, number>(); // socketId -> userId
-
-// Security configuration: CORS Origin Hardening
-const allowedOrigins = [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'http://localhost:8081',
-    'http://127.0.0.1:8081',
-    'http://localhost:19006',
-    'http://127.0.0.1:19006',
-    `http://localhost:${PORT}`,
-    `http://127.0.0.1:${PORT}`,
-    process.env.FRONTEND_URL
-].filter(Boolean) as string[];
-
-const corsOptionsDelegate = (req: express.Request, callback: (err: Error | null, options?: cors.CorsOptions) => void) => {
-    const origin = req.header('Origin');
-    let corsOptions: cors.CorsOptions = { credentials: true, origin: false };
-
-    if (!origin) {
-        corsOptions.origin = true;
-    } else {
-        let isAllowed = false;
-        try {
-            const originUrl = new URL(origin);
-            const reqHost = req.header('host');
-            if (originUrl.host === reqHost) {
-                isAllowed = true;
-            }
-        } catch (e) {}
-
-        if (!isAllowed) {
-            if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
-                isAllowed = true;
-            }
-        }
-
-        if (isAllowed) {
-            corsOptions.origin = true;
-        } else {
-            console.warn(`[CORS Blocked] Origin "${origin}" is not allowed. Host: "${req.header('host')}". Allowed origins:`, allowedOrigins);
-            corsOptions.origin = false;
-        }
-    }
-    callback(null, corsOptions);
-};
-
-// Rate Limiters
-const generalLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 300,
-    message: { error: "Bạn đã gửi quá nhiều yêu cầu! Vui lòng thử lại sau 15 phút." },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-
-const authLimiter = rateLimit({
-    windowMs: 5 * 60 * 1000,
-    max: 15,
-    message: { error: "Bạn đã thử đăng nhập hoặc đăng ký quá nhiều lần! Vui lòng thử lại sau 5 phút." },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-
-const uploadLimiter = rateLimit({
-    windowMs: 10 * 60 * 1000,
-    max: 15,
-    message: { error: "Bạn đã tải lên quá nhiều hình ảnh! Vui lòng thử lại sau 10 phút." },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-
-// Global Middlewares
-app.use(helmet({
-    contentSecurityPolicy: false, // Turn off for unified frontend assets hosting / dev mode ease
-    crossOriginEmbedderPolicy: false,
-    crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
-app.use(cors(corsOptionsDelegate));
-app.use('/api/', generalLimiter);
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
-app.use('/api/upload', uploadLimiter);
-
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+        maxHttpBufferSize: 64 * 1024,
+        cors: { origin: (origin, callback) => callback(null, isAllowedOrigin(origin)), credentials: false },
+        allowRequest: (req, callback) => callback(null, isAllowedOrigin(req.headers.origin)),
+    });
+    configureSecurity(app);
 app.use(requestLogger);
-
-const __filename = fileURLToPath(import.meta.url);
+app.get('/healthz', async (_req, res) => {
+    try { await db.query('SELECT 1'); res.json({ status: 'ok' }); }
+    catch { res.status(503).json({ status: 'unavailable' }); }
+});
+    registerRealtime(io);
+    const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
-const PUBLIC_DIR = path.join(__dirname, '..', 'public');
+const PROJECT_DIR = path.basename(__dirname) === 'dist' ? path.resolve(__dirname, '../..') : path.resolve(__dirname, '..');
+const PUBLIC_DIR = path.join(PROJECT_DIR, 'public');
 const PUBLIC_ASSETS_DIR = path.join(PUBLIC_DIR, 'assets');
 
 if (!fs.existsSync(UPLOADS_DIR)) {
@@ -173,51 +82,7 @@ app.use('/uploads', express.static(UPLOADS_DIR));
 app.use('/assets', express.static(PUBLIC_ASSETS_DIR));
 app.use(express.static(PUBLIC_DIR));
 
-app.post('/api/upload', async (req, res) => {
-    const { image, type } = req.body;
-    if (!image) {
-        return res.status(400).json({ error: "Không tìm thấy dữ liệu ảnh!" });
-    }
-
-    try {
-        if (isCloudinaryConfigured) {
-            // Upload directly to Cloudinary using the base64 data URI string
-            const uploadResult = await cloudinary.uploader.upload(image, {
-                folder: 'mugenbunko',
-                resource_type: 'auto'
-            });
-            return res.json({ url: uploadResult.secure_url });
-        }
-
-        // Local disk fallback
-        const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-        if (!matches || matches.length !== 3) {
-            return res.status(400).json({ error: "Định dạng dữ liệu ảnh không hợp lệ!" });
-        }
-
-        const mimeType = matches[1];
-        const base64Data = matches[2];
-        const buffer = Buffer.from(base64Data, 'base64');
-
-        let ext = 'png';
-        if (mimeType.includes('jpeg') || mimeType.includes('jpg')) ext = 'jpg';
-        else if (mimeType.includes('webp')) ext = 'webp';
-        else if (mimeType.includes('gif')) ext = 'gif';
-
-        const filename = `${type || 'img'}_${Date.now()}_${Math.floor(Math.random() * 1000)}.${ext}`;
-        const filepath = path.join(UPLOADS_DIR, filename);
-
-        await fs.promises.writeFile(filepath, buffer);
-
-        const host = req.get('host') || 'localhost:5000';
-        const protocol = req.protocol || 'http';
-        const url = `${protocol}://${host}/uploads/${filename}`;
-        res.json({ url });
-    } catch (err) {
-        console.error("Upload error:", err);
-        res.status(500).json({ error: "Lỗi lưu trữ hình ảnh." });
-    }
-});
+app.use('/api/upload', uploadRouter(UPLOADS_DIR, isCloudinaryConfigured));
 
 // Mount API Routers
 app.use('/api/auth', authRouter);
@@ -267,153 +132,28 @@ if (distPath) {
     console.log(`[Static] Frontend static assets (dist/) not found. Running in API-only mode.`);
 }
 
-// Socket.io Handshake Middleware (JWT Authentication)
-io.use((socket, next) => {
-    const token = socket.handshake.auth.token || socket.handshake.query.token;
-    if (!token) {
-        return next(new Error("Xác thực thất bại: Không có token!"));
-    }
-    
-    try {
-        const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_for_mugen_key_dev';
-        const decoded = jwt.verify(token, JWT_SECRET) as { id: number, username: string };
-        socket.data.user = decoded;
-        next();
-    } catch (err) {
-        return next(new Error("Xác thực thất bại: Token không hợp lệ!"));
-    }
-});
-
-// Helper to broadcast status changes to friends
-async function broadcastStatusToFriends(userId: number, status: 'online' | 'offline') {
-    try {
-        const rows = await db.query<any[]>(
-            `SELECT CASE WHEN user_id_1 = ? THEN user_id_2 ELSE user_id_1 END AS friend_id 
-             FROM friends 
-             WHERE (user_id_1 = ? OR user_id_2 = ?) AND status = 'accepted'`,
-            [userId, userId, userId]
-        );
-        
-        if (rows && rows.length > 0) {
-            rows.forEach(row => {
-                const friendSocketId = activeSockets.get(row.friend_id);
-                if (friendSocketId) {
-                    io.to(friendSocketId).emit('friend_status_change', {
-                        userId,
-                        status
-                    });
-                }
-            });
-        }
-    } catch (err) {
-        console.error("[Socket] Error broadcasting status:", err);
-    }
+app.use('/api', (_req, res) => res.status(404).json({ error: 'API không tồn tại.' }));
+app.use(apiErrorHandler);
+let scheduler: ReturnType<typeof setInterval> | undefined;
+async function start() {
+    await initializeDbConnection();
+    await new Promise<void>((resolve, reject) => {
+        httpServer.once('error', reject);
+        httpServer.listen(PORT, () => { httpServer.removeListener('error', reject); resolve(); });
+    });
+    console.log('MugenBunko server ready on port ' + PORT);
+    scheduler = setInterval(async () => {
+        try { await db.query("UPDATE chapters SET status = 'published' WHERE status = 'scheduled' AND scheduled_release <= CURRENT_TIMESTAMP"); }
+        catch { console.error('Scheduled publishing failed.'); }
+    }, 30000);
 }
-
-// Socket.io Event Handlers
-io.on('connection', (socket) => {
-    const user = socket.data.user;
-    if (!user || !user.id) {
-        socket.disconnect();
-        return;
-    }
-    
-    // Track new connection
-    activeSockets.set(user.id, socket.id);
-    socketUsers.set(socket.id, user.id);
-    console.log(`[Socket] User ${user.username} (ID: ${user.id}) connected. Socket ID: ${socket.id}`);
-    
-    // Broadcast that this user is now online
-    broadcastStatusToFriends(user.id, 'online');
-    
-    // Handle sending message in real-time
-    socket.on('send_message', async (data: { receiverId: number, messageText: string }, callback) => {
-        try {
-            const { receiverId, messageText } = data;
-            if (!receiverId || !messageText || !messageText.trim()) {
-                if (callback) callback({ success: false, error: "Nội dung tin nhắn không hợp lệ." });
-                return;
-            }
-            
-            // Insert into the database
-            const result = await db.query<any>(
-                "INSERT INTO messages (sender_id, receiver_id, message_text) VALUES (?, ?, ?)",
-                [user.id, receiverId, messageText.trim()]
-            );
-            
-            const insertId = result.insertId;
-            const message = {
-                id: insertId,
-                sender_id: user.id,
-                receiver_id: receiverId,
-                message_text: messageText.trim(),
-                is_read: 0,
-                created_at: new Date()
-            };
-            
-            // Deliver to recipient via socket if they are online
-            const recipientSocketId = activeSockets.get(receiverId);
-            if (recipientSocketId) {
-                io.to(recipientSocketId).emit('receive_message', message);
-            }
-            
-            if (callback) callback({ success: true, message });
-        } catch (err) {
-            console.error("[Socket] Error saving/sending message:", err);
-            if (callback) callback({ success: false, error: "Lỗi hệ thống khi gửi tin nhắn." });
-        }
+async function shutdown() {
+    clearInterval(scheduler);
+    const deadline = setTimeout(() => process.exit(1), 10000); deadline.unref();
+    io.close(async () => {
+        try { await db.closeDbConnection(); clearTimeout(deadline); process.exitCode = 0; }
+        catch { process.exitCode = 1; }
     });
-    
-    // Handle checking online status of user IDs
-    socket.on('check_online_status', (userIds: number[], callback) => {
-        if (!Array.isArray(userIds)) {
-            if (callback) callback({});
-            return;
-        }
-        const statuses: { [key: number]: boolean } = {};
-        userIds.forEach(id => {
-            statuses[id] = activeSockets.has(id);
-        });
-        if (callback) callback(statuses);
-    });
-    
-    // Handle disconnection
-    socket.on('disconnect', () => {
-        console.log(`[Socket] User ${user.username} (ID: ${user.id}) disconnected.`);
-        activeSockets.delete(user.id);
-        socketUsers.delete(socket.id);
-        
-        // Broadcast that this user is now offline
-        broadcastStatusToFriends(user.id, 'offline');
-    });
-});
-
-// Start Server
-httpServer.listen(PORT, async () => {
-    console.log(`Server starting on port ${PORT}...`);
-    try {
-        await initializeDbConnection();
-        console.log(`🚀 MUGENBUNKO Express Server running on http://localhost:${PORT}`);
-
-        // Auto-publish scheduled chapters whose release time has passed
-        setInterval(async () => {
-            try {
-                const now = new Date();
-                const result = await db.query<any>(
-                    "UPDATE chapters SET status = 'published' WHERE status = 'scheduled' AND scheduled_release <= ?",
-                    [now]
-                );
-                if (result && result.affectedRows > 0) {
-                    console.log(`[Scheduler] Auto-published ${result.affectedRows} scheduled chapters.`);
-                }
-            } catch (err) {
-                console.error("[Scheduler] Error publishing scheduled chapters:", err);
-            }
-        }, 30000); // Check every 30 seconds
-
-    } catch (err) {
-        console.error("Critical: Could not connect to database on startup.");
-    }
-});
-// Touch to restart server again
-
+}
+process.once('SIGTERM', shutdown); process.once('SIGINT', shutdown);
+start().catch(() => { console.error('Server startup failed. Check configuration and run database migrations before starting.'); process.exitCode = 1; void db.closeDbConnection(); });
