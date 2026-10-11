@@ -27,6 +27,8 @@ import adminRouter from './routes/admin.js';
 import forumRouter from './routes/forum.js';
 import socialRouter from './routes/social.js';
 import policiesRouter from './routes/policies.js';
+import readerRouter from './routes/reader.js';
+import libraryRouter from './routes/library.js';
 import { authenticateToken } from './middleware/auth.js';
 import { checkRole } from './middleware/roles.js';
 
@@ -231,6 +233,8 @@ app.use('/api/admin', authenticateToken, checkRole('admin'), adminRouter);
 app.use('/api/forum', forumRouter);
 app.use('/api/social', socialRouter);
 app.use('/api/policies', policiesRouter);
+app.use('/api/reader', readerRouter);
+app.use('/api/library', libraryRouter);
 
 // Public genres endpoint
 app.get('/api/genres', async (req, res) => {

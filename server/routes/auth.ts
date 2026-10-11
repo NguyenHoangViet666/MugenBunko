@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import db from '../db.js';
-import { addXpToUser } from '../utils/level.js';
+
 
 const JWT_SECRET = process.env.JWT_SECRET || 'mugenbunko-super-secret-key-12345';
 
@@ -569,32 +569,9 @@ router.post('/deposit-coins', async (req: Request, res: Response) => {
     return res.status(403).json({ error: "Chức năng nạp coin đã bị tắt do nền tảng đã chuyển đổi thành phi lợi nhuận!" });
 });
 
-// EXP Reward for reading
-router.post('/add-xp', async (req: Request, res: Response) => {
-    const { userId, xp } = req.body;
-    try {
-        const { alertLevelUp } = await addXpToUser(userId, xp);
-        
-        // Fetch updated user to return to frontend
-        const users = await db.query<any[]>("SELECT * FROM users WHERE id = ?", [userId]);
-        if (users.length === 0) {
-            return res.status(404).json({ error: "Không tìm thấy người dùng." });
-        }
-        const user = users[0];
-        user.avatarSeed = user.avatar_seed;
-
-        const rolesData = await db.query<any[]>("SELECT role FROM user_roles WHERE user_id = ?", [userId]);
-        user.roles = rolesData.map(r => r.role);
-        const bookmarksData = await db.query<any[]>("SELECT novel_id FROM bookmarks WHERE user_id = ?", [userId]);
-        user.bookmarks = bookmarksData.map(b => b.novel_id);
-        const notifs = await db.query<any[]>("SELECT id, text, is_read as `read`, DATE_FORMAT(created_at, '%d/%m/%Y') as date FROM notifications WHERE user_id = ? ORDER BY created_at DESC", [userId]);
-        user.notifications = notifs;
-        delete user.password;
-
-        res.json({ user, alertLevelUp });
-    } catch (err) {
-        res.status(500).json({ error: "Lỗi đồng bộ kinh nghiệm." });
-    }
+// Reading rewards are issued once per completed chapter by /api/reader/complete.
+router.post('/add-xp', (_req: Request, res: Response) => {
+    res.status(410).json({ error: 'Kinh nghiệm đọc được ghi nhận tự động khi hoàn thành chương.' });
 });
 
 // Follow author

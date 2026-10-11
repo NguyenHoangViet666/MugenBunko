@@ -1,8 +1,11 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { User, Novel } from '../types';
+import { User, Novel, Chapter } from '../types';
 import { Icons } from '../components/Icons';
+import ChapterVersionHistory from '../components/ChapterVersionHistory';
 
 interface AuthorStudioProps {
+    onChapterRestored: (chapter: Chapter) => void;
+    onHistoryBusyChange: (busy: boolean) => void;
     currentUser: User;
     novels: Novel[];
     activeStudioNovelId: number | null;
@@ -37,6 +40,8 @@ interface AuthorStudioProps {
 }
 
 export default function AuthorStudio({
+    onChapterRestored,
+    onHistoryBusyChange,
     currentUser,
     novels,
     activeStudioNovelId,
@@ -149,19 +154,26 @@ export default function AuthorStudio({
                 if (chapterTitleRef.current) chapterTitleRef.current.value = ch.title || "";
                 
                 // Fetch chapter content dynamically in editor
-                if (contentAreaRef.current) contentAreaRef.current.innerHTML = "<p>Đang tải nội dung chương truyện...</p>";
+                if (contentAreaRef.current) {
+                    contentAreaRef.current.innerHTML = '<p>Đang tải nội dung chương truyện...</p>';
+                    contentAreaRef.current.contentEditable = 'false';
+                    delete contentAreaRef.current.dataset.loadedChapterId;
+                }
                 fetchWithAuth(`${API_BASE}/chapters/${ch.id}`)
-                    .then(res => res.json())
+                    .then(async res => { if (!res.ok) throw new Error((await res.json()).error || 'Không thể tải bản thảo.'); return res.json(); })
                     .then(data => {
                         // Double check we are still editing the same chapter when the request returns
                         if (loadedChapterIdRef.current === ch.id && contentAreaRef.current) {
                             contentAreaRef.current.innerHTML = (data && data.content) || "";
+                            contentAreaRef.current.dataset.loadedChapterId = String(ch.id);
+                            contentAreaRef.current.contentEditable = 'true';
                         }
                     })
                     .catch(err => {
                         console.error("Error loading chapter in editor:", err);
                         if (loadedChapterIdRef.current === ch.id && contentAreaRef.current) {
                             contentAreaRef.current.innerHTML = "<p style='color:red;'>Lỗi tải nội dung chương truyện. Vui lòng chọn lại chương!</p>";
+                            contentAreaRef.current.contentEditable = 'false';
                         }
                     });
             }
@@ -552,6 +564,15 @@ export default function AuthorStudio({
                                             <button className="toolbar-icon-btn outline-btn small" style={{padding:'4px 8px'}} onClick={insertStaticIllustration}>Chèn Ảnh</button>
                                             
                                             {/* Backup export buttons */}
+                                            <ChapterVersionHistory chapter={ch} novelId={activeStudioNovelId!} API_BASE={API_BASE} fetchWithAuth={fetchWithAuth}
+                                                getCurrentDraft={() => contentAreaRef.current?.dataset.loadedChapterId === String(ch.id)
+                                                    ? { volumeName: volNameRef.current?.value || '', title: chapterTitleRef.current?.value || '', content: contentAreaRef.current?.innerHTML || '' } : null}
+                                                onRestored={restored => {
+                                                    setSelectedVolName(restored.volume_name);
+                                                    setLocalVolumes(prev => [...new Set([...prev, restored.volume_name])]);
+                                                    onChapterRestored(restored);
+                                                    countEditorWords();
+                                                }} onBusyChange={onHistoryBusyChange} />
                                             <div style={{ display: 'flex', gap: '4px', borderLeft: '1px solid var(--border-color)', paddingLeft: '8px', marginLeft: '4px' }}>
                                                 <button className="toolbar-icon-btn outline-btn small" style={{padding:'3px 6px', fontSize:'0.72rem', display:'inline-flex', alignItems:'center', gap:'3px'}} onClick={() => exportChapterBackup('txt')} title="Lưu dự phòng file .txt">
                                                     <Icons.Download size={11} /> TXT

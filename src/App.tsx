@@ -23,6 +23,11 @@ import Explore from './pages/Explore';
 import EventDetail from './pages/EventDetail';
 import ManageRules from './pages/ManageRules';
 import ViewRules from './pages/ViewRules';
+import About from './pages/About';
+import ErrorBoundary from './components/ErrorBoundary';
+import PublicCollection from './pages/PublicCollection';
+import { PageLoading, PageError } from './components/LoadState';
+import { useReadingSync } from './hooks/useReadingSync';
 
 import { User, Novel, Comment, Review, SystemEvent, Report, ForumPost, Message, UserRole } from './types';
 import { compressImage } from './utils/imageCompressor';
@@ -129,6 +134,8 @@ const getInitialRoute = (): InitialRoute => {
     if (hash === '#/mod-dashboard') return { view: 'mod-dashboard', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
     if (hash === '#/admin-dashboard') return { view: 'admin-dashboard', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
     if (hash === '#/profile') return { view: 'profile', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
+    if (hash === '#/about') return { view: 'about', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
+    if (/^#\/collection\/[a-f0-9]{32}$/.test(hash)) return { view: 'collection', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
 
     const profileMatch = hash.match(/^#\/profile\/([^/]+)$/);
     if (profileMatch) {
@@ -275,6 +282,8 @@ export default function App() {
     // ----------------------------------------------------
     const [users, setUsers] = useState<User[]>([]);
     const [novels, setNovels] = useState<Novel[]>([]);
+    const [novelsLoading, setNovelsLoading] = useState(true);
+    const [novelsError, setNovelsError] = useState('');
     const [exploreType, setExploreType] = useState<string>('all');
     const [exploreGenre, setExploreGenre] = useState<string>('Tất cả');
     const [exploreSort, setExploreSort] = useState<string>('reads');
@@ -297,6 +306,8 @@ export default function App() {
     // ----------------------------------------------------
     const [currentUser, setCurrentUser] = useState<User | null>(cachedSession);
     const [currentView, setCurrentView] = useState<string>(initialRoute.view);
+    const readingSync = useReadingSync(currentUser, novels, API_BASE, fetchWithAuth);
+    const studioHistoryBusy = useRef(false);
 
     // ----------------------------------------------------
     // Mobile Gate State (Standalone clean rendering)
@@ -318,6 +329,7 @@ export default function App() {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
     const [activeNovelId, setActiveNovelId] = useState<number | null>(initialRoute.novelId);
+    const [activeCollectionShareId, setActiveCollectionShareId] = useState<string | null>(() => window.location.hash.match(/^#\/collection\/([a-f0-9]{32})$/)?.[1] || null);
     const [activeChapterIndex, setActiveChapterIndex] = useState<number | null>(initialRoute.chapterIndex);
     
     // Author studio selections
@@ -504,7 +516,7 @@ export default function App() {
             fetchLatestComments();
             fetchLatestReviews();
             fetchWibuRanking();
-        } else if (currentView === 'explore' || currentView === 'library' || currentView === 'studio' || currentView === 'detail' || currentView === 'admin-dashboard' || currentView === 'mod-dashboard') {
+        } else if (currentView === 'explore' || currentView === 'library' || currentView === 'studio' || currentView === 'reader' || currentView === 'collection' || currentView === 'detail' || currentView === 'admin-dashboard' || currentView === 'mod-dashboard') {
             fetchNovels();
         } else if (currentView === 'forum') {
             fetchForumPosts();
@@ -576,6 +588,11 @@ export default function App() {
             return;
         }
 
+        if (/^#\/collection\/[a-f0-9]{32}$/.test(hash)) {
+            setActiveCollectionShareId(hash.split('/')[2]);
+            setCurrentView('collection'); setActiveNovelId(null); setActiveChapterIndex(null); return;
+        }
+
         // Match #/forum?post=123
         const forumPostMatch = hash.match(/^#\/forum\?post=(\d+)$/);
         if (forumPostMatch) {
@@ -620,6 +637,11 @@ export default function App() {
         if (hash === '#/profile') {
             setCurrentView('profile');
             setProfileViewingUsername(null);
+            return;
+        }
+
+        if (hash === '#/about') {
+            setCurrentView('about');
             return;
         }
 
@@ -692,6 +714,10 @@ export default function App() {
             expectedHash = activeForumPostId ? `#/forum?post=${activeForumPostId}` : '#/forum';
         } else if (currentView === 'explore') {
             expectedHash = '#/explore';
+        } else if (currentView === 'about') {
+            expectedHash = '#/about';
+        } else if (currentView === 'collection') {
+            expectedHash = activeCollectionShareId ? `#/collection/${activeCollectionShareId}` : '#/';
         } else if (currentView === 'detail' && activeNovelId !== null) {
             expectedHash = `#/novel/${activeNovelId}`;
         } else if (currentView === 'reader' && activeNovelId !== null && activeChapterIndex !== null) {
@@ -701,7 +727,7 @@ export default function App() {
         if (window.location.hash !== expectedHash) {
             window.location.hash = expectedHash;
         }
-    }, [currentView, activeNovelId, activeChapterIndex, profileViewingUsername, activeForumPostId, currentUser]);
+    }, [currentView, activeNovelId, activeChapterIndex, profileViewingUsername, activeForumPostId, activeCollectionShareId, currentUser]);
 
     // ----------------------------------------------------
     // FETCH HELPER METHOD INTEGRATIONS WITH REST API
@@ -711,20 +737,25 @@ export default function App() {
             const cached = getCachedData(CACHE_KEYS.novels, 120000);
             if (cached) {
                 setNovels(cached);
+                setNovelsLoading(false); setNovelsError('');
                 return cached;
             }
         }
+        setNovelsLoading(true); setNovelsError('');
         try {
             const res = await fetchWithAuth(`${API_BASE}/novels`);
             const data = await res.json();
-            const list = Array.isArray(data) ? data : [];
+            if (!res.ok || !Array.isArray(data)) throw new Error(data.error || 'Không thể tải thư viện tác phẩm.');
+            const list = data;
             setNovels(list);
             setCachedData(CACHE_KEYS.novels, list);
             return list;
         } catch (err) {
             console.error("Error fetching novels:", err);
-            setNovels([]);
-            return [];
+            setNovelsError(err instanceof Error ? err.message : 'Không thể kết nối đến thư viện.');
+            return novels;
+        } finally {
+            setNovelsLoading(false);
         }
     };
 
@@ -1112,6 +1143,8 @@ export default function App() {
             items.push(<span key="adm" className="breadcrumb-item active">Trang Quản Trị Admin</span>);
         } else if (currentView === 'profile') {
             items.push(<span key="prof" className="breadcrumb-item active">Thông Tin Cá Nhân</span>);
+        } else if (currentView === 'about') {
+            items.push(<span key="about" className="breadcrumb-item active">Về MugenBunko</span>);
         }
         return items;
     };
@@ -1207,31 +1240,9 @@ export default function App() {
             return;
         }
 
+        chapterIndex = Math.max(0, Math.min(publishedChapters.length - 1, chapterIndex));
         setActiveNovelId(novelId);
         setActiveChapterIndex(chapterIndex);
-
-        if (currentUser) {
-            const progressKey = `mugen_readprogress_${currentUser.username}_${novelId}`;
-            let progress = { chapterIndex: 0, readChaptersList: [] as number[] };
-            try {
-                const rawProgress = localStorage.getItem(progressKey);
-                if (rawProgress) progress = JSON.parse(rawProgress);
-            } catch (e) {}
-            
-            progress.chapterIndex = chapterIndex;
-            if (!progress.readChaptersList.includes(chapterIndex)) {
-                progress.readChaptersList.push(chapterIndex);
-                
-                // Give EXP on backend
-                await fetchWithAuth(`${API_BASE}/auth/add-xp`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: currentUser.id, xp: 50 })
-                });
-                refreshSession(currentUser.id);
-            }
-            localStorage.setItem(progressKey, JSON.stringify(progress));
-        }
 
         // Save to reading history in localStorage
         try {
@@ -1549,6 +1560,8 @@ export default function App() {
 
     const saveDraft = async () => {
         if (activeStudioNovelId === null || activeStudioChapterIndex === null) return;
+        const selectedChapter = novels.find(n => n.id === activeStudioNovelId)?.chapters?.[activeStudioChapterIndex];
+        if (!selectedChapter || contentAreaRef.current?.dataset.loadedChapterId !== String(selectedChapter.id)) { showToast('Nội dung chương chưa tải xong. Vui lòng chọn lại chương nếu tải thất bại.'); return; }
         const vol = volNameRef.current?.value.trim() || "";
         const title = chapterTitleRef.current?.value.trim() || "";
         const content = contentAreaRef.current?.innerHTML || "";
@@ -1587,6 +1600,7 @@ export default function App() {
     };
 
     const autoSaveDraftSilently = async () => {
+        if (studioHistoryBusy.current) return;
         if (activeStudioNovelId === null || activeStudioChapterIndex === null) return;
         const vol = volNameRef.current?.value.trim() || "";
         const title = chapterTitleRef.current?.value.trim() || "";
@@ -1597,6 +1611,7 @@ export default function App() {
         const novel = novels.find(n => n.id === activeStudioNovelId);
         if (!novel || !novel.chapters) return;
         const ch = novel.chapters[activeStudioChapterIndex];
+        if (contentAreaRef.current?.dataset.loadedChapterId !== String(ch.id)) return;
         if (ch.status === 'published' || ch.status === 'pending') return;
 
         try {
@@ -1609,7 +1624,8 @@ export default function App() {
                     volumeName: vol,
                     title,
                     content,
-                    status: 'draft'
+                    status: 'draft',
+                    source: 'autosave'
                 })
             });
             if (res.ok) {
@@ -1638,11 +1654,13 @@ export default function App() {
         }
     };
 
+    const autoSaveRef = useRef(autoSaveDraftSilently);
+    useEffect(() => { autoSaveRef.current = autoSaveDraftSilently; });
     useEffect(() => {
         let timer: any = null;
         if (currentView === 'studio' && activeStudioNovelId !== null && activeStudioChapterIndex !== null) {
             timer = setInterval(() => {
-                autoSaveDraftSilently();
+                void autoSaveRef.current();
             }, 30000); // 30s
         }
         return () => {
@@ -1652,6 +1670,8 @@ export default function App() {
 
     const publishChapter = async () => {
         if (activeStudioNovelId === null || activeStudioChapterIndex === null) return;
+        const selectedChapter = novels.find(n => n.id === activeStudioNovelId)?.chapters?.[activeStudioChapterIndex];
+        if (!selectedChapter || contentAreaRef.current?.dataset.loadedChapterId !== String(selectedChapter.id)) { showToast('Nội dung chương chưa tải xong. Vui lòng chọn lại chương nếu tải thất bại.'); return; }
         const vol = volNameRef.current?.value.trim() || "";
         const title = chapterTitleRef.current?.value.trim() || "";
         const content = contentAreaRef.current?.innerHTML || "";
@@ -2597,6 +2617,12 @@ export default function App() {
                                             Tủ Sách Cá Nhân
                                         </button>
                                     )}
+                                    <button
+                                        className={`drawer-opt-btn ${currentView === 'about' ? 'active' : ''}`}
+                                        onClick={() => { setCurrentView('about'); setActiveNovelId(null); setCategoryDrawerOpen(false); }}
+                                    >
+                                        Về MugenBunko
+                                    </button>
                                 </div>
                             </div>
 
@@ -2724,10 +2750,17 @@ export default function App() {
 
             {/* Main Content Layout */}
             <main className={`app-content-container ${currentView === 'reader' ? '' : 'container'}`}>
-                
+                <ErrorBoundary key={currentView}>
+                {novelsError && novels.length > 0 && <div className="inline-notice" role="alert">{novelsError} <button className="text-action" onClick={() => void fetchNovels(true)}>Thử lại</button></div>}
+                {(['home', 'explore', 'library', 'detail', 'reader', 'studio'].includes(currentView) && novelsLoading && !novels.length) || (currentView === 'reader' && novels.length > 0 && !readingSync.initialized)
+                    ? <PageLoading reader={currentView === 'reader'} />
+                    : ['home', 'explore', 'library', 'detail', 'reader', 'studio'].includes(currentView) && novelsError && !novels.length
+                        ? <PageError message={novelsError} onRetry={() => void fetchNovels(true)} /> : <>
+                {currentView === 'collection' && activeCollectionShareId && <PublicCollection key={activeCollectionShareId} shareId={activeCollectionShareId} API_BASE={API_BASE} openNovelDetail={openNovelDetail} />}
                 {/* ================= PAGES RENDERING ================= */}
                 {currentView === 'home' && (
                     <Home
+                        progressRevision={readingSync.revision}
                         novels={novels}
                         currentUser={currentUser}
                         activeNovelId={activeNovelId}
@@ -2771,6 +2804,11 @@ export default function App() {
 
                 {currentView === 'library' && (
                     <Library
+                        API_BASE={API_BASE}
+                        fetchWithAuth={fetchWithAuth}
+                        progressRevision={readingSync.revision}
+                        syncStatus={readingSync.status}
+                        onSync={() => void readingSync.refresh()}
                         currentUser={currentUser}
                         novels={novels}
                         setCurrentView={setCurrentView}
@@ -2824,6 +2862,12 @@ export default function App() {
 
                 {currentView === 'reader' && (
                     <ChapterReader
+                        currentUser={currentUser}
+                        syncStatus={readingSync.status}
+                        savePosition={readingSync.savePosition}
+                        syncNovel={readingSync.syncNovel}
+                        markCompleted={readingSync.markCompleted}
+                        onReward={() => { if (currentUser) void refreshSession(currentUser.id); }}
                         novels={novels}
                         activeNovelId={activeNovelId}
                         activeChapterIndex={activeChapterIndex !== null ? activeChapterIndex : 0}
@@ -2848,6 +2892,20 @@ export default function App() {
 
                 {currentView === 'studio' && (
                     <AuthorStudio
+                        onHistoryBusyChange={busy => { studioHistoryBusy.current = busy; }}
+                        onChapterRestored={chapter => {
+                            setNovels(prev => prev.map(n => n.id === chapter.novel_id ? { ...n, chapters: (n.chapters || []).map(c => c.id === chapter.id ? chapter : c) } : n));
+                            clearCache(CACHE_KEYS.novels);
+                            if (volNameRef.current) volNameRef.current.value = chapter.volume_name;
+                            if (chapterTitleRef.current) chapterTitleRef.current.value = chapter.title;
+                            if (contentAreaRef.current) {
+                                contentAreaRef.current.innerHTML = chapter.content || '';
+                                contentAreaRef.current.dataset.loadedChapterId = String(chapter.id);
+                                contentAreaRef.current.contentEditable = 'true';
+                            }
+                            setAutosaveText('Đã khôi phục thành bản nháp'); setAutosaveColor('green');
+                            showToast('Đã khôi phục bản thảo. Bản trước được giữ trong lịch sử.');
+                        }}
                         currentUser={currentUser!}
                         novels={novels}
                         activeStudioNovelId={activeStudioNovelId}
@@ -2960,6 +3018,13 @@ export default function App() {
                     />
                 )}
 
+                {currentView === 'about' && (
+                    <About
+                        setCurrentView={setCurrentView}
+                        openNovelDetail={openNovelDetail}
+                    />
+                )}
+
                 {currentView === 'event-detail' && (
                     <EventDetail
                         events={events}
@@ -3045,6 +3110,8 @@ export default function App() {
                         triggerConfirm={triggerConfirm}
                     />
                 )}
+                </>}
+                </ErrorBoundary>
             </main>
 
             {/* Footer Widget */}

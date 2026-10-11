@@ -1,4 +1,5 @@
-import mysql, { Pool } from 'mysql2/promise';
+import mysql, { Pool, PoolConnection } from 'mysql2/promise';
+import { readerSchema } from './readerSchema.js';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
@@ -341,6 +342,7 @@ export async function initializeDbConnection(): Promise<void> {
         await ensureIndexExists('notifications', 'idx_notifications_user_created', 'CREATE INDEX idx_notifications_user_created ON notifications (user_id, created_at DESC)');
         console.log("Performance indexes verification completed.");
 
+        await connectionWithDb.query(readerSchema);
         await connectionWithDb.end();
 
         pool = mysql.createPool({
@@ -367,7 +369,29 @@ export async function query<T = any>(sql: string, params?: any[]): Promise<T> {
     return results as T;
 }
 
+export async function transaction<T>(work: (connection: PoolConnection) => Promise<T>): Promise<T> {
+    if (!pool) throw new Error('Database pool not initialized.');
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+        const result = await work(connection);
+        await connection.commit();
+        return result;
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
+}
+
+export async function closeDbConnection() {
+    if (pool) { await pool.end(); pool = null; }
+}
+
 export default {
     query,
+    transaction,
+    closeDbConnection,
     initializeDbConnection
 };

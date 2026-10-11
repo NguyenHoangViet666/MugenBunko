@@ -5576,6 +5576,14 @@ h1, h2, h3, h4 {
 }
 
 /* 11. Sidebar Ranking Tabs & Platform Pulse */
+.sidebar-sticky-cluster {
+    position: sticky;
+    top: 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
 .ranking-tabs-row {
     display: flex;
     gap: 4px;
@@ -7307,6 +7315,810 @@ h1, h2, h3, h4 {
     font-size: 0.62rem !important;
     color: rgba(255, 255, 255, 0.3) !important;
     margin-top: 2px !important;
+}
+
+/* ==========================================================================
+   ABOUT PAGE STYLES (MUGENBUNKO INFINITE REALM)
+   ========================================================================== */
+.about-page-container {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 24px 20px 80px;
+}
+
+/* 1. Hero Section & Interactive Canvas */
+.about-hero-section {
+    position: relative;
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    padding: 70px 32px 50px;
+    text-align: center;
+    background: radial-gradient(ellipse at center, var(--bg-card) 0%, var(--bg-base) 100%);
+    border: 1px solid var(--border-color);
+    min-height: 480px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+}
+
+.about-hero-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: auto;
+}
+
+.about-hero-content {
+    position: relative;
+    z-index: 2;
+    max-width: 780px;
+    margin: 0 auto;
+}
+
+.about-badge-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border-radius: 30px;
+    background: var(--bg-base);
+    border: 1px solid var(--border-color);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 22px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.about-badge-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-main);
+    animation: about-pulse 2s infinite ease-in-out;
+}
+
+@keyframes about-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.6); opacity: 0.4; }
+}
+
+.about-hero-title {
+    font-size: 2.7rem;
+    font-weight: 850;
+    line-height: 1.25;
+    color: var(--text-main);
+    margin-bottom: 18px;
+    letter-spacing: -0.025em;
+}
+
+.about-gradient-text {
+    font-style: italic;
+    text-decoration: underline;
+    text-underline-offset: 6px;
+    text-decoration-thickness: 2px;
+    text-decoration-color: var(--text-muted);
+}
+
+.about-hero-subtitle {
+    font-size: 1.02rem;
+    line-height: 1.7;
+    color: var(--text-muted);
+    margin-bottom: 30px;
+}
+
+.about-hero-actions {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 40px;
+}
+
+.about-stats-ticker {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+    padding: 16px 28px;
+    background: var(--bg-base);
+    backdrop-filter: blur(12px);
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+.about-ticker-item {
+    text-align: center;
+}
+
+.about-ticker-num {
+    display: block;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--text-main);
+}
+
+.about-ticker-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+.about-ticker-divider {
+    width: 1px;
+    height: 28px;
+    background: var(--border-color);
+}
+
+/* 2. Common Section Layout */
+.about-section {
+    margin-top: 60px;
+}
+
+.about-section-header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.about-section-kicker {
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 6px;
+}
+
+.about-section-heading {
+    font-size: 1.85rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin: 0 0 8px 0;
+}
+
+.about-section-desc {
+    font-size: 0.92rem;
+    color: var(--text-muted);
+    max-width: 580px;
+    margin: 0 auto;
+    line-height: 1.5;
+}
+
+/* 3. Tứ Đại Trụ Cột Bento */
+.about-pillars-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+}
+
+.about-pillar-card {
+    position: relative;
+    overflow: hidden;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.about-pillar-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--text-main);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.06);
+}
+
+.about-pillar-watermark {
+    position: absolute;
+    right: -10px;
+    bottom: -15px;
+    font-size: 6.8rem;
+    font-family: "Noto Serif JP", serif;
+    font-weight: 900;
+    opacity: 0.035;
+    pointer-events: none;
+    user-select: none;
+    color: var(--text-main);
+    line-height: 1;
+}
+
+.about-pillar-icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--bg-base);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-main);
+    margin-bottom: 20px;
+}
+
+.about-pillar-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 6px;
+}
+
+.about-pillar-title {
+    font-size: 1.15rem;
+    font-weight: 750;
+    color: var(--text-main);
+    margin: 0 0 10px 0;
+    line-height: 1.35;
+}
+
+.about-pillar-text {
+    font-size: 0.84rem;
+    line-height: 1.6;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.about-pillar-footer {
+    margin-top: 22px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--border-color);
+}
+
+.about-pillar-tag {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-main);
+    background: var(--bg-base);
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    display: inline-block;
+}
+
+/* 4. Tech Stack Matrix */
+.about-tech-matrix-bento {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    padding: 24px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.03);
+}
+
+.about-tech-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.about-tech-tab {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: var(--border-radius-md);
+    border: 1px solid transparent;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-main);
+}
+
+.about-tech-tab:hover {
+    background: var(--bg-base);
+    border-color: var(--border-color);
+}
+
+.about-tech-tab.active {
+    background: var(--bg-base);
+    border-color: var(--text-main);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.about-tech-tab strong {
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.about-tech-tab span {
+    display: block;
+    font-size: 0.73rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.about-tech-detail-panel {
+    background: var(--bg-base);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.about-tech-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    margin-bottom: 14px;
+    align-self: flex-start;
+}
+
+.about-tech-title {
+    font-size: 1.35rem;
+    font-weight: 750;
+    color: var(--text-main);
+    margin: 0 0 12px 0;
+}
+
+.about-tech-desc {
+    font-size: 0.88rem;
+    line-height: 1.65;
+    color: var(--text-muted);
+    margin: 0 0 24px 0;
+}
+
+.about-tech-specs-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+}
+
+.about-spec-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    padding: 12px 14px;
+}
+
+.spec-title {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.spec-val {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 750;
+    color: var(--text-main);
+}
+
+/* 5. Timeline Chronicle */
+.about-timeline-container {
+    position: relative;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px 0;
+}
+
+.about-timeline-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 24px;
+    width: 2px;
+    background: var(--border-color);
+}
+
+.about-timeline-item {
+    position: relative;
+    display: flex;
+    gap: 24px;
+    margin-bottom: 30px;
+}
+
+.about-timeline-item:last-child {
+    margin-bottom: 0;
+}
+
+.about-timeline-dot {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    border: 2px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-main);
+    flex-shrink: 0;
+    z-index: 2;
+    transition: all 0.25s ease;
+}
+
+.about-timeline-dot.future {
+    border-style: dashed;
+    border-color: var(--text-main);
+}
+
+.about-timeline-card {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: 20px;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.about-timeline-card:hover {
+    transform: translateX(4px);
+    border-color: var(--text-main);
+}
+
+.about-timeline-card.future {
+    border-style: dashed;
+}
+
+.about-timeline-date {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 6px;
+}
+
+.about-timeline-title {
+    font-size: 1.05rem;
+    font-weight: 750;
+    color: var(--text-main);
+    margin: 0 0 8px 0;
+}
+
+.about-timeline-text {
+    font-size: 0.84rem;
+    line-height: 1.55;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+/* 6. Wisdom Manifesto Generator */
+.about-wisdom-bento {
+    position: relative;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    padding: 36px 32px;
+    overflow: hidden;
+    text-align: center;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.03);
+}
+
+.about-wisdom-watermark {
+    position: absolute;
+    right: 20px;
+    bottom: -20px;
+    font-size: 8rem;
+    font-family: "Noto Serif JP", serif;
+    font-weight: 900;
+    opacity: 0.03;
+    pointer-events: none;
+    color: var(--text-main);
+    user-select: none;
+}
+
+.about-wisdom-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.about-wisdom-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+
+.about-wisdom-refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: var(--bg-base);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.about-wisdom-refresh-btn:hover {
+    border-color: var(--text-main);
+    transform: rotate(-3deg);
+}
+
+.about-wisdom-content {
+    max-width: 720px;
+    margin: 0 auto;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.about-wisdom-content.fade-out {
+    opacity: 0;
+    transform: translateY(6px);
+}
+
+.about-wisdom-content.fade-in {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.about-wisdom-quote {
+    font-size: 1.25rem;
+    font-style: italic;
+    font-family: "Noto Serif", "Songti SC", Georgia, serif;
+    line-height: 1.7;
+    color: var(--text-main);
+    margin: 0 0 20px 0;
+}
+
+.about-wisdom-meta {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.about-wisdom-author {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
+    color: var(--text-main);
+}
+
+.about-wisdom-tag {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    background: var(--bg-base);
+    padding: 3px 10px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+/* 7. Creator & Community Tribute */
+.about-team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 24px;
+}
+
+.about-team-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    padding: 28px;
+    display: flex;
+    gap: 20px;
+    transition: transform 0.25s ease, border-color 0.25s ease;
+}
+
+.about-team-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--text-main);
+}
+
+.about-team-avatar-wrap {
+    position: relative;
+    width: 68px;
+    height: 68px;
+    flex-shrink: 0;
+}
+
+.about-team-avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+    object-fit: cover;
+    background: var(--bg-base);
+}
+
+.about-community-avatar-icon {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+    background: var(--bg-base);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-main);
+}
+
+.about-team-crown-badge {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--text-main);
+    color: var(--bg-card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--bg-card);
+}
+
+.about-team-info {
+    flex: 1;
+}
+
+.about-team-name {
+    font-size: 1.15rem;
+    font-weight: 750;
+    color: var(--text-main);
+    margin: 0 0 3px 0;
+}
+
+.about-team-role {
+    font-size: 0.74rem;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.about-team-bio {
+    font-size: 0.82rem;
+    line-height: 1.55;
+    color: var(--text-muted);
+    margin: 0 0 14px 0;
+}
+
+.about-team-badges {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.team-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--bg-base);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+}
+
+/* 8. Call to Action Banner */
+.about-cta-banner {
+    position: relative;
+    margin-top: 60px;
+    background: radial-gradient(ellipse at center, var(--bg-card) 0%, var(--bg-base) 100%);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    padding: 50px 32px;
+    text-align: center;
+    overflow: hidden;
+}
+
+.about-cta-watermark {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 14rem;
+    font-family: "Noto Serif JP", serif;
+    font-weight: 900;
+    opacity: 0.03;
+    pointer-events: none;
+    user-select: none;
+    color: var(--text-main);
+    line-height: 1;
+}
+
+.about-cta-body {
+    position: relative;
+    z-index: 2;
+    max-width: 640px;
+    margin: 0 auto;
+}
+
+.about-cta-kicker {
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 8px;
+}
+
+.about-cta-title {
+    font-size: 1.85rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin: 0 0 12px 0;
+    line-height: 1.3;
+}
+
+.about-cta-desc {
+    font-size: 0.92rem;
+    line-height: 1.6;
+    color: var(--text-muted);
+    margin: 0 0 28px 0;
+}
+
+.about-cta-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .about-hero-section {
+        padding: 40px 20px;
+        min-height: auto;
+    }
+    .about-hero-title {
+        font-size: 1.9rem;
+    }
+    .about-tech-matrix-bento {
+        grid-template-columns: 1fr;
+    }
+    .about-tech-specs-grid {
+        grid-template-columns: 1fr;
+    }
+    .about-team-card {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    .about-team-badges {
+        justify-content: center;
+    }
+    .about-timeline-line {
+        left: 19px;
+    }
+    .about-timeline-dot {
+        width: 40px;
+        height: 40px;
+    }
 }
 
 

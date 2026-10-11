@@ -4,11 +4,11 @@ import db from '../db.js';
  * Adds XP to a user, checks for level up using the Rarity system thresholds,
  * updates user's level if threshold is crossed, and inserts a notification.
  */
-export async function addXpToUser(userId: number, xpAmount: number): Promise<{ alertLevelUp: boolean; newLevel: number }> {
-    await db.query("UPDATE users SET xp = xp + ? WHERE id = ?", [xpAmount, userId]);
+export async function addXpToUser(userId: number, xpAmount: number, query: typeof db.query = db.query): Promise<{ alertLevelUp: boolean; newLevel: number }> {
+    await query("UPDATE users SET xp = xp + ? WHERE id = ?", [xpAmount, userId]);
     
     // Fetch updated user to see if level has changed
-    const users = await db.query<any[]>("SELECT * FROM users WHERE id = ?", [userId]);
+    const users = await query<any[]>("SELECT * FROM users WHERE id = ?", [userId]);
     if (users.length === 0) {
         throw new Error(`User with ID ${userId} not found`);
     }
@@ -33,10 +33,10 @@ export async function addXpToUser(userId: number, xpAmount: number): Promise<{ a
 
     const newLevel = getLevelFromXp(user.xp);
     if (newLevel > user.level) {
-        await db.query("UPDATE users SET level = ? WHERE id = ?", [newLevel, userId]);
+        await query("UPDATE users SET level = ? WHERE id = ?", [newLevel, userId]);
         const tierNames = ["Tập sự", "C", "UC", "R", "SR", "SSR"];
         const tierName = tierNames[newLevel - 1] || "Tập sự";
-        await db.query(
+        await query(
             "INSERT INTO notifications (user_id, text) VALUES (?, ?)", 
             [userId, `🎉 CHÚC MỪNG LEVEL UP! Bạn đã đạt Cấp bậc mới: Cấp ${tierName}!`]
         );

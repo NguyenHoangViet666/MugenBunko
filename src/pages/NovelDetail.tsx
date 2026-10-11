@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Novel, Comment, Review, Chapter } from '../types';
 import { Icons } from '../components/Icons';
+import { getReadingProgress } from '../utils/readingProgress';
 
 const getWordCount = (content: string | undefined): number => {
     if (!content) return 0;
@@ -52,6 +53,7 @@ export default function NovelDetail({
     API_BASE,
     novels,
     activeNovelId,
+    setActiveNovelId,
     currentUser,
     setLoginModalOpen,
     setCurrentView,
@@ -256,12 +258,7 @@ export default function NovelDetail({
                 // Check reading history for review criteria
                 let readCount = 0;
                 if (currentUser) {
-                    const progressKey = `mugen_readprogress_${currentUser.username}_${novel.id}`;
-                    const progressRaw = localStorage.getItem(progressKey);
-                    const savedProgress = progressRaw ? JSON.parse(progressRaw) : null;
-                    if (savedProgress && savedProgress.readChaptersList) {
-                        readCount = savedProgress.readChaptersList.length;
-                    }
+                    readCount = getReadingProgress(currentUser.username, novel)?.completedChapterIds.length || 0;
                 }
 
                 const isOneshot = novel.type === 'oneshot';

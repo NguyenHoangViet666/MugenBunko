@@ -336,6 +336,23 @@ cd mobile && npm install && cd ..
 
 ---
 
+## Kiểm tra các nâng cấp Reader, Tủ sách và Studio
+
+Backend tự tạo các bảng tiến độ đọc, kệ sách và lịch sử bản thảo khi khởi động. Khởi động lại backend sau khi cập nhật mã nguồn để áp dụng thay đổi này.
+
+- **Reader:** lưu đoạn đang đọc và đồng bộ theo tài khoản; vị trí khi mất mạng được gửi lại khi có kết nối. Khách chưa đăng nhập lưu trên thiết bị.
+- **Tủ sách:** tạo kệ, chọn bìa từ truyện, quản lý tác phẩm và chia sẻ kệ công khai. Đổi sang riêng tư sẽ chặn liên kết công khai.
+- **Studio:** nút “Lịch sử phiên bản” trong thanh công cụ cho xem và khôi phục 50 bản nội dung gần nhất. Khôi phục tạo bản nháp và giữ nội dung hiện tại trong lịch sử.
+
+Chạy kiểm thử với Node.js 24 và cấu hình MySQL trong `server/.env`:
+
+```bash
+npm run test:upgrades
+npm run test:upgrades:browser
+```
+
+Bộ test dùng database riêng có tên `mugenbunko_test_*`, yêu cầu tài khoản MySQL có quyền tạo/xóa database và tự dọn sau khi chạy. Kiểm thử trình duyệt sử dụng Edge headless trên Windows; có thể đặt `UPGRADE_BROWSER_PATH` để chọn executable Chromium khác. Ảnh kiểm tra nằm trong `artifacts/upgrades/` và được Git bỏ qua.
+
 <p align="center">
   <i>Được xây dựng với niềm đam mê dành cho cộng đồng yêu thích Light Novel & Công nghệ phần mềm.</i><br>
   <b>© 2026 MugenBunko Team. All Rights Reserved.</b>

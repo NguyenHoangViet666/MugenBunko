@@ -137,6 +137,16 @@ export default function Header({
                                 <span>Studio</span>
                             </button>
                         )}
+
+                        <button
+                            type="button"
+                            className={`header-nav-btn ${currentView === 'about' ? 'active' : ''}`}
+                            onClick={() => handleNav('about')}
+                            title="Giới thiệu về MugenBunko"
+                        >
+                            <Icons.Info size={15} />
+                            <span>Giới Thiệu</span>
+                        </button>
                     </nav>
                 </div>
                 

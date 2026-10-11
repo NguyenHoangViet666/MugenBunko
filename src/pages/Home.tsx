@@ -1,6 +1,7 @@
 import React from 'react';
 import { Novel, User, ForumPost, SystemEvent } from '../types';
 import { calculateUserLevel } from '../utils/levelHelper';
+import { getReadingProgress } from '../utils/readingProgress';
 
 // ================= MONOCHROME PROFESSIONAL SVG ICONS =================
 const Icons = {
@@ -234,6 +235,7 @@ interface ReadingHistoryItem {
 }
 
 interface HomeProps {
+    progressRevision?: number;
     novels: Novel[];
     currentUser: User | null;
     activeNovelId: number | null;
@@ -275,6 +277,7 @@ interface HomeProps {
 }
 
 export default function Home({
+    progressRevision,
     novels,
     currentUser,
     setActiveNovelId,
@@ -364,11 +367,11 @@ export default function Home({
         try {
             const raw = localStorage.getItem(historyKey);
             const history = raw ? JSON.parse(raw) : [];
-            setReadingHistory(history);
+            setReadingHistory(Array.isArray(history) ? history : []);
         } catch (err) {
             console.error("Load reading history error:", err);
         }
-    }, [currentUser]);
+    }, [currentUser, progressRevision, novels]);
 
     const deleteHistoryItem = (e: React.MouseEvent, novelId: number) => {
         e.stopPropagation();
@@ -456,6 +459,7 @@ export default function Home({
     // Tab state for Interactive Discovery Hub and Sidebar Rankings
     const [activeDiscoveryTab, setActiveDiscoveryTab] = React.useState<'trending' | 'newest' | 'top-rated' | 'oneshot' | 'completed'>('trending');
     const [activeRankingTab, setActiveRankingTab] = React.useState<'reads' | 'stars' | 'bookmarks'>('reads');
+    const [activeFeedbackTab, setActiveFeedbackTab] = React.useState<'comments' | 'reviews'>('comments');
 
     const trendingNovels = React.useMemo(() => {
         const publishedNovels = novels.filter(novel => (novel.chapters || []).some(ch => ch.status === 'published'));
@@ -1032,22 +1036,16 @@ export default function Home({
                                         const n = novels.find(x => x.id === item.novelId);
                                         const pubChs = n?.chapters?.filter(ch => ch.status === 'published') || [];
                                         const total = pubChs.length || 1;
-                                        let readCount = item.chapterIndex + 1;
-                                        if (currentUser) {
-                                            try {
-                                                const key = `mugen_readprogress_${currentUser.username}_${item.novelId}`;
-                                                const raw = localStorage.getItem(key);
-                                                const saved = raw ? JSON.parse(raw) : null;
-                                                if (saved && saved.readChaptersList) readCount = saved.readChaptersList.length;
-                                            } catch(e) {}
-                                        }
+                                        const saved = n ? getReadingProgress(currentUser?.username, n) : null;
+                                        const resumeIndex = saved?.chapterIndex ?? item.chapterIndex;
+                                        const readCount = saved?.completedChapterIds.length || 0;
                                         const pct = Math.min(100, Math.round((readCount / total) * 100));
 
                                         return (
                                             <div
                                                 key={idx}
                                                 className="reading-history-item-v2"
-                                                onClick={() => startReading(item.novelId, item.chapterIndex)}
+                                                onClick={() => startReading(item.novelId, resumeIndex)}
                                             >
                                                 <img
                                                     src={item.novelCover}
@@ -1078,18 +1076,22 @@ export default function Home({
                                 </div>
                             </div>
                         ) : (
-                            <div className="reading-history-card-bento" style={{ textAlign: 'center', padding: '28px 20px', color: 'var(--text-muted)' }}>
-                                <div style={{ display: 'inline-flex', padding: '10px', background: 'var(--bg-base)', borderRadius: '50%', marginBottom: '10px', color: 'var(--text-main)' }}>
-                                    <Icons.Book />
+                            <div className="reading-history-card-bento" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', background: 'var(--bg-card)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                    <div style={{ display: 'inline-flex', padding: '10px', background: 'var(--bg-base)', borderRadius: '8px', border: '1px solid var(--border-color)', color: 'var(--text-main)', flexShrink: 0 }}>
+                                        <Icons.Book />
+                                    </div>
+                                    <div>
+                                        <h4 style={{ fontSize: '0.92rem', fontWeight: 700, margin: '0 0 3px 0', color: 'var(--text-main)' }}>Bắt đầu hành trình đọc sách</h4>
+                                        <p style={{ fontSize: '0.78rem', margin: 0, color: 'var(--text-muted)' }}>Khám phá tác phẩm yêu thích và hệ thống sẽ tự động lưu lại vị trí chương đọc dở của bạn.</p>
+                                    </div>
                                 </div>
-                                <h4 style={{ fontSize: '0.96rem', fontWeight: 700, margin: '0 0 6px 0', color: 'var(--text-main)' }}>Bắt đầu hành trình đọc sách</h4>
-                                <p style={{ fontSize: '0.8rem', margin: '0 0 14px 0' }}>Khám phá các tác phẩm đa dạng thể loại và lưu lại hành trình theo dõi câu chuyện của bạn.</p>
                                 <button
                                     className="reading-glance-cta-btn"
                                     onClick={() => setCurrentView('explore')}
-                                    style={{ margin: '0 auto' }}
+                                    style={{ flexShrink: 0, padding: '7px 16px', fontSize: '0.78rem', whiteSpace: 'nowrap' }}
                                 >
-                                    <Icons.Compass /> Khám phá thư viện ngay
+                                    <Icons.Compass /> Khám phá ngay
                                 </button>
                             </div>
                         )}
@@ -1184,6 +1186,48 @@ export default function Home({
                         );
                     })()}
 
+                    {/* SECTION: LIVE CHAPTER FEED ("Chương Mới Cập Nhật") */}
+                    {latestChapters.length > 0 && (
+                        <div className="live-chapters-card">
+                            <div className="live-chapters-header">
+                                <h3 className="live-chapters-title">
+                                    <Icons.Zap />
+                                    <span>Chương Mới Cập Nhật</span>
+                                </h3>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                    Cập nhật liên tục từ các tác giả
+                                </span>
+                            </div>
+
+                            <div className="live-chapters-grid">
+                                {latestChapters.map((item, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="live-chapter-item"
+                                        onClick={() => startReading(item.novel.id, item.chapterIndex)}
+                                        title={`Đọc ${item.chapter.title}`}
+                                    >
+                                        <img
+                                            src={item.novel.cover}
+                                            alt={item.novel.title}
+                                            className="live-chapter-cover"
+                                        />
+                                        <div className="live-chapter-info">
+                                            <div className="live-chapter-novel-title">{item.novel.title}</div>
+                                            <div className="live-chapter-name">{item.chapter.title || `Chương ${item.chapterIndex + 1}`}</div>
+                                            <div className="live-chapter-meta">
+                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                                    <Icons.User /> {item.novel.author || item.novel.author_name || "Ẩn danh"}
+                                                </span>
+                                                <span>{item.timeAgo}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {/* SECTION: PERSONALIZED RECOMMENDATIONS (IF AVAILABLE) */}
                     {recommendedNovels.length > 0 && (
                         <div>
@@ -1274,48 +1318,6 @@ export default function Home({
                             })()}
                         </div>
                     </div>
-
-                    {/* SECTION: LIVE CHAPTER FEED ("Chương Mới Cập Nhật") */}
-                    {latestChapters.length > 0 && (
-                        <div className="live-chapters-card">
-                            <div className="live-chapters-header">
-                                <h3 className="live-chapters-title">
-                                    <Icons.Zap />
-                                    <span>Chương Mới Cập Nhật</span>
-                                </h3>
-                                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                                    Cập nhật liên tục từ các tác giả
-                                </span>
-                            </div>
-
-                            <div className="live-chapters-grid">
-                                {latestChapters.map((item, idx) => (
-                                    <div
-                                        key={idx}
-                                        className="live-chapter-item"
-                                        onClick={() => startReading(item.novel.id, item.chapterIndex)}
-                                        title={`Đọc ${item.chapter.title}`}
-                                    >
-                                        <img
-                                            src={item.novel.cover}
-                                            alt={item.novel.title}
-                                            className="live-chapter-cover"
-                                        />
-                                        <div className="live-chapter-info">
-                                            <div className="live-chapter-novel-title">{item.novel.title}</div>
-                                            <div className="live-chapter-name">{item.chapter.title || `Chương ${item.chapterIndex + 1}`}</div>
-                                            <div className="live-chapter-meta">
-                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                                                    <Icons.User /> {item.novel.author || item.novel.author_name || "Ẩn danh"}
-                                                </span>
-                                                <span>{item.timeAgo}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
 
                     {/* SECTION: LITERARY SPOTLIGHT & AUTHOR CARD */}
                     <div className="literary-spotlight-bento">
@@ -1825,157 +1827,173 @@ export default function Home({
                         </div>
                     </div>
 
-                    {/* BENTO 3: NHỊP SỐNG NỀN TẢNG (PLATFORM PULSE) */}
-                    <div className="sidebar-bento-card">
-                        <h3 className="sidebar-bento-title">
-                            <span className="title-icon-mono"><Icons.Activity /></span>
-                            <span>Nhịp Sống MugenBunko</span>
-                        </h3>
-                        <div className="platform-pulse-grid">
-                            <div className="platform-pulse-box">
-                                <Icons.Book />
-                                <span className="platform-pulse-num">{platformStats.totalNovels}</span>
-                                <span className="platform-pulse-label">Tác phẩm</span>
-                            </div>
-                            <div className="platform-pulse-box">
-                                <Icons.Zap />
-                                <span className="platform-pulse-num">{platformStats.totalChapters}</span>
-                                <span className="platform-pulse-label">Chương sách</span>
-                            </div>
-                            <div className="platform-pulse-box">
-                                <Icons.Eye />
-                                <span className="platform-pulse-num">{Number(platformStats.totalReads).toLocaleString()}</span>
-                                <span className="platform-pulse-label">Lượt đọc</span>
+                    {/* STICKY BOTTOM SIDEBAR CLUSTER */}
+                    <div className="sidebar-sticky-cluster">
+                        {/* BENTO 3: NHỊP SỐNG NỀN TẢNG (PLATFORM PULSE) */}
+                        <div className="sidebar-bento-card">
+                            <h3 className="sidebar-bento-title">
+                                <span className="title-icon-mono"><Icons.Activity /></span>
+                                <span>Nhịp Sống MugenBunko</span>
+                            </h3>
+                            <div className="platform-pulse-grid">
+                                <div className="platform-pulse-box">
+                                    <Icons.Book />
+                                    <span className="platform-pulse-num">{platformStats.totalNovels}</span>
+                                    <span className="platform-pulse-label">Tác phẩm</span>
+                                </div>
+                                <div className="platform-pulse-box">
+                                    <Icons.Zap />
+                                    <span className="platform-pulse-num">{platformStats.totalChapters}</span>
+                                    <span className="platform-pulse-label">Chương sách</span>
+                                </div>
+                                <div className="platform-pulse-box">
+                                    <Icons.Eye />
+                                    <span className="platform-pulse-num">{Number(platformStats.totalReads).toLocaleString()}</span>
+                                    <span className="platform-pulse-label">Lượt đọc</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* BENTO 4: BÌNH LUẬN MỚI NHẤT */}
-                    <div className="sidebar-bento-card">
-                        <h3 className="sidebar-bento-title">
-                            <span className="title-icon-mono"><Icons.Comment /></span>
-                            <span>Bình Luận Mới Nhất</span>
-                        </h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            {latestComments && latestComments.length > 0 ? (
-                                latestComments.slice(0, 3).map((comment: any) => {
-                                    const avatarSrc = comment.avatarSeed && (comment.avatarSeed.startsWith('http') || comment.avatarSeed.startsWith('/uploads') || comment.avatarSeed.startsWith('data:')) 
-                                        ? comment.avatarSeed 
-                                        : `https://api.dicebear.com/7.x/adventurer/svg?seed=${comment.avatarSeed || 'Default'}`;
+                        {/* BENTO 4: Ý KIẾN & ĐÁNH GIÁ MỚI (UNIFIED TABBED BENTO) */}
+                        <div className="sidebar-bento-card">
+                            <h3 className="sidebar-bento-title">
+                                <span className="title-icon-mono">
+                                    {activeFeedbackTab === 'comments' ? <Icons.Comment /> : <Icons.Star />}
+                                </span>
+                                <span>Ý Kiến & Đánh Giá Mới</span>
+                            </h3>
 
-                                    return (
-                                        <div
-                                            key={comment.id}
-                                            onClick={() => openNovelDetail(comment.novelId)}
-                                            style={{
-                                                display: 'flex',
-                                                gap: '10px',
-                                                padding: '8px',
-                                                borderRadius: '6px',
-                                                cursor: 'pointer',
-                                                border: '1px dashed var(--border-color)',
-                                                background: 'var(--bg-base)',
-                                                transition: 'all 0.2s ease'
-                                            }}
-                                        >
-                                            <img
-                                                src={avatarSrc}
-                                                alt={comment.displayname}
-                                                style={{ width: '26px', height: '26px', borderRadius: '50%', border: '1px solid var(--border-color)', objectFit: 'cover', marginTop: '2px', flexShrink: 0 }}
-                                            />
-                                            <div style={{ flex: 1, minWidth: 0 }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                                    <strong style={{ fontSize: '0.78rem', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100px' }}>{comment.displayname}</strong>
-                                                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{comment.date ? comment.date.split(' ')[0] : ''}</span>
+                            <div className="ranking-tabs-row">
+                                <button
+                                    className={`ranking-tab-btn ${activeFeedbackTab === 'comments' ? 'active' : ''}`}
+                                    onClick={() => setActiveFeedbackTab('comments')}
+                                >
+                                    Bình luận ({latestComments ? latestComments.length : 0})
+                                </button>
+                                <button
+                                    className={`ranking-tab-btn ${activeFeedbackTab === 'reviews' ? 'active' : ''}`}
+                                    onClick={() => setActiveFeedbackTab('reviews')}
+                                >
+                                    Đánh giá ({latestReviews ? latestReviews.length : 0})
+                                </button>
+                            </div>
+
+                            {activeFeedbackTab === 'comments' ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    {latestComments && latestComments.length > 0 ? (
+                                        latestComments.slice(0, 3).map((comment: any) => {
+                                            const avatarSrc = comment.avatarSeed && (comment.avatarSeed.startsWith('http') || comment.avatarSeed.startsWith('/uploads') || comment.avatarSeed.startsWith('data:'))
+                                                ? comment.avatarSeed
+                                                : `https://api.dicebear.com/7.x/adventurer/svg?seed=${comment.avatarSeed || 'Default'}`;
+
+                                            return (
+                                                <div
+                                                    key={comment.id}
+                                                    onClick={() => openNovelDetail(comment.novelId)}
+                                                    style={{
+                                                        display: 'flex',
+                                                        gap: '10px',
+                                                        padding: '8px',
+                                                        borderRadius: '6px',
+                                                        cursor: 'pointer',
+                                                        border: '1px dashed var(--border-color)',
+                                                        background: 'var(--bg-base)',
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                >
+                                                    <img
+                                                        src={avatarSrc}
+                                                        alt={comment.displayname}
+                                                        style={{ width: '26px', height: '26px', borderRadius: '50%', border: '1px solid var(--border-color)', objectFit: 'cover', marginTop: '2px', flexShrink: 0 }}
+                                                    />
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                                            <strong style={{ fontSize: '0.78rem', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100px' }}>{comment.displayname}</strong>
+                                                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{comment.date ? comment.date.split(' ')[0] : ''}</span>
+                                                        </div>
+                                                        <p style={{
+                                                            fontSize: '0.73rem',
+                                                            color: 'var(--text-muted)',
+                                                            margin: '3px 0',
+                                                            display: '-webkit-box',
+                                                            WebkitLineClamp: 2,
+                                                            WebkitBoxOrient: 'vertical',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            lineHeight: '1.35'
+                                                        }}>
+                                                            "{comment.text}"
+                                                        </p>
+                                                        <div style={{ fontSize: '0.66rem', color: 'var(--text-main)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                                            <Icons.Book /> {comment.novelTitle}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <p style={{
-                                                    fontSize: '0.73rem',
-                                                    color: 'var(--text-muted)',
-                                                    margin: '3px 0',
-                                                    display: '-webkit-box',
-                                                    WebkitLineClamp: 2,
-                                                    WebkitBoxOrient: 'vertical',
-                                                    overflow: 'hidden',
-                                                    textOverflow: 'ellipsis',
-                                                    lineHeight: '1.35'
-                                                }}>
-                                                    "{comment.text}"
-                                                </p>
-                                                <div style={{ fontSize: '0.66rem', color: 'var(--text-main)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                                    <Icons.Book /> {comment.novelTitle}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })
+                                            );
+                                        })
+                                    ) : (
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Chưa có bình luận nào.</div>
+                                    )}
+                                </div>
                             ) : (
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Chưa có bình luận nào.</div>
-                            )}
-                        </div>
-                    </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    {latestReviews && latestReviews.length > 0 ? (
+                                        latestReviews.slice(0, 3).map((review: any) => {
+                                            const avatarSrc = review.avatarSeed && (review.avatarSeed.startsWith('http') || review.avatarSeed.startsWith('/uploads') || review.avatarSeed.startsWith('data:'))
+                                                ? review.avatarSeed
+                                                : `https://api.dicebear.com/7.x/adventurer/svg?seed=${review.avatarSeed || 'Default'}`;
 
-                    {/* BENTO 5: ĐÁNH GIÁ MỚI NHẤT */}
-                    <div className="sidebar-bento-card">
-                        <h3 className="sidebar-bento-title">
-                            <span className="title-icon-mono"><Icons.Star /></span>
-                            <span>Đánh Giá Mới Nhất</span>
-                        </h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            {latestReviews && latestReviews.length > 0 ? (
-                                latestReviews.slice(0, 3).map((review: any) => {
-                                    const avatarSrc = review.avatarSeed && (review.avatarSeed.startsWith('http') || review.avatarSeed.startsWith('/uploads') || review.avatarSeed.startsWith('data:')) 
-                                        ? review.avatarSeed 
-                                        : `https://api.dicebear.com/7.x/adventurer/svg?seed=${review.avatarSeed || 'Default'}`;
-
-                                    return (
-                                        <div
-                                            key={review.id}
-                                            onClick={() => openNovelDetail(review.novelId)}
-                                            style={{
-                                                display: 'flex',
-                                                gap: '10px',
-                                                padding: '8px',
-                                                borderRadius: '6px',
-                                                cursor: 'pointer',
-                                                border: '1px dashed var(--border-color)',
-                                                background: 'var(--bg-base)',
-                                                transition: 'all 0.2s ease'
-                                            }}
-                                        >
-                                            <img
-                                                src={avatarSrc}
-                                                alt={review.username}
-                                                style={{ width: '26px', height: '26px', borderRadius: '50%', border: '1px solid var(--border-color)', objectFit: 'cover', marginTop: '2px', flexShrink: 0 }}
-                                            />
-                                            <div style={{ flex: 1, minWidth: 0 }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <strong style={{ fontSize: '0.78rem', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100px' }}>{review.username}</strong>
-                                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-main)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px' }}>
-                                                        <Icons.Star /> {review.stars ? parseFloat(review.stars).toFixed(1) : '5.0'}
-                                                    </span>
+                                            return (
+                                                <div
+                                                    key={review.id}
+                                                    onClick={() => openNovelDetail(review.novelId)}
+                                                    style={{
+                                                        display: 'flex',
+                                                        gap: '10px',
+                                                        padding: '8px',
+                                                        borderRadius: '6px',
+                                                        cursor: 'pointer',
+                                                        border: '1px dashed var(--border-color)',
+                                                        background: 'var(--bg-base)',
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                >
+                                                    <img
+                                                        src={avatarSrc}
+                                                        alt={review.username}
+                                                        style={{ width: '26px', height: '26px', borderRadius: '50%', border: '1px solid var(--border-color)', objectFit: 'cover', marginTop: '2px', flexShrink: 0 }}
+                                                    />
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                            <strong style={{ fontSize: '0.78rem', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100px' }}>{review.username}</strong>
+                                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-main)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                                                <Icons.Star /> {review.stars ? parseFloat(review.stars).toFixed(1) : '5.0'}
+                                                            </span>
+                                                        </div>
+                                                        <p style={{
+                                                            fontSize: '0.73rem',
+                                                            color: 'var(--text-muted)',
+                                                            margin: '3px 0',
+                                                            display: '-webkit-box',
+                                                            WebkitLineClamp: 2,
+                                                            WebkitBoxOrient: 'vertical',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            lineHeight: '1.35'
+                                                        }}>
+                                                            "{review.text}"
+                                                        </p>
+                                                        <div style={{ fontSize: '0.66rem', color: 'var(--text-main)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                                            <Icons.Book /> {review.novelTitle}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <p style={{
-                                                    fontSize: '0.73rem',
-                                                    color: 'var(--text-muted)',
-                                                    margin: '3px 0',
-                                                    display: '-webkit-box',
-                                                    WebkitLineClamp: 2,
-                                                    WebkitBoxOrient: 'vertical',
-                                                    overflow: 'hidden',
-                                                    textOverflow: 'ellipsis',
-                                                    lineHeight: '1.35'
-                                                }}>
-                                                    "{review.text}"
-                                                </p>
-                                                <div style={{ fontSize: '0.66rem', color: 'var(--text-main)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                                    <Icons.Book /> {review.novelTitle}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })
-                            ) : (
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Chưa có đánh giá nào.</div>
+                                            );
+                                        })
+                                    ) : (
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Chưa có đánh giá nào.</div>
+                                    )}
+                                </div>
                             )}
                         </div>
                     </div>

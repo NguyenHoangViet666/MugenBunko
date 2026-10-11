@@ -287,6 +287,12 @@
 ### Phase 1: Quick Wins & Tối Ưu Điều Hướng (Ưu tiên cao nhất)
 *Thời gian ước tính: 1 - 2 ngày | Tác động ngay lập tức đến độ mượt mà*
 
+- [x] **1.0.** Tinh chỉnh Bố cục Trang Chủ ([Home.tsx](file:///c:/Users/VTS/.gemini/antigravity/scratch/mugenbunko-react/src/pages/Home.tsx)):
+  - Đưa "Chương Mới Cập Nhật" lên ngay dưới Banner Sự Kiện để độc giả đón đọc chương mới tức thì.
+  - Hợp nhất 2 widget Sidebar ("Bình Luận Mới" & "Đánh Giá Mới") thành 1 Bento tabbed duy nhất: "Ý Kiến & Đánh Giá Mới".
+  - Ghim cố định cụm Sidebar dưới (`.sidebar-sticky-cluster`) với `position: sticky; top: 80px` chống trống trải khi cuộn sâu.
+  - Tinh gọn khối chào mừng độc giả mới (0 lịch sử đọc) thành banner ngang thanh lịch.
+  - 100% tuân thủ icon đơn sắc SVG (`currentColor`).
 - [ ] **1.1.** Cập nhật [Header.tsx](file:///c:/Users/VTS/.gemini/antigravity/scratch/mugenbunko-react/src/components/Header.tsx): Thêm hàng link điều hướng trực tiếp trên Desktop (`Trang Chủ`, `Khám Phá`, `Tủ Sách`, `Diễn Đàn`, `Studio`).
 - [ ] **1.2.** Thêm component nút **Back-to-Top** nổi ở góc phải màn hình, tự động xuất hiện khi cuộn chuột.
 - [ ] **1.3.** Nâng cấp Novel Card tại [Home.tsx](file:///c:/Users/VTS/.gemini/antigravity/scratch/mugenbunko-react/src/pages/Home.tsx): Thêm nút *"Đọc tiếp Ch.X"* nhảy thẳng vào Reader nếu có lịch sử đọc.
@@ -356,3 +362,15 @@
 
 ---
 *Tài liệu này được lưu trữ tại gốc dự án (`UPDATE_PLAN.md`) nhằm mục đích theo dõi và hiện thực hóa từng giai đoạn nâng cấp.*
+
+## Đợt nâng cấp ưu tiên cao — 11/10/2026
+
+- [x] Đồng bộ tiến độ đọc theo tài khoản, mã chương và vị trí đoạn văn; giữ vị trí trên thiết bị và thử lại khi có mạng.
+- [x] Bộ sưu tập cá nhân: tạo/sửa/xóa kệ, chọn bìa từ tác phẩm, thêm/bỏ truyện, đặt riêng tư hoặc chia sẻ công khai bằng liên kết.
+- [x] Tủ sách và Reader theo phong cách Washi/Sakura; thẻ truyện dùng chung, trạng thái đang tải/lỗi có nút thử lại, điều khiển bàn phím trong hộp thoại.
+- [x] Studio giữ 50 phiên bản nội dung gần nhất, xem trước và khôi phục thành bản nháp; bảo toàn cả nội dung đang viết chưa lưu.
+- [x] Tách “Đã đọc kịp” với “Đã đọc xong”; xác nhận hoàn thành sau thời gian đọc và tiến độ cuối chương; server cộng 50 XP một lần cho mỗi chương.
+
+Các bảng mới được tạo tự động khi backend khởi động. Lịch sử cũ giữ vị trí chương; danh sách chương từng mở trước đây không được tự coi là đã đọc xong. XP hiện có được giữ nguyên.
+
+Kiểm tra bằng `npm run test:upgrades` và `npm run test:upgrades:browser`. Các bài kiểm tra API/trình duyệt dùng database MySQL tạm riêng và dọn database sau khi chạy. Ảnh giao diện được lưu ở `artifacts/upgrades/`.

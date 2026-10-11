@@ -26,6 +26,7 @@ export default function Footer({
                     <ul>
                         <li><span onClick={() => { setCurrentView('home'); setActiveNovelId(null); }} style={{ cursor: 'pointer' }}>Thư viện truyện</span></li>
                         <li><span onClick={() => { setCurrentView('home'); setActiveNovelId(null); }} style={{ cursor: 'pointer' }}>Bảng xếp hạng</span></li>
+                        <li><span onClick={() => { setCurrentView('about'); setActiveNovelId(null); }} style={{ cursor: 'pointer' }}>Về MugenBunko</span></li>
                     </ul>
                 </div>
                 <div className="footer-links">

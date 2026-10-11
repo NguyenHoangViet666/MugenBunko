@@ -39,6 +39,7 @@ export interface Novel {
     bookmarksCount?: number;
     cover: string;
     summary: string | null;
+    description?: string | null;
     genre: string;
     status: 'active' | 'suspended' | 'ongoing' | 'completed' | 'paused' | 'draft' | 'published';
     type: 'series' | 'oneshot';
@@ -120,6 +121,7 @@ export interface ForumPost {
     author_id: number;
     author_username?: string;
     author_displayname?: string;
+    author_name?: string;
     author_avatar_seed?: string;
     category: string;
     restrict_comments: boolean | number;
@@ -129,6 +131,7 @@ export interface ForumPost {
     likes_count?: number;
     liked_by_user?: boolean | number;
     is_liked?: boolean | number;
+    is_pinned?: boolean | number;
     comments_count?: number;
     comments?: ForumComment[];
 }
