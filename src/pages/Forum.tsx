@@ -271,6 +271,8 @@ export default function Forum({
     };
 
     const [expandedPostComments, setExpandedPostComments] = useState<{ [postId: number]: boolean }>({});
+    const [loadedPostComments, setLoadedPostComments] = useState<Record<number, boolean>>({});
+    const [loadingPostComments, setLoadingPostComments] = useState<Record<number, boolean>>({});
     const [quickCommentTexts, setQuickCommentTexts] = useState<{ [postId: number]: string }>({});
 
     // Contacts / Friends chat states
@@ -412,9 +414,10 @@ export default function Forum({
     const fetchPosts = async () => {
         setLoading(true);
         try {
-            const data = await fetchArrayPages<ForumPost>(fetchWithAuth, `${API_BASE}/forum/posts`);
+            const data = await fetchArrayPages<ForumPost>(fetchWithAuth, `${API_BASE}/forum/posts?comments=none`);
             if (Array.isArray(data)) {
                 setPosts(data);
+                setLoadedPostComments({}); setExpandedPostComments({});
             }
         } catch (err) {
             console.error("Error loading forum posts:", err);
@@ -793,12 +796,25 @@ export default function Forum({
         });
     };
 
-    const toggleCommentsExpand = (postId: number, e: React.MouseEvent) => {
+    const toggleCommentsExpand = async (postId: number, e: React.MouseEvent) => {
         if (e) e.stopPropagation();
+        const opening = !expandedPostComments[postId];
         setExpandedPostComments(prev => ({
             ...prev,
-            [postId]: !prev[postId]
+            [postId]: opening
         }));
+        if (!opening || loadedPostComments[postId] || loadingPostComments[postId]) return;
+        setLoadingPostComments(prev => ({ ...prev, [postId]: true }));
+        try {
+            const response = await fetchWithAuth(`${API_BASE}/forum/posts/${postId}`);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Không thể tải bình luận.');
+            setPosts(prev => prev.map(post => post.id === postId ? { ...post, comments: data.comments, comments_count: data.comments_count ?? post.comments_count } : post));
+            setLoadedPostComments(prev => ({ ...prev, [postId]: true }));
+        } catch (error) {
+            showAlert(error instanceof Error ? error.message : 'Không thể tải bình luận.');
+            setExpandedPostComments(prev => ({ ...prev, [postId]: false }));
+        } finally { setLoadingPostComments(prev => ({ ...prev, [postId]: false })); }
     };
 
     const handleStartChat = (friend: SocialUser) => {
@@ -1419,7 +1435,7 @@ export default function Forum({
                                             {/* Quick Comments Accordion */}
                                             {isCommentsOpen && (
                                                 <div className="quick-comments-section" style={{ marginTop: '14px' }}>
-                                                    {post.comments && post.comments.length > 0 ? (
+                                                    {loadingPostComments[post.id] ? <p role="status">Đang tải bình luận…</p> : post.comments && post.comments.length > 0 ? (
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '320px', overflowY: 'auto' }}>
                                                             {post.comments.map(c => (
                                                                 <div key={c.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingBottom: '8px', borderBottom: '1px solid var(--border-color)' }}>

@@ -10,6 +10,7 @@ const router = Router();
 router.get('/posts', optionalAuthentication, async (req: AuthenticatedRequest, res: Response) => {
     const paging = pagination(req, 50);
     if (!paging) return res.status(400).json({ error: 'Phân trang không hợp lệ.' });
+    if (req.query.comments !== undefined && !['all', 'none'].includes(String(req.query.comments))) return res.status(400).json({ error: 'Chế độ bình luận không hợp lệ.' });
     const userId = req.user?.id || null;
     try {
         const posts = await db.query<any[]>(`SELECT p.*, u.username AS author_username, u.displayname AS author_displayname, u.avatar_seed AS author_avatar_seed,
@@ -22,6 +23,7 @@ router.get('/posts', optionalAuthentication, async (req: AuthenticatedRequest, r
         res.set('Cache-Control', 'private, no-store');
         posts.splice(paging.limit);
         if (!posts.length) return res.json([]);
+        if (req.query.comments === 'none') return res.json(posts.map(post => ({ ...post, comments: [], restrictComments: post.restrict_comments === 1 })));
         const ids = posts.map(p => p.id);
         const comments = await db.query<any[]>(`SELECT c.*, u.username AS author_username, u.displayname AS author_displayname, u.avatar_seed AS author_avatar_seed
             FROM forum_comments c JOIN users u ON c.user_id = u.id WHERE c.post_id IN (${ids.map(() => '?').join(',')}) ORDER BY c.created_at ASC, c.id ASC`, ids);
@@ -127,10 +129,13 @@ router.get('/posts/:id', optionalAuthentication, async (req: AuthenticatedReques
         );
 
         const roots = comments.filter(c => c.parent_id === null);
-        const replies = comments.filter(c => c.parent_id !== null);
-        roots.forEach(r => {
-            r.replies = replies.filter(rep => rep.parent_id === r.id);
-        });
+        const replies = new Map<number, any[]>();
+        for (const comment of comments) {
+            if (comment.parent_id === null) continue;
+            const list = replies.get(comment.parent_id) || [];
+            list.push(comment); replies.set(comment.parent_id, list);
+        }
+        for (const root of roots) root.replies = replies.get(root.id) || [];
         post.comments = roots;
         res.json(post);
     } catch (err) {

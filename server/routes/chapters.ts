@@ -19,6 +19,7 @@ router.get('/:id', optionalAuthentication, async (req: AuthenticatedRequest, res
         if (chapters.length === 0) {
             return res.status(404).json({ error: "Không tìm thấy chương truyện." });
         }
+        res.set('Cache-Control', 'private, no-cache');
         res.json({ ...chapters[0], content: cleanHtml(chapters[0].content) });
     } catch (err) {
         console.error("Fetch chapter content error:", err);

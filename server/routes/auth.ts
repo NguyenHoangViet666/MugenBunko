@@ -16,12 +16,12 @@ const limitedText = (value: unknown, max: number) => typeof value === 'string' &
 const otpLimiter = rateLimit({ windowMs: 15 * 60000, limit: 20, standardHeaders: true, legacyHeaders: false });
 const tokenFor = (user: any) => jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { algorithm: 'HS256', expiresIn: '1d' });
 
-async function userSession(id: number) {
+async function userSession(id: number, knownRoles?: string[]) {
     const users = await db.query<any[]>(`SELECT id, username, displayname, email, coins, level, xp, bio,
         avatar_seed AS avatarSeed, status, author_request, date_joined FROM users WHERE id = ?`, [id]);
     if (!users.length) return null;
     const [roles, bookmarks, notifications] = await Promise.all([
-        db.query<any[]>('SELECT role FROM user_roles WHERE user_id = ?', [id]),
+        knownRoles ? Promise.resolve(knownRoles.map(role => ({ role }))) : db.query<any[]>('SELECT role FROM user_roles WHERE user_id = ?', [id]),
         db.query<any[]>('SELECT novel_id FROM bookmarks WHERE user_id = ?', [id]),
         db.query<any[]>("SELECT id, text, is_read AS `read`, DATE_FORMAT(created_at, '%d/%m/%Y') AS date FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT 100", [id]),
     ]);
@@ -94,7 +94,7 @@ router.post('/register', async (req, res) => {
 });
 router.get('/refresh/:id', authenticateToken, async (req: AuthenticatedRequest, res) => {
     if (Number(req.params.id) !== req.user!.id) return res.status(403).json({ error: 'Không có quyền truy cập phiên khác.' });
-    try { res.json({ user: await userSession(req.user!.id) }); }
+    try { res.json({ user: await userSession(req.user!.id, req.user!.roles) }); }
     catch { res.status(503).json({ error: 'Không thể làm mới phiên.' }); }
 });
 router.post('/update-profile', authenticateToken, async (req: AuthenticatedRequest, res) => {

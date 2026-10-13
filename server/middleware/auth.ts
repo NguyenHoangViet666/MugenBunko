@@ -10,10 +10,10 @@ export interface AuthenticatedRequest extends Request {
 export async function resolveUser(token: string) {
     const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     if (typeof decoded === 'string' || !Number.isSafeInteger(decoded.id) || decoded.id <= 0) throw new Error('Invalid token subject');
-    const users = await db.query<any[]>('SELECT id, username, status FROM users WHERE id = ?', [decoded.id]);
+    const users = await db.query<any[]>(`SELECT u.id, u.username, u.status, r.role FROM users u
+        LEFT JOIN user_roles r ON r.user_id = u.id WHERE u.id = ?`, [decoded.id]);
     if (!users.length || users[0].status !== 'active') return null;
-    const roles = await db.query<any[]>('SELECT role FROM user_roles WHERE user_id = ?', [decoded.id]);
-    return { id: users[0].id as number, username: users[0].username as string, roles: roles.map(row => row.role as string) };
+    return { id: users[0].id as number, username: users[0].username as string, roles: users.flatMap(row => row.role ? [row.role as string] : []) };
 }
 
 export async function authenticateToken(req: AuthenticatedRequest, res: Response, next: NextFunction) {

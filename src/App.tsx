@@ -815,7 +815,7 @@ export default function App() {
             }
         }
         try {
-            const list = await fetchArrayPages<ForumPost>(fetchWithAuth, `${API_BASE}/forum/posts`);
+            const list = await fetchArrayPages<ForumPost>(fetchWithAuth, `${API_BASE}/forum/posts?comments=none`);
             setForumPosts(list);
             setCachedData(CACHE_KEYS.forumPosts + ':' + (currentUser?.id || 'guest'), list);
         } catch (err) {
