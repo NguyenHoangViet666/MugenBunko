@@ -32,3 +32,6 @@ dist-ssr
 # Screenshots from the upgrade browser smoke checks
 artifacts/upgrades/
 artifacts/performance/
+
+# Mobile browser validation artifacts
+artifacts/mobile/

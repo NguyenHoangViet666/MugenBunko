@@ -1,13 +1,14 @@
 import { io, Socket } from 'socket.io-client';
-import { API_URL } from '../api/client';
+import { SERVER_HOST } from '../api/client';
 
 // Cắt phần `/api` ra để lấy base URL cho socket
-const SOCKET_URL = API_URL.replace('/api', '');
+const SOCKET_URL = SERVER_HOST;
 
 let socket: Socket | null = null;
 
 export const initializeSocket = (token?: string) => {
-  if (socket) return socket;
+  if (socket && (socket.auth as { token?: string }).token === token) return socket;
+  if (socket) socket.disconnect();
 
   socket = io(SOCKET_URL, {
     auth: {

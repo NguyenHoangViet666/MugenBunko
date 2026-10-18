@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,26 +6,31 @@ import {
   StyleSheet,
   Pressable,
   ActivityIndicator,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { Novel, ReadingProgress } from '@/types';
 import { getNovels } from '@/services/api/novelService';
 import { getAllReadingProgress, getLocalBookmarks } from '@/services/storage/readingProgress';
+import { syncReadingProgress } from '@/services/storage/readingProgress';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import NovelCard from '@/components/novel/NovelCard';
 import QuickResumeCard from '@/components/novel/QuickResumeCard';
+import { Button } from '@/components/common/Screen';
 import MonochromeIcon from '@/components/common/MonochromeIcon';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = (SCREEN_WIDTH - 44) / 2;
+
 
 type LibraryTab = 'reading' | 'bookmarks' | 'history';
 
 export default function LibraryScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const columns = Math.max(2, Math.min(4, Math.floor(width / 190)));
+  const CARD_WIDTH = (width - 32 - 12 * (columns - 1)) / columns;
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme];
 
@@ -33,33 +38,38 @@ export default function LibraryScreen() {
   const [readingList, setReadingList] = useState<ReadingProgress[]>([]);
   const [bookmarkIds, setBookmarkIds] = useState<number[]>([]);
   const [allNovels, setAllNovels] = useState<Novel[]>([]);
+  const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState<boolean>(true);
 
   const loadData = useCallback(async () => {
     try {
-      const [novels, progressList, bookmarks] = await Promise.all([
+      setLoadError('');
+      const [novels, bookmarks] = await Promise.all([
         getNovels(),
-        getAllReadingProgress(),
         getLocalBookmarks(),
       ]);
       setAllNovels(novels);
-      setReadingList(progressList);
+      try { await syncReadingProgress(novels); } catch { setLoadError('Đang dùng tiến độ trên máy. Chạm để đồng bộ lại.'); }
+      setReadingList(await getAllReadingProgress());
       setBookmarkIds(bookmarks);
     } catch (err) {
+      setLoadError('Không thể tải dữ liệu. Kiểm tra kết nối rồi thử lại.');
       console.warn('Lỗi tải Library:', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useFocusEffect(useCallback(() => {
+    void loadData();
+  }, [loadData]));
 
+  const visibleProgress = activeTab === 'reading' ? readingList.filter(p => p.progressPercentage < 100) : readingList;
   const bookmarkedNovels = allNovels.filter((n) => bookmarkIds.includes(n.id));
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top']}>
+      {loadError ? <Pressable accessibilityRole="button" onPress={() => void loadData()} style={{ padding: 16 }}><Text style={{ color: colors.accent }}>{loadError} Chạm để tải lại.</Text></Pressable> : null}
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>TỦ SÁCH CỦA TÔI</Text>
@@ -79,7 +89,7 @@ export default function LibraryScreen() {
                 { color: activeTab === 'reading' ? colors.background : colors.textMuted },
               ]}
             >
-              Đang đọc ({readingList.length})
+              Đang đọc ({readingList.filter(p => p.progressPercentage < 100).length})
             </Text>
           </Pressable>
 
@@ -119,13 +129,14 @@ export default function LibraryScreen() {
         </View>
       </View>
 
+      <View style={{ padding: 12 }}><Button title="Quản lý bộ sưu tập & chia sẻ" onPress={() => router.push('/collections' as any)} /></View>
       {/* Body */}
       {loading ? (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={colors.tint} />
         </View>
       ) : activeTab === 'reading' || activeTab === 'history' ? (
-        readingList.length === 0 ? (
+        visibleProgress.length === 0 ? (
           <View style={styles.centerContainer}>
             <MonochromeIcon name="book-open" size={42} color={colors.textMuted} />
             <Text style={[styles.emptyTitle, { color: colors.text }]}>
@@ -145,7 +156,8 @@ export default function LibraryScreen() {
           </View>
         ) : (
           <FlatList
-            data={readingList}
+            key="reading-list"
+            data={visibleProgress}
             keyExtractor={(item) => String(item.novelId)}
             contentContainerStyle={styles.listContent}
             renderItem={({ item }) => <QuickResumeCard progress={item} />}
@@ -171,8 +183,9 @@ export default function LibraryScreen() {
         </View>
       ) : (
         <FlatList
+          key={`bookmarks-${columns}`}
           data={bookmarkedNovels}
-          numColumns={2}
+          numColumns={columns}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.gridContent}
           columnWrapperStyle={styles.columnWrapper}

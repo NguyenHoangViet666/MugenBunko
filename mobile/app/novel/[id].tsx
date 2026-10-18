@@ -7,8 +7,10 @@ import {
   Image,
   Pressable,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Novel, Chapter } from '@/types';
 import { getNovelById } from '@/services/api/novelService';
@@ -20,6 +22,8 @@ import {
 import { resolveCoverUrl } from '@/services/api/client';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
+import { Button } from '@/components/common/Screen';
+import NovelDiscussion from '@/components/novel/NovelDiscussion';
 import MonochromeIcon from '@/components/common/MonochromeIcon';
 
 type DetailTab = 'about' | 'chapters';
@@ -34,6 +38,7 @@ export default function NovelDetailScreen() {
   const [loading, setLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<DetailTab>('about');
   const [isBookmarked, setIsBookmarked] = useState<boolean>(false);
+  const [bookmarkBusy, setBookmarkBusy] = useState(false);
   const [lastReadIndex, setLastReadIndex] = useState<number>(0);
   const [hasProgress, setHasProgress] = useState<boolean>(false);
 
@@ -50,7 +55,7 @@ export default function NovelDetailScreen() {
       setIsBookmarked(bookmarks.includes(Number(id)));
 
       if (progress) {
-        setLastReadIndex(progress.lastChapterIndex);
+        setLastReadIndex(Math.max(0, Math.min(progress.lastChapterIndex, (data?.chapters?.length || 1) - 1)));
         setHasProgress(true);
       }
     } catch (err) {
@@ -60,14 +65,16 @@ export default function NovelDetailScreen() {
     }
   }, [id]);
 
-  useEffect(() => {
-    loadNovelData();
-  }, [loadNovelData]);
+  useFocusEffect(useCallback(() => {
+    void loadNovelData();
+  }, [loadNovelData]));
 
   const handleBookmarkToggle = async () => {
-    if (!novel) return;
-    const newState = await toggleLocalBookmark(novel.id);
-    setIsBookmarked(newState);
+    if (!novel || bookmarkBusy) return;
+    setBookmarkBusy(true);
+    try { setIsBookmarked(await toggleLocalBookmark(novel.id)); }
+    catch { Alert.alert('Không thể lưu', 'Kiểm tra kết nối và thử lại.'); }
+    finally { setBookmarkBusy(false); }
   };
 
   const handleStartReading = () => {
@@ -115,7 +122,7 @@ export default function NovelDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={styles.scrollContent}>
         {/* Header Bar */}
         <SafeAreaView edges={['top']} style={styles.topBar}>
           <Pressable
@@ -127,6 +134,8 @@ export default function NovelDetailScreen() {
 
           <Pressable
             onPress={handleBookmarkToggle}
+            disabled={bookmarkBusy}
+            accessibilityLabel={isBookmarked ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
             style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.5 : 1 }]}
           >
             <MonochromeIcon
@@ -277,6 +286,8 @@ export default function NovelDetailScreen() {
             )}
           </View>
         )}
+        <View style={{ padding: 16 }}><Button title="Xem hồ sơ tác giả" onPress={() => router.push(`/user/${encodeURIComponent(novel.author_username || String((novel as any).authorId || ''))}` as any)} /></View>
+        <NovelDiscussion novelId={novel.id} />
       </ScrollView>
 
       {/* Sticky Bottom Action Bar */}

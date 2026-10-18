@@ -27,9 +27,9 @@ const getDevHost = () => {
   return 'http://localhost:5000';
 };
 
-export const SERVER_HOST = __DEV__
-  ? getDevHost()
-  : 'https://mugenbunko.example.com';
+const configuredHost = process.env.EXPO_PUBLIC_API_URL?.trim().replace(/\/+$/, '').replace(/\/api$/, '');
+export const SERVER_HOST = configuredHost || (__DEV__ ? getDevHost() : '');
+if (!SERVER_HOST) throw new Error('Cần cấu hình EXPO_PUBLIC_API_URL trước khi build production.');
 
 export const API_URL = `${SERVER_HOST}/api`;
 
@@ -46,7 +46,7 @@ apiClient.interceptors.request.use(
   async (config) => {
     try {
       const token = await AsyncStorage.getItem('mugen_mobile_token');
-      if (token) {
+      if (token && !config.headers.Authorization) {
         config.headers.Authorization = `Bearer ${token}`;
       }
     } catch (e) {
@@ -59,7 +59,7 @@ apiClient.interceptors.request.use(
 
 let unauthorizedHandler: (() => void) | null = null;
 
-export const setUnauthorizedHandler = (handler: () => void) => {
+export const setUnauthorizedHandler = (handler: (() => void) | null) => {
   unauthorizedHandler = handler;
 };
 
@@ -69,7 +69,9 @@ apiClient.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401) {
       const isAuthRoute = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/auth/register') || error.config?.url?.includes('/auth/send-otp');
-      if (!isAuthRoute) {
+      const currentToken = await AsyncStorage.getItem('mugen_mobile_token');
+      const rejectedToken = error.config?.headers?.Authorization;
+      if (!isAuthRoute && currentToken && rejectedToken === `Bearer ${currentToken}`) {
         try {
           await AsyncStorage.removeItem('mugen_mobile_token');
           await AsyncStorage.removeItem('mugen_session');

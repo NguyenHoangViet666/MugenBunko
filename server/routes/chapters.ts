@@ -11,7 +11,7 @@ router.get('/:id', optionalAuthentication, async (req: AuthenticatedRequest, res
     const chapterId = req.params.id;
     try {
         const chapters = await db.query<any[]>(
-            `SELECT c.id, c.novel_id, c.volume_name, c.title, c.content, c.status FROM chapters c
+            `SELECT c.id, c.novel_id, c.volume_name, c.title, c.content, c.status, c.scheduled_release, c.word_count FROM chapters c
              JOIN novels n ON n.id = c.novel_id WHERE c.id = ? AND
              ((c.status = 'published' AND n.status <> 'suspended') OR n.author_id = ? OR ? = 1)`,
             [chapterId, req.user?.id || 0, req.user?.roles.some(role => ['admin', 'moderator'].includes(role)) || false]
@@ -151,7 +151,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
                 return true;
             });
             if (!saved) return res.status(404).json({ error: 'Chương không thuộc tác phẩm này.' });
-            res.json({ success: true, chapterId: id });
+            res.json({ success: true, chapterId: id, status: targetStatus });
         } else {
             const chapterId = await db.transaction(async connection => {
                 const [result] = await connection.execute<any>(
@@ -160,7 +160,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
                 await snapshotChapter(connection, { id: result.insertId, volume_name: volumeName.trim(), title: title.trim(), content, word_count: wordCount }, userId!, 'initial');
                 return result.insertId;
             });
-            res.json({ success: true, chapterId });
+            res.json({ success: true, chapterId, status: targetStatus });
         }
     } catch (err) {
         console.error("Save chapter error:", err);

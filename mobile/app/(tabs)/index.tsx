@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,10 +11,12 @@ import {
   Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Novel, ReadingProgress } from '@/types';
 import { getNovels } from '@/services/api/novelService';
 import { getLatestReadingProgress } from '@/services/storage/readingProgress';
+import { syncReadingProgress } from '@/services/storage/readingProgress';
 import { resolveCoverUrl } from '@/services/api/client';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
@@ -33,6 +35,7 @@ export default function HomeScreen() {
   const colors = Colors[colorScheme];
 
   const [novels, setNovels] = useState<Novel[]>([]);
+  const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [readingProgress, setReadingProgress] = useState<ReadingProgress | null>(null);
@@ -40,13 +43,13 @@ export default function HomeScreen() {
 
   const loadData = useCallback(async () => {
     try {
-      const [novelList, latestProgress] = await Promise.all([
-        getNovels(),
-        getLatestReadingProgress(),
-      ]);
+      setLoadError('');
+      const novelList = await getNovels();
       setNovels(novelList);
-      setReadingProgress(latestProgress);
+      try { await syncReadingProgress(novelList); } catch { setLoadError('Đang dùng tiến độ trên máy. Chạm để đồng bộ lại.'); }
+      setReadingProgress(await getLatestReadingProgress());
     } catch (err) {
+      setLoadError('Không thể tải dữ liệu. Kiểm tra kết nối rồi thử lại.');
       console.warn('Lỗi tải dữ liệu Home:', err);
     } finally {
       setLoading(false);
@@ -54,9 +57,9 @@ export default function HomeScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useFocusEffect(useCallback(() => {
+    void loadData();
+  }, [loadData]));
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -76,6 +79,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top']}>
+      {loadError ? <Pressable accessibilityRole="button" onPress={() => void loadData()} style={{ padding: 16 }}><Text style={{ color: colors.accent }}>{loadError} Chạm để tải lại.</Text></Pressable> : null}
       <HeaderBar
         title="MUGENBUNKO"
         rightAction={

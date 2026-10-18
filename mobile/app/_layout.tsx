@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/components/useColorScheme';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import AuthScreen from '@/components/auth/AuthScreen';
+import { PreferencesProvider } from '@/context/PreferencesContext';
 import Colors from '@/constants/Colors';
 
 export {
@@ -40,9 +41,9 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
+    <PreferencesProvider><AuthProvider>
       <RootLayoutNav />
-    </AuthProvider>
+    </AuthProvider></PreferencesProvider>
   );
 }
 
@@ -74,7 +75,6 @@ function RootLayoutNav() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="novel/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="reader/[novelId]/[chapterIndex]" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', headerShown: true }} />
       </Stack>
     </ThemeProvider>
   );

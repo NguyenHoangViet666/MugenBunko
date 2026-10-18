@@ -9,12 +9,17 @@ import {
   Animated,
   Dimensions,
   Platform,
+  AppState,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Novel, Chapter } from '@/types';
+import { Novel, Chapter, ReadingProgress } from '@/types';
 import { getNovelById, getChapterContent } from '@/services/api/novelService';
-import { saveReadingProgress } from '@/services/storage/readingProgress';
+import { saveReadingProgress, getNovelProgress, syncReadingProgress } from '@/services/storage/readingProgress';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from '@/services/api/client';
+import { useAuth } from '@/context/AuthContext';
+import RichContent from '@/components/common/RichContent';
 import MonochromeIcon from '@/components/common/MonochromeIcon';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -61,6 +66,7 @@ export default function ChapterReaderScreen() {
     chapterIndex: string;
   }>();
   const router = useRouter();
+  const { user, refreshUser } = useAuth();
 
   const [novel, setNovel] = useState<Novel | null>(null);
   const [chapter, setChapter] = useState<Chapter | null>(null);
@@ -68,48 +74,131 @@ export default function ChapterReaderScreen() {
 
   // Settings
   const [readerTheme, setReaderTheme] = useState<ReaderTheme>('washi');
+  const [lineSpacing, setLineSpacing] = useState(1.75);
   const [fontSize, setFontSize] = useState<number>(18);
   const [fontFamily, setFontFamily] = useState<'serif' | 'sans-serif'>('serif');
-  const [menuVisible, setMenuVisible] = useState<boolean>(false);
+  const [menuVisible, setMenuVisible] = useState<boolean>(true);
   const [showSettingsSheet, setShowSettingsSheet] = useState<boolean>(false);
 
-  const currentIdx = parseInt(chapterIndex || '0', 10);
+  const [settingsReady, setSettingsReady] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const progressRef = useRef<ReadingProgress | null>(null);
+  const restoreRatio = useRef(0);
+  const restored = useRef(false);
+  const lastSaved = useRef(0);
+  const viewport = useRef(0);
+  const bodyTop = useRef(0);
+  const blocks = useRef<{ y: number; height: number }[]>([]);
+  const loadGeneration = useRef(0);
+  const [completed, setCompleted] = useState(false);
+  const restorePosition = () => {
+    const p = progressRef.current;
+    const block = blocks.current[p?.paragraphIndex || 0];
+    if (!restored.current && p && block) {
+      restored.current = true;
+      scrollRef.current?.scrollTo({ y: Math.max(0, bodyTop.current + block.y + block.height * (p.paragraphOffset || 0)), animated: false });
+    }
+  };
+  const persistPosition = () => {
+    if (progressRef.current) void saveReadingProgress({ ...progressRef.current, updatedAt: new Date().toISOString() }, user?.id).catch(() => {});
+  };
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', () => persistPosition());
+    return () => { persistPosition(); subscription.remove(); };
+  }, [novelId, chapterIndex]);
+  useEffect(() => {
+    if (!chapter || chapter.status !== 'published') return;
+    let disposed = false; let sessionId = ''; let seconds = 0; let busy = false; let done = false; let retryAt = 0;
+    setCompleted(false);
+    const tick = async () => {
+      if (disposed || AppState.currentState !== 'active' || busy || done) return;
+      seconds++;
+      if (Date.now() < retryAt) return;
+      busy = true;
+      try {
+        if (!sessionId) sessionId = (await api.post('/reader/sessions', { chapterId: chapter.id })).data.sessionId;
+        if (!disposed && seconds >= 15 && (progressRef.current?.scrollRatio || 0) >= 0.9) {
+          await api.post('/reader/complete', { chapterId: chapter.id, sessionId, scrollRatio: progressRef.current?.scrollRatio });
+          done = true;
+          if (!disposed) { setCompleted(true); void refreshUser().catch(() => {}); }
+        }
+      } catch (e: any) { if (e.response?.status === 409) sessionId = ''; retryAt = Date.now() + 15000; }
+      finally { busy = false; }
+    };
+    const timer = setInterval(() => void tick(), 1000);
+    void api.post(`/novels/${chapter.novel_id}/read-increment`, {}).catch(() => {});
+    return () => { disposed = true; clearInterval(timer); };
+  }, [chapter?.id, refreshUser]);
+  useEffect(() => {
+    let active = true;
+    AsyncStorage.getItem('mugen_reader_settings').then(raw => {
+      if (!active || !raw) return;
+      const saved = JSON.parse(raw);
+      if (['washi', 'charcoal', 'sepia', 'white'].includes(saved.readerTheme)) setReaderTheme(saved.readerTheme);
+      if (Number.isFinite(saved.lineSpacing)) setLineSpacing(Math.max(1.25, Math.min(2.5, saved.lineSpacing)));
+      if (Number.isFinite(saved.fontSize)) setFontSize(Math.max(14, Math.min(30, saved.fontSize)));
+      if (['serif', 'sans-serif'].includes(saved.fontFamily)) setFontFamily(saved.fontFamily);
+    }).catch(() => {}).finally(() => { if (active) setSettingsReady(true); });
+    return () => { active = false; };
+  }, []);
+  useEffect(() => {
+    if (settingsReady) void AsyncStorage.setItem('mugen_reader_settings', JSON.stringify({ readerTheme, fontSize, fontFamily, lineSpacing })).catch(console.warn);
+  }, [settingsReady, readerTheme, fontSize, fontFamily, lineSpacing]);
+  const currentIdx = /^\d+$/.test(chapterIndex || '0') ? Number(chapterIndex || 0) : -1;
   const theme = THEME_STYLES[readerTheme];
 
   const loadChapter = useCallback(async () => {
     if (!novelId) return;
+    const generation = ++loadGeneration.current;
     setLoading(true);
+    setChapter(null);
+    blocks.current = [];
+    progressRef.current = null;
+    restoreRatio.current = 0;
+    restored.current = false;
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
     try {
       const novelData = await getNovelById(novelId);
+      if (generation !== loadGeneration.current) return;
       setNovel(novelData);
 
       if (novelData && novelData.chapters && novelData.chapters[currentIdx]) {
         const targetChapterSummary = novelData.chapters[currentIdx];
         const fullChapter = await getChapterContent(targetChapterSummary.id);
-        setChapter(fullChapter || targetChapterSummary);
+        if (!fullChapter) return;
 
-        // Lưu tiến độ đọc
-        saveReadingProgress({
+        try { await syncReadingProgress([novelData]); } catch { /* Keep the queued local position while offline. */ }
+        const saved = await getNovelProgress(novelData.id);
+        if (generation !== loadGeneration.current) return;
+        restoreRatio.current = saved?.lastChapterIndex === currentIdx && (!saved.lastChapterId || saved.lastChapterId === targetChapterSummary.id) ? saved.scrollRatio || 0 : 0;
+        progressRef.current = {
           novelId: novelData.id,
           novelTitle: novelData.title,
           novelCover: novelData.cover,
           authorName: novelData.author_name || novelData.author,
           lastChapterIndex: currentIdx,
+          lastChapterId: targetChapterSummary.id,
+          scrollRatio: restoreRatio.current,
+          paragraphIndex: restoreRatio.current ? saved?.paragraphIndex || 0 : 0,
+          paragraphOffset: restoreRatio.current ? saved?.paragraphOffset || 0 : 0,
           lastChapterTitle: targetChapterSummary.title,
           totalChapters: novelData.chapters.length,
-          progressPercentage: Math.round(((currentIdx + 1) / novelData.chapters.length) * 100),
+          progressPercentage: Math.floor((currentIdx / novelData.chapters.length) * 100),
           updatedAt: new Date().toISOString(),
-        });
+        };
+        persistPosition();
+        setChapter(fullChapter);
       }
     } catch (err) {
       console.warn('Lỗi tải chương đọc:', err);
     } finally {
-      setLoading(false);
+      if (generation === loadGeneration.current) setLoading(false);
     }
   }, [novelId, currentIdx]);
 
   useEffect(() => {
-    loadChapter();
+    void loadChapter();
+    return () => { loadGeneration.current++; };
   }, [loadChapter]);
 
   const toggleMenu = () => {
@@ -161,6 +250,7 @@ export default function ChapterReaderScreen() {
       <View style={[styles.centerContainer, { backgroundColor: theme.bg }]}>
         <MonochromeIcon name="alert-circle" size={40} color={theme.textMuted} />
         <Text style={[styles.errorTitle, { color: theme.text }]}>Không thể tải nội dung</Text>
+        <Pressable onPress={() => void loadChapter()} style={styles.backBtn}><Text style={{ color: theme.text }}>Thử lại</Text></Pressable>
         <Pressable
           onPress={() => router.back()}
           style={[styles.backBtn, { backgroundColor: theme.text }]}
@@ -203,6 +293,30 @@ export default function ChapterReaderScreen() {
 
       {/* Main Reading Area */}
       <ScrollView
+        key={`${novelId}-${currentIdx}`}
+        ref={scrollRef}
+        scrollEventThrottle={250}
+        onLayout={e => { viewport.current = e.nativeEvent.layout.height; restorePosition(); }}
+        onContentSizeChange={(_, height) => {
+          restorePosition();
+          if (progressRef.current && height <= viewport.current + 24) progressRef.current.scrollRatio = 1;
+        }}
+        onScroll={({ nativeEvent }) => {
+          if (!progressRef.current || !restored.current) return;
+          const { contentOffset, contentSize, layoutMeasurement } = nativeEvent;
+          const travel = Math.max(1, contentSize.height - layoutMeasurement.height);
+          progressRef.current.scrollRatio = Math.max(0, Math.min(1, contentOffset.y / travel));
+          const position = Math.max(0, contentOffset.y - bodyTop.current);
+          const index = blocks.current.findIndex(block => block && block.y + block.height > position);
+          if (index >= 0) {
+            progressRef.current.paragraphIndex = index;
+            progressRef.current.paragraphOffset = Math.max(0, Math.min(1, (position - blocks.current[index].y) / Math.max(1, blocks.current[index].height)));
+          }
+          progressRef.current.progressPercentage = Math.min(100, Math.floor(((currentIdx + (progressRef.current.scrollRatio || 0)) / progressRef.current.totalChapters) * 100));
+          if (Date.now() - lastSaved.current > 2000) { lastSaved.current = Date.now(); persistPosition(); }
+        }}
+        onScrollEndDrag={persistPosition}
+        onMomentumScrollEnd={persistPosition}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.readerScroll}
       >
@@ -218,21 +332,10 @@ export default function ChapterReaderScreen() {
             <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
           </View>
 
-          {/* Chapter Body Content */}
-          <Text
-            style={[
-              styles.bodyText,
-              {
-                color: theme.text,
-                fontSize,
-                lineHeight: fontSize * 1.75,
-                fontFamily: fontFamily === 'serif' ? (Platform.OS === 'ios' ? 'Georgia' : 'serif') : 'System',
-              },
-            ]}
-          >
-            {formatContent(chapter.content)}
-          </Text>
-
+          <View onLayout={e => { bodyTop.current = e.nativeEvent.layout.y; restorePosition(); }}>
+            <RichContent html={chapter.content || ''} color={theme.text} fontSize={fontSize} lineHeight={lineSpacing} fontFamily={fontFamily === 'serif' ? (Platform.OS === 'ios' ? 'Georgia' : 'serif') : undefined} onBlockLayout={(index, y, height) => { blocks.current[index] = { y, height }; restorePosition(); }} />
+          </View>
+          {completed && <Text style={{ color: theme.textMuted, textAlign: 'center', padding: 12 }}>✓ Đã ghi nhận hoàn thành chương</Text>}
           {/* Bottom Chapter Navigation Buttons */}
           <View style={[styles.navRow, { borderTopColor: theme.border }]}>
             <Pressable
@@ -292,6 +395,11 @@ export default function ChapterReaderScreen() {
             </View>
           </View>
 
+          <View style={styles.settingRow}><Text style={[styles.settingLabel, { color: theme.textMuted }]}>GIÃN DÒNG</Text><View style={styles.fontAdjuster}>
+            <Pressable accessibilityLabel="Giảm giãn dòng" onPress={() => setLineSpacing(v => Math.max(1.25, v - 0.25))} style={[styles.adjustBtn, { borderColor: theme.border }]}><Text style={{ color: theme.text }}>−</Text></Pressable>
+            <Text style={{ color: theme.text }}>{lineSpacing.toFixed(2)}</Text>
+            <Pressable accessibilityLabel="Tăng giãn dòng" onPress={() => setLineSpacing(v => Math.min(2.5, v + 0.25))} style={[styles.adjustBtn, { borderColor: theme.border }]}><Text style={{ color: theme.text }}>+</Text></Pressable>
+          </View></View>
           {/* Theme màu nền */}
           <View style={styles.settingRow}>
             <Text style={[styles.settingLabel, { color: theme.textMuted }]}>MÀU NỀN ĐỌC</Text>

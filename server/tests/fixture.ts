@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes } from 'node:crypto';
 
-export async function startFixture() {
+export async function startFixture(options: { webRoot?: string } = {}) {
     const base = fileURLToPath(new URL('../../', import.meta.url));
     const root = fs.existsSync(path.join(base, 'src')) ? base : path.dirname(base);
     dotenv.config({ path: path.join(root, 'server/.env'), quiet: true } as any);
@@ -48,12 +48,17 @@ export async function startFixture() {
     const uploadDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'mugenbunko-upload-test-'));
     const app = express(); configureSecurity(app);
     app.use('/api/upload', uploadRouter(uploadDirectory, false));
-    for (const name of ['reader', 'library', 'chapters', 'auth', 'novels', 'events', 'announcements', 'comments', 'reviews', 'social', 'forum']) {
+    for (const name of ['reader', 'library', 'chapters', 'auth', 'novels', 'events', 'announcements', 'comments', 'reviews', 'social', 'forum', 'policies']) {
         const route = await import(`../routes/${name}.js`); app.use(`/api/${name}`, route.default);
     }
+    const { authenticateToken } = await import('../middleware/auth.js');
+    const { checkRole } = await import('../middleware/roles.js');
+    app.use('/api/mod', authenticateToken, checkRole('moderator'), (await import('../routes/mod.js')).default);
+    app.use('/api/admin', authenticateToken, checkRole('admin'), (await import('../routes/admin.js')).default);
     app.get('/api/genres', (_req, res) => res.json([{ name: 'Fantasy' }, { name: 'Romance' }]));
     app.use(apiErrorHandler);
-    app.use(express.static(path.join(root, 'public'))); app.use(express.static(path.join(root, 'dist')));
+    app.use(express.static(path.join(root, 'public'))); app.use(express.static(options.webRoot || path.join(root, 'dist')));
+    if (options.webRoot) app.get(/^\/(?!api(?:\/|$))/, (_req, res) => res.sendFile(path.join(options.webRoot!, 'index.html')));
     const server = app.listen(0, '127.0.0.1'); await new Promise<void>(resolve => server.once('listening', resolve));
     const io = new Server(server); registerRealtime(io);
     const address = server.address(); if (!address || typeof address === 'string') throw new Error('No fixture port');

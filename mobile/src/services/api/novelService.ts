@@ -15,7 +15,7 @@ export const getNovels = async (): Promise<Novel[]> => {
     return novels;
   } catch (error) {
     console.error('Error fetching novels:', error);
-    return [];
+    throw error;
   }
 };
 
@@ -23,7 +23,7 @@ export const getNovelById = async (id: number | string): Promise<Novel | null> =
   try {
     const novels = await getNovels();
     const found = novels.find((n) => String(n.id) === String(id));
-    return found || null;
+    return found ? { ...found, chapters: found.chapters?.filter(c => c.status === 'published') } : null;
   } catch (error) {
     console.error(`Error fetching novel #${id}:`, error);
     return null;

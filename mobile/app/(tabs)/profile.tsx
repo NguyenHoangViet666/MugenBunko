@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
 import {
   View,
   Text,
@@ -6,42 +7,57 @@ import {
   StyleSheet,
   Pressable,
   Alert,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/context/AuthContext';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
+import { Button, Row, confirmAction } from '@/components/common/Screen';
+import { clearLocalReadingProgress, getLocalBookmarks } from '@/services/storage/readingProgress';
+import { usePreferences } from '@/context/PreferencesContext';
 import MonochromeIcon from '@/components/common/MonochromeIcon';
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuth();
+  const router = useRouter();
+  const { preference, setPreference } = usePreferences();
+  const { user, logout, updateProfile, refreshUser } = useAuth();
+  const [displayname, setDisplayname] = useState(user?.displayname || '');
+  const [bio, setBio] = useState(user?.bio || '');
+  const [saving, setSaving] = useState(false);
+  const [readerSize, setReaderSize] = useState(18);
+  const [bookmarkCount, setBookmarkCount] = useState(0);
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    void refreshUser().catch(() => {});
+    Promise.all([AsyncStorage.getItem('mugen_reader_settings'), getLocalBookmarks()]).then(([settings, bookmarks]) => {
+      if (!active) return;
+      setReaderSize(settings ? JSON.parse(settings).fontSize || 18 : 18);
+      setBookmarkCount(bookmarks.length);
+    }).catch(console.warn);
+    return () => { active = false; };
+  }, []));
+  const saveProfile = async () => {
+    if (saving || !displayname.trim()) return;
+    setSaving(true);
+    try { await updateProfile(displayname.trim(), bio); Alert.alert('Đã lưu', 'Hồ sơ đã được cập nhật.'); }
+    catch (e: any) { Alert.alert('Lỗi', e.response?.data?.error || 'Không thể lưu hồ sơ.'); }
+    finally { setSaving(false); }
+  };
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme];
 
   const handleClearCache = async () => {
     try {
-      await AsyncStorage.removeItem('mugen_reading_progress_list');
-      Alert.alert('Thành công', 'Đã xoá bộ nhớ tạm tiến độ đọc.');
+      await clearLocalReadingProgress();
+      Alert.alert('Thành công', 'Đã xoá bộ nhớ tiến độ trên máy. Dữ liệu trên tài khoản sẽ được tải lại khi đồng bộ.');
     } catch (e) {
       Alert.alert('Lỗi', 'Không thể xoá cache.');
     }
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Đăng xuất',
-      'Bạn có chắc chắn muốn đăng xuất khỏi tài khoản này?',
-      [
-        { text: 'Huỷ', style: 'cancel' },
-        {
-          text: 'Đăng xuất',
-          style: 'destructive',
-          onPress: () => logout(),
-        },
-      ]
-    );
-  };
+  const handleLogout = () => confirmAction('Đăng xuất?', () => void logout(), 'Bạn có thể đăng nhập lại để tiếp tục đồng bộ.');
 
   const displayName = user?.displayname || user?.username || 'Wibu Độc Giả';
   const username = user?.username ? `@${user.username}` : '@user';
@@ -52,12 +68,19 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>TÀI KHOẢN & CÀI ĐẶT</Text>
         </View>
 
+        <View style={styles.section}><Row>
+          <Button title="Studio tác giả" onPress={() => router.push('/studio' as any)} />
+          <Button title="Bạn bè & tin nhắn" onPress={() => router.push('/social' as any)} />
+          <Button title={`Thông báo (${user?.notifications?.filter(n => !n.read).length || 0})`} onPress={() => router.push('/updates' as any)} />
+          <Button title="Bộ sưu tập" onPress={() => router.push('/collections' as any)} />
+          {user?.roles.some(r => r === 'admin' || r === 'moderator') && <Button title="Quản trị / kiểm duyệt" onPress={() => router.push('/moderation' as any)} />}
+        </Row></View>
         {/* User Profile Card */}
         <View
           style={[
@@ -81,6 +104,12 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>CHỈNH SỬA HỒ SƠ</Text>
+          <TextInput accessibilityLabel="Tên hiển thị" placeholder="Tên hiển thị" placeholderTextColor={colors.textMuted} value={displayname} onChangeText={setDisplayname} maxLength={100} style={{ padding: 14, borderWidth: 1, borderColor: colors.border, borderRadius: 8, color: colors.text, marginBottom: 10 }} />
+          <TextInput accessibilityLabel="Giới thiệu" placeholder="Giới thiệu về bạn" placeholderTextColor={colors.textMuted} value={bio} onChangeText={setBio} multiline maxLength={5000} style={{ minHeight: 80, padding: 14, borderWidth: 1, borderColor: colors.border, borderRadius: 8, color: colors.text, marginBottom: 10 }} />
+          <Pressable accessibilityRole="button" disabled={saving || !displayname.trim()} onPress={saveProfile} style={[styles.logoutBtn, { backgroundColor: colors.tint }]}><Text style={{ color: colors.background }}>{saving ? 'Đang lưu…' : 'Lưu hồ sơ'}</Text></Pressable>
+        </View>
         {/* Stats Row */}
         <View
           style={[
@@ -100,7 +129,7 @@ export default function ProfileScreen() {
           <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
           <View style={styles.statCol}>
             <Text style={[styles.statNum, { color: colors.text }]}>
-              {user?.bookmarks?.length || 0}
+              {bookmarkCount}
             </Text>
             <Text style={[styles.statLabel, { color: colors.textMuted }]}>Bookmarks</Text>
           </View>
@@ -118,7 +147,7 @@ export default function ProfileScreen() {
                 <MonochromeIcon name="type" size={18} color={colors.text} />
                 <Text style={[styles.settingLabel, { color: colors.text }]}>Cỡ chữ mặc định</Text>
               </View>
-              <Text style={[styles.settingValue, { color: colors.textMuted }]}>18 px</Text>
+              <Text style={[styles.settingValue, { color: colors.textMuted }]}>{readerSize} px</Text>
             </View>
 
             <View style={[styles.settingRow, { borderBottomColor: colors.border }]}>
@@ -132,18 +161,21 @@ export default function ProfileScreen() {
             </View>
 
             <Pressable
-              onPress={handleClearCache}
+              onPress={() => Alert.alert('Xoá bộ nhớ tiến độ?', 'Tiến độ đọc đã lưu trên thiết bị sẽ bị xoá.', [{ text: 'Huỷ', style: 'cancel' }, { text: 'Xoá', style: 'destructive', onPress: handleClearCache }])}
               style={({ pressed }) => [styles.settingRow, { opacity: pressed ? 0.7 : 1 }]}
             >
               <View style={styles.settingLabelRow}>
                 <MonochromeIcon name="trash-2" size={18} color={colors.text} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Xoá bộ nhớ tạm (Cache)</Text>
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Xoá bộ nhớ tiến độ</Text>
               </View>
               <MonochromeIcon name="chevron-right" size={16} color={colors.textMuted} />
             </Pressable>
           </View>
         </View>
 
+        <View style={styles.section}><Text style={[styles.sectionTitle, { color: colors.textMuted }]}>GIAO DIỆN</Text><Row>
+          {(['system', 'light', 'dark'] as const).map(value => <Button key={value} title={`${preference === value ? '✓ ' : ''}${{ system: 'Theo thiết bị', light: 'Sáng', dark: 'Tối' }[value]}`} onPress={() => setPreference(value)} />)}
+        </Row></View>
         {/* Settings Group: Thông tin */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>

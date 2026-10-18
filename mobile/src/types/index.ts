@@ -13,6 +13,9 @@ export interface User {
     status: UserStatus;
     roles: UserRole[];
     bookmarks: number[];
+    notifications?: { id: number; text: string; read: boolean | number; date: string }[];
+    followedAuthors?: string[];
+    author_request?: string | null;
 }
 
 export interface Chapter {
@@ -25,6 +28,7 @@ export interface Chapter {
     status: 'draft' | 'published' | 'scheduled' | 'pending';
     created_at: string;
     word_count?: number;
+    scheduled_release?: string | null;
 }
 
 export interface Novel {
@@ -56,6 +60,10 @@ export interface ReadingProgress {
     novelCover: string;
     authorName?: string;
     lastChapterIndex: number;
+    lastChapterId?: number;
+    scrollRatio?: number;
+    paragraphIndex?: number;
+    paragraphOffset?: number;
     lastChapterTitle: string;
     totalChapters: number;
     progressPercentage: number;

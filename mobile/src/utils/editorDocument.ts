@@ -1,0 +1,17 @@
+// The editor is isolated from the app. Incoming markup is sanitized before insertion.
+export function editorDocument(initialHtml: string, text: string, background: string) {
+  const initial = JSON.stringify(initialHtml).replace(/</g, '\\u003c');
+  return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: http: data:; style-src 'unsafe-inline'; script-src 'nonce-mugen-editor';"><style>
+  *{box-sizing:border-box}body{margin:0;color:${text};background:${background};font:16px system-ui}nav{display:flex;gap:5px;flex-wrap:wrap;padding:8px;position:sticky;top:0;background:${background};border-bottom:1px solid #8885}button{min-height:40px;padding:8px 12px;border:1px solid #8887;border-radius:6px;background:transparent;color:inherit;font:inherit}#editor{padding:14px;min-height:330px;outline:none;line-height:1.7;overflow-wrap:anywhere}img{max-width:100%;height:auto}p{margin:0 0 16px}#editor:empty:before{content:'Bắt đầu câu chuyện của bạn…';opacity:.5}blockquote{border-left:2px solid #888;padding-left:12px}
+  </style></head><body><nav aria-label="Định dạng văn bản"><button data-command="bold"><b>B</b></button><button data-command="italic"><i>I</i></button><button data-command="underline"><u>U</u></button><button data-command="formatBlock" data-value="h2">Tiêu đề</button><button data-command="formatBlock" data-value="p">Đoạn</button><button data-command="insertUnorderedList">Danh sách</button><button data-command="undo">↶</button><button data-command="redo">↷</button></nav><div id="editor" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Nội dung chương"></div><script nonce="mugen-editor">
+  const editor=document.getElementById('editor');
+  function emit(type,value){const message=JSON.stringify({type,value});if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(message);else window.parent.postMessage({type,value},'*');}
+  function clean(html){const t=document.createElement('template');t.innerHTML=html;t.content.querySelectorAll('script,style,iframe,object,embed,form,input,button,link,meta').forEach(n=>n.remove());t.content.querySelectorAll('*').forEach(n=>{[...n.attributes].forEach(a=>{if(a.name.startsWith('on')||a.name==='srcdoc'||((a.name==='href'||a.name==='src')&&!/^(https?:|data:image\\/|\\/)/i.test(a.value)))n.removeAttribute(a.name);});});return t.innerHTML;}
+  window.editorSet=html=>{editor.innerHTML=clean(html);};window.editorSet(${initial});
+  editor.addEventListener('input',()=>emit('change',editor.innerHTML));
+  editor.addEventListener('paste',e=>{e.preventDefault();document.execCommand('insertText',false,e.clipboardData.getData('text/plain'));});
+  document.querySelectorAll('button').forEach(b=>{b.addEventListener('mousedown',e=>e.preventDefault());b.addEventListener('click',()=>{editor.focus();document.execCommand(b.dataset.command,false,b.dataset.value||null);emit('change',editor.innerHTML);});});
+  function receive(e){try{const d=typeof e.data==='string'?JSON.parse(e.data):e.data;if(d.type==='set')window.editorSet(d.value);if(d.type==='focus')editor.focus();if(d.type==='disabled'){editor.contentEditable=d.value?'false':'true';document.querySelectorAll('button').forEach(b=>b.disabled=!!d.value);}}catch{}}
+  window.addEventListener('message',receive);document.addEventListener('message',receive);emit('ready','');
+  </script></body></html>`;
+}

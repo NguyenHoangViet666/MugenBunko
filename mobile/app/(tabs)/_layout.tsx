@@ -1,10 +1,12 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import MonochromeIcon from '@/components/common/MonochromeIcon';
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme];
 
@@ -17,14 +19,15 @@ export default function TabLayout() {
           backgroundColor: colors.background,
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          height: 60,
-          paddingBottom: 8,
+          height: 56 + Math.max(insets.bottom, 8),
+          paddingBottom: Math.max(insets.bottom, 8),
           paddingTop: 6,
         },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
         },
+        tabBarHideOnKeyboard: true,
         headerShown: false,
       }}
     >
@@ -71,13 +74,6 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <MonochromeIcon name="user" size={20} color={color} />
           ),
-        }}
-      />
-      {/* Ẩn route cũ two nếu có */}
-      <Tabs.Screen
-        name="two"
-        options={{
-          href: null,
         }}
       />
     </Tabs>

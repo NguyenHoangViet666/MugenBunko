@@ -7,9 +7,11 @@ import {
   StyleSheet,
   ActivityIndicator,
   Pressable,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import api from '@/services/api/client';
+import { Button, Row } from '@/components/common/Screen';
 import { Novel } from '@/types';
 import { getNovels } from '@/services/api/novelService';
 import { useColorScheme } from '@/components/useColorScheme';
@@ -17,10 +19,9 @@ import Colors from '@/constants/Colors';
 import NovelCard from '@/components/novel/NovelCard';
 import MonochromeIcon from '@/components/common/MonochromeIcon';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = (SCREEN_WIDTH - 44) / 2;
 
-const GENRES = ['Tất cả', 'Isekai', 'Romance', 'Fantasy', 'Action', 'Slice of Life', 'Mystery'];
+
+
 const SORTS = [
   { label: 'Đọc nhiều', value: 'reads' },
   { label: 'Đánh giá', value: 'rating' },
@@ -28,21 +29,29 @@ const SORTS = [
 ];
 
 export default function ExploreScreen() {
+  const { width } = useWindowDimensions();
+  const columns = Math.max(2, Math.min(4, Math.floor(width / 190)));
+  const CARD_WIDTH = (width - 32 - 12 * (columns - 1)) / columns;
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme];
 
   const [novels, setNovels] = useState<Novel[]>([]);
+  const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedGenre, setSelectedGenre] = useState<string>('Tất cả');
+  const [genres, setGenres] = useState(['Tất cả']);
+  const [status, setStatus] = useState('all');
+  const [kind, setKind] = useState('all');
   const [selectedSort, setSelectedSort] = useState<string>('reads');
 
-  useEffect(() => {
-    getNovels().then((list: Novel[]) => {
-      setNovels(list);
-      setLoading(false);
-    });
-  }, []);
+  const load = async () => {
+    setLoading(true); setLoadError('');
+    try { const [list, categories] = await Promise.all([getNovels(), api.get<{ name: string }[]>('/genres')]); setNovels(list); setGenres(['Tất cả', ...categories.data.map(g => g.name)]); }
+    catch { setLoadError('Không thể tải truyện. Chạm để thử lại.'); }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { void load(); }, []);
 
   const filteredNovels = useMemo(() => {
     let result = [...novels];
@@ -67,6 +76,8 @@ export default function ExploreScreen() {
       );
     }
 
+    if (status !== 'all') result = result.filter(n => n.status === status || (status === 'ongoing' && n.status === 'active'));
+    if (kind !== 'all') result = result.filter(n => n.type === kind);
     // Sắp xếp
     if (selectedSort === 'reads') {
       result.sort((a: Novel, b: Novel) => (b.reads || 0) - (a.reads || 0));
@@ -77,7 +88,7 @@ export default function ExploreScreen() {
     }
 
     return result;
-  }, [novels, searchQuery, selectedGenre, selectedSort]);
+  }, [novels, searchQuery, selectedGenre, selectedSort, status, kind]);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top']}>
@@ -107,7 +118,7 @@ export default function ExploreScreen() {
 
         {/* Filter Pills */}
         <FlatList
-          data={GENRES}
+          data={genres}
           horizontal
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => item}
@@ -138,6 +149,7 @@ export default function ExploreScreen() {
           }}
         />
 
+        <Row><Button title={{ all: 'Mọi trạng thái', ongoing: 'Đang viết', completed: 'Hoàn thành', paused: 'Tạm dừng' }[status] || ''} onPress={() => setStatus(({ all: 'ongoing', ongoing: 'completed', completed: 'paused', paused: 'all' } as Record<string, string>)[status])} /><Button title={{ all: 'Mọi loại truyện', series: 'Truyện dài', oneshot: 'Oneshot' }[kind] || ''} onPress={() => setKind(({ all: 'series', series: 'oneshot', oneshot: 'all' } as Record<string, string>)[kind])} /></Row>
         {/* Sort Row */}
         <View style={styles.sortRow}>
           <Text style={[styles.resultCount, { color: colors.textMuted }]}>
@@ -170,6 +182,7 @@ export default function ExploreScreen() {
         </View>
       </View>
 
+      {loadError ? <Pressable onPress={load} style={{ padding: 16 }}><Text style={{ color: colors.accent }}>{loadError}</Text></Pressable> : null}
       {/* Novel Grid */}
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -185,8 +198,12 @@ export default function ExploreScreen() {
         </View>
       ) : (
         <FlatList
+          key={`catalog-${columns}`}
+          refreshing={loading}
+          onRefresh={load}
+          keyboardDismissMode="on-drag"
           data={filteredNovels}
-          numColumns={2}
+          numColumns={columns}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.gridContent}
           columnWrapperStyle={styles.columnWrapper}

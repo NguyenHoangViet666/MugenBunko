@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient, { setUnauthorizedHandler } from '@/services/api/client';
+import { AppState } from 'react-native';
+import { initializeSocket, disconnectSocket } from '@/services/socket/socketClient';
 import { User } from '@/types';
 
 interface AuthContextType {
@@ -16,6 +18,8 @@ interface AuthContextType {
     email: string,
     otp: string
   ) => Promise<{ success: boolean; error?: string }>;
+  updateProfile: (displayname: string, bio: string) => Promise<void>;
+  refreshUser: () => Promise<User | null>;
   logout: () => Promise<void>;
 }
 
@@ -26,12 +30,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  const activeUser = useRef(user);
+  activeUser.current = user;
+  const refreshUser = useCallback(async () => {
+    const id = activeUser.current?.id;
+    if (!id) return null;
+    const { data } = await apiClient.get<{ user: User }>(`/auth/refresh/${id}`);
+    if (activeUser.current?.id !== id) return null;
+    await AsyncStorage.setItem('mugen_session', JSON.stringify(data.user));
+    if (activeUser.current?.id !== id) return null;
+    setUser(data.user); return data.user;
+  }, []);
+  useEffect(() => {
+    if (!token) return;
+    initializeSocket(token);
+    void refreshUser().catch(() => {});
+    const subscription = AppState.addEventListener('change', state => { if (state === 'active') void refreshUser().catch(() => {}); });
+    return () => { subscription.remove(); disconnectSocket(); };
+  }, [token, refreshUser]);
+
   // Register unauthorized listener to handle token expiry gracefully
   useEffect(() => {
     setUnauthorizedHandler(() => {
       setUser(null);
       setToken(null);
     });
+    return () => setUnauthorizedHandler(null);
   }, []);
 
   // Load session on startup
@@ -61,10 +85,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const { user: userData, token: userToken } = response.data;
 
       if (userData && userToken) {
-        setUser(userData);
-        setToken(userToken);
         await AsyncStorage.setItem('mugen_mobile_token', userToken);
         await AsyncStorage.setItem('mugen_session', JSON.stringify(userData));
+        setUser(userData);
+        setToken(userToken);
         return { success: true };
       }
       return { success: false, error: 'Dữ liệu đăng nhập không hợp lệ!' };
@@ -108,10 +132,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (response.data?.success) {
         const { user: userData, token: userToken } = response.data;
         if (userData && userToken) {
-          setUser(userData);
-          setToken(userToken);
           await AsyncStorage.setItem('mugen_mobile_token', userToken);
           await AsyncStorage.setItem('mugen_session', JSON.stringify(userData));
+          setUser(userData);
+          setToken(userToken);
         }
         return { success: true };
       }
@@ -120,6 +144,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const msg = err.response?.data?.error || 'Lỗi khi đăng ký tài khoản!';
       return { success: false, error: msg };
     }
+  };
+
+  const updateProfile = async (displayname: string, bio: string) => {
+    const { data } = await apiClient.post('/auth/update-profile', { displayname, bio, avatarSeed: user?.avatarSeed || '' });
+    await AsyncStorage.setItem('mugen_session', JSON.stringify(data.user));
+    setUser(data.user);
   };
 
   const logout = async () => {
@@ -134,7 +164,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, sendOtp, register, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, sendOtp, register, logout, updateProfile, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
