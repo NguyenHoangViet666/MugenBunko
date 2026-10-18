@@ -6,14 +6,14 @@ import { compressImage } from '../utils/imageCompressor';
 import RichTextEditor, { parseFormattedContent, extractAndCleanImages, ForumImageGrid } from '../components/RichTextEditor';
 import { io } from 'socket.io-client';
 
-// ================= MONOCHROME PROFESSIONAL SVG ICONS =================
+// ================= MONOCHROME & SOCIAL SVG ICONS =================
 const Icons = {
     All: () => (
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="3" width="7" height="7"></rect>
-            <rect x="14" y="3" width="7" height="7"></rect>
-            <rect x="14" y="14" width="7" height="7"></rect>
-            <rect x="3" y="14" width="7" height="7"></rect>
+            <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+            <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+            <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+            <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
         </svg>
     ),
     General: () => (
@@ -29,14 +29,19 @@ const Icons = {
     ),
     Review: () => (
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
         </svg>
     ),
     Spoil: () => (
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
             <line x1="1" y1="1" x2="23" y2="23"></line>
+        </svg>
+    ),
+    Eye: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
         </svg>
     ),
     QA: () => (
@@ -48,8 +53,12 @@ const Icons = {
     ),
     Misc: () => (
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
-            <line x1="7" y1="7" x2="7.01" y2="7"></line>
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+    ),
+    Bookmark: ({ filled, size = 16 }: { filled?: boolean; size?: number } = {}) => (
+        <svg viewBox="0 0 24 24" width={size} height={size} fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
         </svg>
     ),
     Heart: ({ filled, size = 17 }: { filled?: boolean; size?: number } = {}) => (
@@ -119,6 +128,21 @@ const Icons = {
             <polyline points="17 6 23 6 23 12"></polyline>
         </svg>
     ),
+    Trophy: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+            <path d="M4 22h16"></path>
+            <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path>
+            <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path>
+            <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
+        </svg>
+    ),
+    Sparkles: () => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path>
+        </svg>
+    ),
     Users: () => (
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -149,13 +173,24 @@ const Icons = {
 };
 
 const CATEGORIES = [
-    { id: 'all', name: 'Tất cả chủ đề', icon: Icons.All },
-    { id: 'general', name: 'Thảo luận chung', icon: Icons.General },
-    { id: 'announcement', name: 'Thông báo', icon: Icons.Announcement },
-    { id: 'review', name: 'Review truyện', icon: Icons.Review },
-    { id: 'spoil', name: 'Spoil tình tiết', icon: Icons.Spoil },
-    { id: 'qa', name: 'Hỏi đáp thắc mắc', icon: Icons.QA },
-    { id: 'misc', name: 'Linh tinh khác', icon: Icons.Misc }
+    { id: 'all', name: 'Bảng tin tổng hợp', shortName: 'Tất cả', icon: Icons.All, color: '#ec4899' },
+    { id: 'general', name: 'Thảo luận chung', shortName: 'Thảo luận', icon: Icons.General, color: '#3b82f6' },
+    { id: 'review', name: 'Review & Đánh giá', shortName: 'Review', icon: Icons.Review, color: '#f59e0b' },
+    { id: 'spoil', name: 'Spoil & Giả thuyết', shortName: 'Spoil', icon: Icons.Spoil, color: '#ef4444' },
+    { id: 'qa', name: 'Hỏi đáp & Tìm truyện', shortName: 'Hỏi đáp', icon: Icons.QA, color: '#10b981' },
+    { id: 'misc', name: 'Góc Wibu & Fanart', shortName: 'Góc Wibu', icon: Icons.Misc, color: '#8b5cf6' },
+    { id: 'announcement', name: 'Thông báo BQT', shortName: 'Thông báo', icon: Icons.Announcement, color: '#f43f5e' },
+];
+
+const TRENDING_TAGS = [
+    { tag: '#Isekai', desc: 'Chuyển sinh & Dị giới' },
+    { tag: '#ReviewTruyen', desc: 'Đánh giá chuyên sâu' },
+    { tag: '#SpoilMoi', desc: 'Thảo luận cốt truyện' },
+    { tag: '#Romance', desc: 'Ngọt sủng & Thanh xuân' },
+    { tag: '#SciFi', desc: 'Mecha & Viễn tưởng' },
+    { tag: '#SliceOfLife', desc: 'Chữa lành & Đời thường' },
+    { tag: '#HoiDap', desc: 'Tìm truyện & Tư vấn' },
+    { tag: '#GocWibu', desc: 'Bàn học & Sưu tầm LN' },
 ];
 
 // Helper to reliably normalize categories (supporting both English and Vietnamese)
@@ -169,6 +204,39 @@ export const normalizeForumCategory = (cat: string | undefined | null): string =
     if (lower === 'qa' || lower === 'q&a' || lower === 'hỏi đáp' || lower === 'hỏi đáp thắc mắc') return 'qa';
     if (lower === 'misc' || lower === 'linh tinh' || lower === 'linh tinh khác') return 'misc';
     return lower;
+};
+
+// Format relative social timestamp
+const formatRelativeTime = (dateStr?: string): string => {
+    if (!dateStr) return 'Vừa xong';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
+    const diffMs = Date.now() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Vừa xong';
+    if (diffMins < 60) return `${diffMins} phút trước`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours} giờ trước`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return 'Hôm qua';
+    if (diffDays < 7) return `${diffDays} ngày trước`;
+    return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
+
+// Extract #hashtags from post text
+const extractHashtags = (text: string): string[] => {
+    if (!text) return [];
+    const matches = text.match(/#[a-zA-Z0-9_À-ỹ]+/g);
+    if (!matches) return [];
+    return Array.from(new Set(matches)).slice(0, 5);
+};
+
+const getAvatarUrl = (seed?: string | null): string => {
+    if (!seed) return 'https://api.dicebear.com/7.x/adventurer/svg?seed=Default';
+    if (seed.startsWith('http') || seed.startsWith('/uploads') || seed.startsWith('data:')) {
+        return seed;
+    }
+    return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(seed)}`;
 };
 
 interface SocialUser {
@@ -221,6 +289,33 @@ export default function Forum({
     const isStaff = currentUser && currentUser.roles && (currentUser.roles.includes('admin') || currentUser.roles.includes('moderator'));
     const [activeCategory, setActiveCategory] = useState('all');
     
+    // Saved / Bookmarked posts in localStorage for social experience
+    const [savedPostIds, setSavedPostIds] = useState<number[]>(() => {
+        try {
+            const raw = localStorage.getItem('mugen_saved_forum_posts');
+            return raw ? JSON.parse(raw) : [];
+        } catch {
+            return [];
+        }
+    });
+
+    const toggleSavePost = (postId: number, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setSavedPostIds(prev => {
+            const exists = prev.includes(postId);
+            const next = exists ? prev.filter(id => id !== postId) : [...prev, postId];
+            try {
+                localStorage.setItem('mugen_saved_forum_posts', JSON.stringify(next));
+            } catch {}
+            showAlert(exists ? 'Đã bỏ lưu bài viết khỏi bộ sưu tập.' : '🔖 Đã lưu bài viết vào bộ sưu tập cá nhân!');
+            return next;
+        });
+    };
+
+    // Revealed spoiler post IDs & Expanded long post IDs
+    const [revealedSpoilers, setRevealedSpoilers] = useState<Record<number, boolean>>({});
+    const [expandedPosts, setExpandedPosts] = useState<Record<number, boolean>>({});
+
     // Socket.io states
     const [socket, setSocket] = useState<any>(null);
     const [onlineUsers, setOnlineUsers] = useState<Record<number, boolean>>({});
@@ -258,7 +353,7 @@ export default function Forum({
     const [quickImageUrls, setQuickImageUrls] = useState<string[]>([]);
     const [quickImageFiles, setQuickImageFiles] = useState<File[]>([]);
     const [forumSearch, setForumSearch] = useState<string>('');
-    const [forumSort, setForumSort] = useState<'newest' | 'hot' | 'pinned'>('newest');
+    const [forumSort, setForumSort] = useState<'newest' | 'hot' | 'pinned' | 'media'>('newest');
 
     const removeNewImage = (index: number) => {
         setNewImageUrls(prev => prev.filter((_, i) => i !== index));
@@ -417,7 +512,8 @@ export default function Forum({
             const data = await fetchArrayPages<ForumPost>(fetchWithAuth, `${API_BASE}/forum/posts?comments=none`);
             if (Array.isArray(data)) {
                 setPosts(data);
-                setLoadedPostComments({}); setExpandedPostComments({});
+                setLoadedPostComments({});
+                setExpandedPostComments({});
             }
         } catch (err) {
             console.error("Error loading forum posts:", err);
@@ -752,7 +848,7 @@ export default function Forum({
                     if (post.id === postId) {
                         return {
                             ...post,
-                            is_liked: data.isLiked,
+                            is_liked: data.isLiked ?? data.liked,
                             likes_count: data.likesCount
                         };
                     }
@@ -761,7 +857,7 @@ export default function Forum({
                 if (selectedPost && selectedPost.id === postId) {
                     setSelectedPost(prev => prev ? ({
                         ...prev,
-                        is_liked: data.isLiked,
+                        is_liked: data.isLiked ?? data.liked,
                         likes_count: data.likesCount
                     }) : null);
                 }
@@ -814,7 +910,9 @@ export default function Forum({
         } catch (error) {
             showAlert(error instanceof Error ? error.message : 'Không thể tải bình luận.');
             setExpandedPostComments(prev => ({ ...prev, [postId]: false }));
-        } finally { setLoadingPostComments(prev => ({ ...prev, [postId]: false })); }
+        } finally {
+            setLoadingPostComments(prev => ({ ...prev, [postId]: false }));
+        }
     };
 
     const handleStartChat = (friend: SocialUser) => {
@@ -865,17 +963,23 @@ export default function Forum({
         }
     };
 
-    // Filter & Sort posts using normalized categories, search query, and sort order
+    // Filter & Sort posts using normalized categories, saved tab, search query, and sort order
     const displayedPosts = React.useMemo(() => {
         let result = posts.filter(post => {
-            if (activeCategory !== 'all' && normalizeForumCategory(post.category) !== activeCategory) {
+            if (activeCategory === 'saved') {
+                if (!savedPostIds.includes(post.id)) return false;
+            } else if (activeCategory !== 'all' && normalizeForumCategory(post.category) !== activeCategory) {
                 return false;
+            }
+            if (forumSort === 'media') {
+                const hasImg = !!post.image_url || (post.content && post.content.includes('[img]'));
+                if (!hasImg) return false;
             }
             if (forumSearch.trim()) {
                 const q = forumSearch.toLowerCase().trim();
                 const titleMatch = (post.title || '').toLowerCase().includes(q);
                 const contentMatch = (post.content || '').toLowerCase().includes(q);
-                const authorMatch = (post.author_displayname || post.author_name || '').toLowerCase().includes(q);
+                const authorMatch = (post.author_displayname || post.author_name || post.author_username || '').toLowerCase().includes(q);
                 if (!titleMatch && !contentMatch && !authorMatch) return false;
             }
             return true;
@@ -883,10 +987,10 @@ export default function Forum({
 
         if (forumSort === 'pinned') {
             result.sort((a, b) => {
-                const aPinned = a.is_pinned ? 1 : 0;
-                const bPinned = b.is_pinned ? 1 : 0;
-                if (bPinned !== aPinned) return bPinned - aPinned;
-                return b.id - a.id;
+                const aAnn = normalizeForumCategory(a.category) === 'announcement' ? 1 : 0;
+                const bAnn = normalizeForumCategory(b.category) === 'announcement' ? 1 : 0;
+                if (bAnn !== aAnn) return bAnn - aAnn;
+                return ((b.likes_count || 0) + (b.comments_count || 0)) - ((a.likes_count || 0) + (a.comments_count || 0));
             });
         } else if (forumSort === 'hot') {
             result.sort((a, b) => {
@@ -899,64 +1003,120 @@ export default function Forum({
         }
 
         return result;
-    }, [posts, activeCategory, forumSearch, forumSort]);
+    }, [posts, activeCategory, savedPostIds, forumSearch, forumSort]);
 
     const formatCategoryName = (cat: string) => {
         const norm = normalizeForumCategory(cat);
         const found = CATEGORIES.find(c => c.id === norm);
-        return found ? found.name : (cat || 'Thảo luận');
+        return found ? found.shortName : (cat || 'Thảo luận');
     };
 
-    // Hot trending posts for sidebar
+    // Spotlight Stories Strip (Top 6 engaging / visual posts)
+    const spotlightStories = React.useMemo(() => {
+        return [...posts]
+            .sort((a, b) => {
+                const aHasImg = a.image_url ? 8 : 0;
+                const bHasImg = b.image_url ? 8 : 0;
+                const aScore = (a.likes_count || 0) + (a.comments_count || 0) * 2 + aHasImg;
+                const bScore = (b.likes_count || 0) + (b.comments_count || 0) * 2 + bHasImg;
+                return bScore - aScore;
+            })
+            .slice(0, 6);
+    }, [posts]);
+
+    // Hot trending posts for Right Sidebar
     const hotTrendingPosts = React.useMemo(() => {
         return [...posts]
-            .sort((a, b) => ((b.likes_count || 0) + (b.comments_count || 0)) - ((a.likes_count || 0) + (a.comments_count || 0)))
+            .sort((a, b) => ((b.likes_count || 0) * 2 + (b.comments_count || 0) * 3) - ((a.likes_count || 0) * 2 + (a.comments_count || 0) * 3))
+            .slice(0, 5);
+    }, [posts]);
+
+    // Top Active Community Creators Leaderboard for Right Sidebar
+    const topCreators = React.useMemo(() => {
+        const map = new Map<string, {
+            username: string;
+            displayname: string;
+            avatarSeed: string;
+            xp: number;
+            postsCount: number;
+            likesReceived: number;
+        }>();
+
+        posts.forEach(p => {
+            const uname = p.author_username || `user_${p.author_id}`;
+            const existing = map.get(uname);
+            if (existing) {
+                existing.postsCount += 1;
+                existing.likesReceived += (p.likes_count || 0);
+            } else {
+                map.set(uname, {
+                    username: uname,
+                    displayname: p.author_displayname || p.author_name || uname,
+                    avatarSeed: p.author_avatar_seed || uname,
+                    xp: p.author_xp || 1200,
+                    postsCount: 1,
+                    likesReceived: p.likes_count || 0
+                });
+            }
+        });
+
+        return Array.from(map.values())
+            .sort((a, b) => (b.likesReceived + b.postsCount * 5) - (a.likesReceived + a.postsCount * 5))
             .slice(0, 5);
     }, [posts]);
 
     // Count posts per category accurately
     const categoryCounts = React.useMemo(() => {
-        const counts: Record<string, number> = { all: posts.length };
+        const counts: Record<string, number> = { all: posts.length, saved: savedPostIds.length };
         CATEGORIES.forEach(c => {
             if (c.id !== 'all') {
                 counts[c.id] = posts.filter(p => normalizeForumCategory(p.category) === c.id).length;
             }
         });
         return counts;
-    }, [posts]);
+    }, [posts, savedPostIds]);
+
+    // Current user stats in forum
+    const myForumStats = React.useMemo(() => {
+        if (!currentUser) return { myPosts: 0, myLikes: 0 };
+        const mine = posts.filter(p => p.author_id === currentUser.id || p.author_username === currentUser.username);
+        const myLikes = mine.reduce((sum, p) => sum + (p.likes_count || 0), 0);
+        return { myPosts: mine.length, myLikes };
+    }, [posts, currentUser]);
+
+    const totalCommentsCount = React.useMemo(() => posts.reduce((acc, p) => acc + (p.comments_count || 0), 0), [posts]);
+    const totalLikesCount = React.useMemo(() => posts.reduce((acc, p) => acc + (p.likes_count || 0), 0), [posts]);
 
     return (
-        <div className="page-view active forum-page-wrap">
+        <div className="page-view active forum-page-wrap social-hub-v3">
             
-            {/* 1. FORUM COMMUNITY HERO BANNER */}
-            <div className="forum-hero-banner">
+            {/* 1. COMPACT SOCIAL NETWORK COMMUNITY HEADER */}
+            <div className="forum-hero-banner social-banner-v3">
                 <div className="forum-hero-info">
-                    <span className="forum-hero-tag">
-                        <Icons.General /> Diễn Đàn & Thảo Luận
-                    </span>
-                    <h1 className="forum-hero-title">Không Gian Giao Lưu MugenBunko</h1>
+                    <div className="social-hub-live-pill">
+                        <span className="social-live-dot" />
+                        <span>MẠNG XÃ HỘI LIGHT NOVEL • MUGENVERSE</span>
+                    </div>
+                    <h1 className="forum-hero-title">Quảng Trường Cộng Đồng MugenBunko</h1>
                     <p className="forum-hero-subtitle">
-                        Nơi giao lưu, thảo luận light novel, chia sẻ review và kết nối cộng đồng văn minh.
+                        Không gian kết nối độc giả & tác giả — Review chuyên sâu, giải mã Spoiler, khoe tủ sách và thảo luận 24/7.
                     </p>
                     <div className="forum-hero-metrics">
                         <span className="forum-metric-item">
-                            <Icons.Review /> <strong>{posts.length}</strong> bài viết
+                            <Icons.Review /> <strong>{posts.length}</strong> bài đăng
                         </span>
                         <span className="forum-metric-item">
-                            <Icons.Comment /> <strong>{posts.reduce((acc, p) => acc + (p.comments_count || 0), 0)}</strong> thảo luận
+                            <Icons.Comment /> <strong>{totalCommentsCount}</strong> bình luận
                         </span>
-                        {currentUser && (
-                            <span className="forum-metric-item">
-                                <Icons.Users /> <strong>{forumFriends.length}</strong> bạn bè
-                            </span>
-                        )}
+                        <span className="forum-metric-item">
+                            <Icons.Heart filled={true} size={14} /> <strong>{totalLikesCount}</strong> tương tác
+                        </span>
                     </div>
                 </div>
                 <div className="forum-hero-cta">
                     {subView === 'list' ? (
                         <button 
-                            className="primary-btn" 
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: 'var(--border-radius-md)' }}
+                            className="primary-btn social-cta-post-btn" 
                             onClick={() => {
                                 if (!currentUser) {
                                     showAlert("Vui lòng đăng nhập để đăng bài viết!");
@@ -965,7 +1125,7 @@ export default function Forum({
                                 setSubView('create');
                             }}
                         >
-                            <Icons.Pen /> Tạo bài viết mới
+                            <Icons.Pen /> Đăng bài mới
                         </button>
                     ) : (
                         <button 
@@ -973,328 +1133,469 @@ export default function Forum({
                             style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px' }}
                             onClick={() => { if (setInitialPostId) setInitialPostId(null); else setSubView('list'); }}
                         >
-                            ← Về bảng tin diễn đàn
+                            ← Về bảng tin cộng đồng
                         </button>
                     )}
                 </div>
             </div>
 
-            {/* 2. SUBVIEW LIST: MAIN 3-COLUMN FORUM LAYOUT */}
+            {/* 2. SUBVIEW LIST: TRUE 3-COLUMN SOCIAL NETWORK LAYOUT */}
             {subView === 'list' && (
-                <div className={`forum-layout-container ${currentUser ? 'has-user' : 'guest'}`}>
+                <div className="forum-layout-container social-grid-3col">
                     
-                    {/* LEFT COLUMN: Categories Navigation & Guidelines */}
-                    <aside className="sidebar-column">
+                    {/* ================= LEFT SIDEBAR (STICKY): PROFILE, CHANNELS, HASHTAGS ================= */}
+                    <aside className="sidebar-column social-sidebar-left">
                         
-                        {/* Categories Box */}
+                        {/* User Mini Profile Card OR Community Welcome Card */}
+                        {currentUser ? (() => {
+                            const lvInfo = calculateUserLevel(currentUser.xp || 0);
+                            return (
+                                <div className="forum-sidebar-card social-profile-mini-card">
+                                    <div className="social-profile-cover" />
+                                    <div className="social-profile-body">
+                                        <div 
+                                            className="social-profile-avatar-wrap"
+                                            onClick={() => viewPublicProfile?.(currentUser.username)}
+                                        >
+                                            <img src={getAvatarUrl(currentUser.avatarSeed)} alt={currentUser.displayname} />
+                                            <span className="social-profile-online-badge" title="Đang hoạt động" />
+                                        </div>
+                                        <div className="social-profile-names">
+                                            <h4 onClick={() => viewPublicProfile?.(currentUser.username)}>
+                                                {currentUser.displayname}
+                                            </h4>
+                                            <span>@{currentUser.username}</span>
+                                        </div>
+                                        <div className="social-profile-level-row">
+                                            <span className={`level-badge ${lvInfo.className}`}>
+                                                Lv.{lvInfo.level} • {lvInfo.tierName}
+                                            </span>
+                                        </div>
+                                        <div className="social-profile-xp-bar" title={`XP: ${currentUser.xp || 0}`}>
+                                            <div className="social-profile-xp-fill" style={{ width: `${lvInfo.progressPercentage}%` }} />
+                                        </div>
+                                        <div className="social-profile-stats-grid">
+                                            <div className="social-stat-box">
+                                                <strong>{myForumStats.myPosts}</strong>
+                                                <span>Bài đăng</span>
+                                            </div>
+                                            <div className="social-stat-box">
+                                                <strong>{myForumStats.myLikes}</strong>
+                                                <span>Lượt thích</span>
+                                            </div>
+                                            <div className="social-stat-box">
+                                                <strong>{savedPostIds.length}</strong>
+                                                <span>Đã lưu</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })() : (
+                            <div className="forum-sidebar-card social-guest-card">
+                                <div className="social-guest-badge">
+                                    <Icons.Sparkles /> MUGENBUNKO SOCIAL
+                                </div>
+                                <h4>Tham gia Hội Độc Giả Light Novel!</h4>
+                                <p>Đăng bài thảo luận, thả tim, lưu bài viết hay và kết bạn cùng hàng ngàn Wibu khác.</p>
+                                <div className="social-profile-stats-grid" style={{ marginTop: '12px' }}>
+                                    <div className="social-stat-box">
+                                        <strong>{posts.length}</strong>
+                                        <span>Bài viết</span>
+                                    </div>
+                                    <div className="social-stat-box">
+                                        <strong>{totalCommentsCount}</strong>
+                                        <span>Thảo luận</span>
+                                    </div>
+                                    <div className="social-stat-box">
+                                        <strong>{topCreators.length}+</strong>
+                                        <span>Creator</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Channels / Categories Navigation */}
                         <div className="forum-sidebar-card">
                             <h3 className="forum-sidebar-title">
-                                <Icons.All /> Chủ Đề Thảo Luận
+                                <Icons.All /> Kênh Thảo Luận
                             </h3>
                             <div className="forum-category-nav">
                                 {CATEGORIES.map(cat => {
                                     const IconComponent = cat.icon;
                                     const count = categoryCounts[cat.id] || 0;
+                                    const isActive = activeCategory === cat.id;
                                     return (
                                         <button
                                             key={cat.id}
                                             onClick={() => setActiveCategory(cat.id)}
-                                            className={`forum-category-btn-mono ${activeCategory === cat.id ? 'active' : ''}`}
+                                            className={`forum-category-btn-mono ${isActive ? 'active' : ''}`}
                                         >
                                             <div className="forum-cat-left">
-                                                <span className="forum-cat-icon"><IconComponent /></span>
+                                                <span 
+                                                    className="forum-cat-icon" 
+                                                    style={{ color: isActive ? '#fff' : cat.color }}
+                                                >
+                                                    <IconComponent />
+                                                </span>
                                                 <span>{cat.name}</span>
                                             </div>
                                             <span className="forum-cat-count-badge">{count}</span>
                                         </button>
                                     );
                                 })}
+
+                                {/* Saved Posts Channel */}
+                                <button
+                                    onClick={() => setActiveCategory('saved')}
+                                    className={`forum-category-btn-mono ${activeCategory === 'saved' ? 'active' : ''}`}
+                                >
+                                    <div className="forum-cat-left">
+                                        <span className="forum-cat-icon" style={{ color: activeCategory === 'saved' ? '#fff' : '#ec4899' }}>
+                                            <Icons.Bookmark filled={activeCategory === 'saved'} />
+                                        </span>
+                                        <span>Bài viết đã lưu</span>
+                                    </div>
+                                    <span className="forum-cat-count-badge">{savedPostIds.length}</span>
+                                </button>
                             </div>
                         </div>
 
-                        {/* Trending Hashtags */}
+                        {/* Interactive Trending Hashtags */}
                         <div className="forum-sidebar-card">
-                            <h3 className="forum-sidebar-title">
-                                <Icons.Hash /> Từ Khóa Thịnh Hành
-                            </h3>
-                            <div className="forum-trending-tags-wrap">
-                                {['#Isekai', '#ReviewTruyen', '#SpoilMoi', '#TienHiep', '#Romance', '#HoiDap'].map(tag => (
-                                    <span 
-                                        key={tag} 
-                                        className="forum-tag-mono-pill"
-                                        onClick={() => {
-                                            setActiveCategory('all');
-                                            showAlert(`Đang lọc theo tag ${tag}`);
-                                        }}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                <h3 className="forum-sidebar-title" style={{ margin: 0, padding: 0, border: 'none' }}>
+                                    <Icons.Hash /> Chủ Đề Thịnh Hành
+                                </h3>
+                                {forumSearch.startsWith('#') && (
+                                    <button 
+                                        type="button"
+                                        onClick={() => setForumSearch('')}
+                                        style={{ background: 'none', border: 'none', color: 'var(--sakura-pink)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}
                                     >
-                                        {tag}
-                                    </span>
-                                ))}
+                                        Bỏ lọc
+                                    </button>
+                                )}
                             </div>
-                        </div>
-
-                        {/* Community Guidelines */}
-                        <div className="forum-sidebar-card">
-                            <h3 className="forum-sidebar-title">
-                                <Icons.Shield /> Quy Tắc Cộng Đồng
-                            </h3>
-                            <ul className="forum-guidelines-list">
-                                <li className="forum-guideline-item">
-                                    <span className="forum-guideline-dot">•</span>
-                                    <span>Tôn trọng người khác, không công kích cá nhân.</span>
-                                </li>
-                                <li className="forum-guideline-item">
-                                    <span className="forum-guideline-dot">•</span>
-                                    <span>Gắn nhãn [Spoil] khi bàn luận chi tiết cốt truyện.</span>
-                                </li>
-                                <li className="forum-guideline-item">
-                                    <span className="forum-guideline-dot">•</span>
-                                    <span>Không quảng cáo spam hoặc nội dung không lành mạnh.</span>
-                                </li>
-                            </ul>
+                            <div className="social-hashtag-list">
+                                {TRENDING_TAGS.map(item => {
+                                    const isSelected = forumSearch.toLowerCase() === item.tag.toLowerCase();
+                                    return (
+                                        <button
+                                            key={item.tag}
+                                            type="button"
+                                            className={`social-hashtag-row ${isSelected ? 'active' : ''}`}
+                                            onClick={() => {
+                                                setActiveCategory('all');
+                                                setForumSearch(prev => prev.toLowerCase() === item.tag.toLowerCase() ? '' : item.tag);
+                                            }}
+                                        >
+                                            <div className="social-hashtag-main">
+                                                <span className="social-hashtag-name">{item.tag}</span>
+                                                <span className="social-hashtag-desc">{item.desc}</span>
+                                            </div>
+                                            <span className="social-hashtag-arrow">→</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </aside>
 
-                    {/* MIDDLE COLUMN: Social Feed & Quick Post Box */}
-                    <div className="main-column" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {/* ================= CENTER COLUMN: STORIES, COMPOSER, SOCIAL FEED ================= */}
+                    <div className="main-column social-feed-center">
                         
-                        {/* Quick Create Box */}
-                        {currentUser && (
-                            <div className="forum-quick-create-box">
-                                {!isQuickCreateExpanded ? (
-                                    <>
-                                        <div className="forum-qc-collapsed" onClick={() => setIsQuickCreateExpanded(true)}>
-                                            <div className="forum-qc-avatar">
-                                                <img 
-                                                    src={currentUser.avatarSeed && (currentUser.avatarSeed.startsWith('http') || currentUser.avatarSeed.startsWith('/uploads') || currentUser.avatarSeed.startsWith('data:')) 
-                                                        ? currentUser.avatarSeed 
-                                                        : `https://api.dicebear.com/7.x/adventurer/svg?seed=${currentUser.avatarSeed || 'Default'}`} 
-                                                    alt="Avatar" 
+                        {/* 2A. COMMUNITY STORIES / SPOTLIGHT CAROUSEL */}
+                        {spotlightStories.length > 0 && (
+                            <div className="social-stories-strip-card">
+                                <div className="social-stories-header">
+                                    <span className="social-stories-title">
+                                        <Icons.Sparkles /> Tiêu Điểm Cộng Đồng Hôm Nay
+                                    </span>
+                                    <span className="social-stories-sub">Lướt xem các thảo luận nổi bật nhất</span>
+                                </div>
+                                <div className="social-stories-scroll">
+                                    {spotlightStories.map((story) => {
+                                        const normCat = normalizeForumCategory(story.category);
+                                        const bgImg = story.image_url || getAvatarUrl(story.author_avatar_seed);
+                                        return (
+                                            <div 
+                                                key={story.id} 
+                                                className="social-story-item"
+                                                onClick={() => { if (setInitialPostId) setInitialPostId(story.id); else fetchPostDetail(story.id); }}
+                                            >
+                                                <div 
+                                                    className="social-story-bg" 
+                                                    style={{ backgroundImage: `url(${bgImg})` }}
                                                 />
-                                            </div>
-                                            <div className="forum-qc-fake-input">
-                                                Bạn đang nghĩ gì thế, {currentUser.displayname}?
-                                            </div>
-                                        </div>
-                                        <div className="forum-qc-quick-actions">
-                                            <button 
-                                                type="button" 
-                                                className="forum-qc-action-btn"
-                                                onClick={() => setIsQuickCreateExpanded(true)}
-                                            >
-                                                <Icons.Image /> Thêm ảnh
-                                            </button>
-                                            <button 
-                                                type="button" 
-                                                className="forum-qc-action-btn"
-                                                onClick={() => setSubView('create')}
-                                            >
-                                                <Icons.Pen /> Mở trang soạn thảo đầy đủ
-                                            </button>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <form onSubmit={handleQuickCreatePost} className="quick-create-expanded-form">
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                            <h4 style={{ fontSize: '0.92rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                <Icons.Pen /> Tạo bài viết nhanh
-                                            </h4>
-                                            <button 
-                                                type="button" 
-                                                className="icon-btn" 
-                                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
-                                                onClick={() => {
-                                                    setIsQuickCreateExpanded(false);
-                                                    setQuickTitle('');
-                                                    setQuickContent('');
-                                                    setQuickImageUrls([]);
-                                                    setQuickImageFiles([]);
-                                                }}
-                                            >
-                                                ✕
-                                            </button>
-                                        </div>
-
-                                        <input 
-                                            type="text" 
-                                            placeholder="Tiêu đề bài viết..." 
-                                            value={quickTitle} 
-                                            onChange={(e) => setQuickTitle(e.target.value)} 
-                                            required
-                                            style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-sm)', background: 'var(--bg-base)', color: 'var(--text-main)', fontSize: '0.88rem', outline: 'none' }}
-                                        />
-
-                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                            <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Chủ đề:</label>
-                                            <select 
-                                                value={quickCategory} 
-                                                onChange={(e) => setQuickCategory(e.target.value)}
-                                                style={{ flex: 1, padding: '8px 12px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-base)', color: 'var(--text-main)', fontSize: '0.82rem', outline: 'none' }}
-                                            >
-                                                <option value="general">Thảo luận chung</option>
-                                                <option value="announcement">Thông báo</option>
-                                                <option value="review">Review tác phẩm</option>
-                                                <option value="spoil">Spoil nội dung</option>
-                                                <option value="qa">Hỏi đáp</option>
-                                                <option value="misc">Linh tinh</option>
-                                            </select>
-                                        </div>
-
-                                        <RichTextEditor 
-                                            placeholder="Chia sẻ suy nghĩ, đánh giá hoặc câu hỏi của bạn..." 
-                                            value={quickContent} 
-                                            onChange={setQuickContent} 
-                                            minHeight="120px"
-                                        />
-
-                                        {/* Image attachments selection */}
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px dashed var(--border-color)', paddingTop: '10px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <label className="outline-btn small" style={{ cursor: 'pointer', margin: 0, padding: '6px 14px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                                                    <Icons.Image /> Chọn ảnh đính kèm
-                                                    <input 
-                                                        type="file" 
-                                                        accept="image/*" 
-                                                        multiple
-                                                        style={{ display: 'none' }}
-                                                        onChange={(e) => {
-                                                            const files = Array.from(e.target.files || []);
-                                                            if (files.length > 0) {
-                                                                setQuickImageFiles(prev => [...prev, ...files]);
-                                                                setQuickImageUrls(prev => [...prev, ...files.map(f => URL.createObjectURL(f))]);
-                                                            }
-                                                        }}
-                                                    />
-                                                </label>
-                                                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                                                    {quickImageFiles.length > 0 ? `${quickImageFiles.length} ảnh đã chọn` : 'Tối đa 5 ảnh'}
-                                                </span>
-                                            </div>
-
-                                            {/* Preview attached images */}
-                                            {quickImageUrls.length > 0 && (
-                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
-                                                    {quickImageUrls.map((url, idx) => (
-                                                        <div key={idx} style={{ position: 'relative', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
-                                                            <img 
-                                                                src={url} 
-                                                                alt={`Preview ${idx}`} 
-                                                                style={{ width: '90px', height: '68px', display: 'block', objectFit: 'cover' }} 
-                                                            />
-                                                            <button 
-                                                                type="button" 
-                                                                onClick={() => removeQuickImage(idx)}
-                                                                style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(0,0,0,0.65)', border: 'none', color: '#fff', borderRadius: '50%', width: '18px', height: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem' }}
-                                                                title="Xóa ảnh"
-                                                            >
-                                                                ✕
-                                                            </button>
-                                                        </div>
-                                                    ))}
+                                                <div className="social-story-overlay" />
+                                                <div className="social-story-top">
+                                                    <div className="social-story-avatar-ring">
+                                                        <img src={getAvatarUrl(story.author_avatar_seed)} alt={story.author_displayname} />
+                                                    </div>
+                                                    <span className={`social-story-cat-pill cat-${normCat}`}>
+                                                        {formatCategoryName(story.category)}
+                                                    </span>
                                                 </div>
-                                            )}
-                                        </div>
-
-                                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>
-                                            <button 
-                                                type="button" 
-                                                className="outline-btn small" 
-                                                onClick={() => {
-                                                    setIsQuickCreateExpanded(false);
-                                                    setQuickTitle('');
-                                                    setQuickContent('');
-                                                    setQuickImageUrls([]);
-                                                    setQuickImageFiles([]);
-                                                }}
-                                            >
-                                                Hủy
-                                            </button>
-                                            <button 
-                                                type="submit" 
-                                                className="primary-btn small" 
-                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                                                disabled={isSubmittingPost}
-                                            >
-                                                <Icons.Send /> {isSubmittingPost ? 'Đang đăng...' : 'Đăng bài'}
-                                            </button>
-                                        </div>
-                                    </form>
-                                )}
+                                                <div className="social-story-bottom">
+                                                    <div className="social-story-post-title">{story.title}</div>
+                                                    <div className="social-story-author-meta">
+                                                        <span>{story.author_displayname}</span>
+                                                        <span>❤️ {story.likes_count || 0}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         )}
 
-                        {/* Forum Feed Filter & Search Bar (Phase 3) */}
-                        <div className="forum-feed-controls" style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            gap: '12px',
-                            flexWrap: 'wrap',
-                            padding: '10px 14px',
-                            background: 'var(--bg-card)',
-                            border: '1px solid var(--border-color)',
-                            borderRadius: 'var(--border-radius-md)'
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Sắp xếp:</span>
-                                <div style={{ display: 'flex', gap: '4px' }}>
-                                    {[
-                                        { id: 'newest', name: 'Mới nhất' },
-                                        { id: 'hot', name: 'Sôi nổi' },
-                                        { id: 'pinned', name: 'Được ghim' }
-                                    ].map(s => (
-                                        <button
-                                            key={s.id}
-                                            type="button"
-                                            onClick={() => setForumSort(s.id as any)}
-                                            style={{
-                                                padding: '3px 10px',
-                                                borderRadius: '14px',
-                                                fontSize: '0.74rem',
-                                                border: '1px solid',
-                                                cursor: 'pointer',
-                                                fontWeight: 500,
-                                                background: forumSort === s.id ? 'var(--text-main)' : 'transparent',
-                                                color: forumSort === s.id ? 'var(--bg-base)' : 'var(--text-main)',
-                                                borderColor: forumSort === s.id ? 'var(--text-main)' : 'var(--border-color)'
+                        {/* 2B. SOCIAL COMPOSER BOX (Visible for both logged-in users & guests) */}
+                        <div className="forum-quick-create-box social-composer-card">
+                            {!isQuickCreateExpanded ? (
+                                <>
+                                    <div 
+                                        className="forum-qc-collapsed" 
+                                        onClick={() => {
+                                            if (!currentUser) {
+                                                showAlert("Bạn cần đăng nhập để đăng bài lên bảng tin!");
+                                                return;
+                                            }
+                                            setIsQuickCreateExpanded(true);
+                                        }}
+                                    >
+                                        <div className="forum-qc-avatar">
+                                            <img 
+                                                src={getAvatarUrl(currentUser?.avatarSeed || 'GuestReader')} 
+                                                alt="Avatar" 
+                                            />
+                                        </div>
+                                        <div className="forum-qc-fake-input">
+                                            {currentUser 
+                                                ? `Bạn đang đọc bộ Light Novel nào thế, ${currentUser.displayname}? Chia sẻ ngay...`
+                                                : 'Bạn đang nghĩ gì về bộ truyện mới đọc? Đăng nhập để chia sẻ cùng cộng đồng...'}
+                                        </div>
+                                    </div>
+                                    <div className="forum-qc-quick-actions social-composer-quick-chips">
+                                        <button 
+                                            type="button" 
+                                            className="forum-qc-action-btn chip-review"
+                                            onClick={() => {
+                                                if (!currentUser) return showAlert("Vui lòng đăng nhập để viết bài Review!");
+                                                setQuickCategory('review');
+                                                setIsQuickCreateExpanded(true);
                                             }}
                                         >
-                                            {s.name}
+                                            <Icons.Review /> Viết Review
                                         </button>
-                                    ))}
-                                </div>
+                                        <button 
+                                            type="button" 
+                                            className="forum-qc-action-btn chip-spoil"
+                                            onClick={() => {
+                                                if (!currentUser) return showAlert("Vui lòng đăng nhập để đăng bài Spoil!");
+                                                setQuickCategory('spoil');
+                                                setIsQuickCreateExpanded(true);
+                                            }}
+                                        >
+                                            <Icons.Spoil /> Bàn Spoil
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            className="forum-qc-action-btn chip-qa"
+                                            onClick={() => {
+                                                if (!currentUser) return showAlert("Vui lòng đăng nhập để đặt câu hỏi!");
+                                                setQuickCategory('qa');
+                                                setIsQuickCreateExpanded(true);
+                                            }}
+                                        >
+                                            <Icons.QA /> Hỏi đáp / Tìm truyện
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            className="forum-qc-action-btn chip-media"
+                                            onClick={() => {
+                                                if (!currentUser) return showAlert("Vui lòng đăng nhập để đăng ảnh!");
+                                                setQuickCategory('misc');
+                                                setIsQuickCreateExpanded(true);
+                                            }}
+                                        >
+                                            <Icons.Image /> Khoe góc Wibu
+                                        </button>
+                                    </div>
+                                </>
+                            ) : (
+                                <form onSubmit={handleQuickCreatePost} className="quick-create-expanded-form">
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                        <h4 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <Icons.Pen /> Tạo bài đăng trên Bảng Tin
+                                        </h4>
+                                        <button 
+                                            type="button" 
+                                            className="icon-btn" 
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+                                            onClick={() => {
+                                                setIsQuickCreateExpanded(false);
+                                                setQuickTitle('');
+                                                setQuickContent('');
+                                                setQuickImageUrls([]);
+                                                setQuickImageFiles([]);
+                                            }}
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+
+                                    <input 
+                                        type="text" 
+                                        placeholder="Tiêu đề bài viết ấn tượng (VD: [Review] Tập 9 quá đỉnh...)" 
+                                        value={quickTitle} 
+                                        onChange={(e) => setQuickTitle(e.target.value)} 
+                                        required
+                                        style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-sm)', background: 'var(--bg-base)', color: 'var(--text-main)', fontSize: '0.9rem', fontWeight: 600, outline: 'none' }}
+                                    />
+
+                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                        <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Chuyên mục:</label>
+                                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                            {CATEGORIES.filter(c => c.id !== 'all').map(cat => (
+                                                <button
+                                                    key={cat.id}
+                                                    type="button"
+                                                    onClick={() => setQuickCategory(cat.id)}
+                                                    style={{
+                                                        padding: '4px 10px',
+                                                        borderRadius: '999px',
+                                                        fontSize: '0.74rem',
+                                                        fontWeight: 600,
+                                                        cursor: 'pointer',
+                                                        border: '1px solid',
+                                                        borderColor: quickCategory === cat.id ? cat.color : 'var(--border-color)',
+                                                        background: quickCategory === cat.id ? cat.color : 'var(--bg-base)',
+                                                        color: quickCategory === cat.id ? '#fff' : 'var(--text-secondary)'
+                                                    }}
+                                                >
+                                                    {cat.shortName}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <RichTextEditor 
+                                        placeholder="Chia sẻ cảm nhận, đánh giá, giả thuyết hoặc đính kèm hashtag #Isekai #ReviewTruyen..." 
+                                        value={quickContent} 
+                                        onChange={setQuickContent} 
+                                        minHeight="120px"
+                                    />
+
+                                    {/* Image attachments selection */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px dashed var(--border-color)', paddingTop: '10px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <label className="outline-btn small" style={{ cursor: 'pointer', margin: 0, padding: '6px 14px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                <Icons.Image /> Đính kèm ảnh minh họa
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*" 
+                                                    multiple
+                                                    style={{ display: 'none' }}
+                                                    onChange={(e) => {
+                                                        const files = Array.from(e.target.files || []);
+                                                        if (files.length > 0) {
+                                                            setQuickImageFiles(prev => [...prev, ...files]);
+                                                            setQuickImageUrls(prev => [...prev, ...files.map(f => URL.createObjectURL(f))]);
+                                                        }
+                                                    }}
+                                                />
+                                            </label>
+                                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                                {quickImageFiles.length > 0 ? `${quickImageFiles.length} ảnh đã chọn` : 'Tối đa 5 ảnh'}
+                                            </span>
+                                        </div>
+
+                                        {quickImageUrls.length > 0 && (
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
+                                                {quickImageUrls.map((url, idx) => (
+                                                    <div key={idx} style={{ position: 'relative', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                                                        <img 
+                                                            src={url} 
+                                                            alt={`Preview ${idx}`} 
+                                                            style={{ width: '90px', height: '68px', display: 'block', objectFit: 'cover' }} 
+                                                        />
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={() => removeQuickImage(idx)}
+                                                            style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(0,0,0,0.65)', border: 'none', color: '#fff', borderRadius: '50%', width: '18px', height: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem' }}
+                                                            title="Xóa ảnh"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>
+                                        <button 
+                                            type="button" 
+                                            className="outline-btn small" 
+                                            onClick={() => {
+                                                setIsQuickCreateExpanded(false);
+                                                setQuickTitle('');
+                                                setQuickContent('');
+                                                setQuickImageUrls([]);
+                                                setQuickImageFiles([]);
+                                            }}
+                                        >
+                                            Hủy
+                                        </button>
+                                        <button 
+                                            type="submit" 
+                                            className="primary-btn small" 
+                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                                            disabled={isSubmittingPost}
+                                        >
+                                            <Icons.Send /> {isSubmittingPost ? 'Đang đăng...' : 'Đăng lên Bảng Tin'}
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+                        </div>
+
+                        {/* 2C. SOCIAL FEED FILTER TABS & SEARCH BAR */}
+                        <div className="social-feed-toolbar">
+                            <div className="social-feed-tabs">
+                                {[
+                                    { id: 'newest', label: '✨ Mới nhất' },
+                                    { id: 'hot', label: '🔥 Đang Sôi Nổi' },
+                                    { id: 'pinned', label: '📢 Đáng Chú Ý' },
+                                    { id: 'media', label: '🖼️ Có Hình Ảnh' }
+                                ].map(tab => (
+                                    <button
+                                        key={tab.id}
+                                        type="button"
+                                        className={`social-feed-tab-btn ${forumSort === tab.id ? 'active' : ''}`}
+                                        onClick={() => setForumSort(tab.id as any)}
+                                    >
+                                        {tab.label}
+                                    </button>
+                                ))}
                             </div>
 
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                background: 'var(--bg-base)',
-                                border: '1px solid var(--border-color)',
-                                borderRadius: '16px',
-                                padding: '3px 10px',
-                                minWidth: '180px'
-                            }}>
-                                <Icons.Search size={12} />
+                            <div className="social-feed-search-box">
+                                <Icons.Search size={13} />
                                 <input
                                     type="text"
-                                    placeholder="Tìm bài viết, tác giả..."
+                                    placeholder="Tìm bài viết, #hashtag, tác giả..."
                                     value={forumSearch}
                                     onChange={(e) => setForumSearch(e.target.value)}
-                                    style={{
-                                        background: 'transparent',
-                                        border: 'none',
-                                        outline: 'none',
-                                        color: 'var(--text-main)',
-                                        fontSize: '0.76rem',
-                                        width: '100%'
-                                    }}
                                 />
                                 {forumSearch && (
                                     <button
                                         type="button"
+                                        className="social-search-clear-btn"
                                         onClick={() => setForumSearch('')}
-                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.75rem', padding: 0 }}
+                                        title="Xóa tìm kiếm"
                                     >
                                         ✕
                                     </button>
@@ -1302,44 +1603,93 @@ export default function Forum({
                             </div>
                         </div>
 
-                        {/* Social Feed Post List */}
+                        {/* Active Channel / Hashtag Banner */}
+                        {(activeCategory !== 'all' || forumSearch.trim() !== '') && (
+                            <div className="social-active-filter-bar">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Đang hiển thị:</span>
+                                    {activeCategory !== 'all' && (
+                                        <span className="social-filter-chip">
+                                            Chuyên mục: <strong>{activeCategory === 'saved' ? '🔖 Bài viết đã lưu' : formatCategoryName(activeCategory)}</strong>
+                                            <button type="button" onClick={() => setActiveCategory('all')}>✕</button>
+                                        </span>
+                                    )}
+                                    {forumSearch.trim() !== '' && (
+                                        <span className="social-filter-chip">
+                                            Từ khóa: <strong>{forumSearch}</strong>
+                                            <button type="button" onClick={() => setForumSearch('')}>✕</button>
+                                        </span>
+                                    )}
+                                    <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+                                        ({displayedPosts.length} kết quả)
+                                    </span>
+                                </div>
+                                <button 
+                                    type="button" 
+                                    className="social-reset-filter-btn"
+                                    onClick={() => { setActiveCategory('all'); setForumSearch(''); setForumSort('newest'); }}
+                                >
+                                    Đặt lại
+                                </button>
+                            </div>
+                        )}
+
+                        {/* 2D. SOCIAL POST STREAM */}
                         {loading && (
-                            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
-                                Đang tải các bài viết...
+                            <div className="social-loading-card">
+                                Đang tải luồng thảo luận cộng đồng...
                             </div>
                         )}
 
                         {!loading && displayedPosts.length === 0 && (
-                            <div style={{ textAlign: 'center', padding: '48px 24px', background: 'var(--bg-card)', borderRadius: 'var(--border-radius-lg)', border: '1px dashed var(--border-color)', color: 'var(--text-muted)' }}>
-                                <div style={{ marginBottom: '8px', opacity: 0.5 }}><Icons.All /></div>
-                                <h4 style={{ margin: '0 0 6px 0', color: 'var(--text-main)', fontSize: '1rem' }}>Chưa có bài viết nào</h4>
-                                <p style={{ margin: 0, fontSize: '0.82rem' }}>Hãy là người đầu tiên chia sẻ bài viết trong chủ đề này nhé!</p>
+                            <div className="social-empty-feed-card">
+                                <div style={{ marginBottom: '8px', opacity: 0.6 }}><Icons.All /></div>
+                                <h4>Không tìm thấy bài thảo luận nào phù hợp</h4>
+                                <p>Thử đổi chuyên mục khác hoặc là người đầu tiên khởi xướng chủ đề này nhé!</p>
+                                {(activeCategory !== 'all' || forumSearch) && (
+                                    <button 
+                                        type="button" 
+                                        className="outline-btn small" 
+                                        style={{ marginTop: '12px' }}
+                                        onClick={() => { setActiveCategory('all'); setForumSearch(''); setForumSort('newest'); }}
+                                    >
+                                        Xem tất cả bài đăng
+                                    </button>
+                                )}
                             </div>
                         )}
 
                         {!loading && displayedPosts.length > 0 && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div className="social-posts-stream">
                                 {displayedPosts.map(post => {
                                     const isAuthorOrAdmin = currentUser && (post.author_id === currentUser.id || currentUser.roles.includes('admin'));
                                     const isCommentsOpen = !!expandedPostComments[post.id];
                                     const quickCommentVal = quickCommentTexts[post.id] || "";
                                     const { cleanContent, images: extractedImages } = extractAndCleanImages(post.content);
                                     const allImages = [post.image_url, ...extractedImages].filter(Boolean) as string[];
-
-                                    const authorAvatarSrc = post.author_avatar_seed && (post.author_avatar_seed.startsWith('http') || post.author_avatar_seed.startsWith('/uploads') || post.author_avatar_seed.startsWith('data:')) 
-                                        ? post.author_avatar_seed 
-                                        : `https://api.dicebear.com/7.x/adventurer/svg?seed=${post.author_avatar_seed || 'Default'}`;
+                                    const normCat = normalizeForumCategory(post.category);
+                                    const isSpoilerPost = normCat === 'spoil';
+                                    const isSpoilerRevealed = !!revealedSpoilers[post.id];
+                                    const isLongPost = cleanContent.length > 360;
+                                    const isExpanded = !!expandedPosts[post.id];
+                                    const displayBodyText = (isLongPost && !isExpanded)
+                                        ? cleanContent.slice(0, 360).trim() + '...'
+                                        : cleanContent;
+                                    const postHashtags = extractHashtags(cleanContent);
+                                    const isSaved = savedPostIds.includes(post.id);
+                                    const authorLv = calculateUserLevel(post.author_xp || (post.author_level ? post.author_level * 600 : 800));
 
                                     return (
-                                        <div key={post.id} className="forum-post-card-v2">
-                                            {/* Post Header */}
+                                        <article key={post.id} className={`forum-post-card-v2 social-post-card cat-border-${normCat}`}>
+                                            
+                                            {/* Post Header: Author Avatar, Name, Level Badge, Relative Time, Category Flair */}
                                             <div className="forum-post-header-v2">
                                                 <div className="forum-author-block">
                                                     <div 
-                                                        className="forum-author-avatar-wrap"
+                                                        className={`forum-author-avatar-wrap level-ring-${authorLv.level}`}
                                                         onClick={() => post.author_username && viewPublicProfile?.(post.author_username)}
                                                     >
-                                                        <img src={authorAvatarSrc} alt={post.author_username} />
+                                                        <img src={getAvatarUrl(post.author_avatar_seed)} alt={post.author_username} />
                                                     </div>
                                                     <div className="forum-author-details">
                                                         <div className="forum-author-name-row">
@@ -1347,18 +1697,31 @@ export default function Forum({
                                                                 className="forum-author-name"
                                                                 onClick={() => post.author_username && viewPublicProfile?.(post.author_username)}
                                                             >
-                                                                {post.author_displayname}
+                                                                {post.author_displayname || post.author_name || post.author_username}
                                                             </span>
-                                                            <span className="forum-author-handle">@{post.author_username}</span>
+                                                            <span className={`level-badge ${authorLv.className} social-post-lv-badge`}>
+                                                                Lv.{authorLv.level} {authorLv.tierName}
+                                                            </span>
                                                         </div>
                                                         <div className="forum-post-time">
-                                                            <span>{new Date(post.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                            <span className="forum-author-handle">@{post.author_username}</span>
+                                                            <span>•</span>
+                                                            <span title={new Date(post.created_at).toLocaleString('vi-VN')}>
+                                                                {formatRelativeTime(post.created_at)}
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 </div>
 
                                                 <div className="forum-post-badges-right">
-                                                    <span className="forum-cat-badge-pill">
+                                                    <span 
+                                                        className={`forum-cat-badge-pill social-cat-flair flair-${normCat}`}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setActiveCategory(normCat);
+                                                        }}
+                                                        title={`Lọc chuyên mục ${formatCategoryName(post.category)}`}
+                                                    >
                                                         {formatCategoryName(post.category)}
                                                     </span>
                                                     {isAdmin && (
@@ -1382,113 +1745,206 @@ export default function Forum({
                                                 </div>
                                             </div>
 
-                                            {/* Post Content */}
-                                            <div style={{ cursor: 'pointer' }} onClick={() => { if (setInitialPostId) setInitialPostId(post.id); else fetchPostDetail(post.id); }}>
-                                                <h3 className="forum-post-title-v2">
+                                            {/* Post Title & Body Content */}
+                                            <div>
+                                                <h3 
+                                                    className="forum-post-title-v2 social-post-title"
+                                                    onClick={() => { if (setInitialPostId) setInitialPostId(post.id); else fetchPostDetail(post.id); }}
+                                                >
                                                     {post.title}
                                                 </h3>
-                                                <div className="forum-post-body-text">
-                                                    {parseFormattedContent(cleanContent)}
-                                                </div>
-                                                {allImages.length > 0 && (
-                                                    <div onClick={(e) => e.stopPropagation()}>
-                                                        <ForumImageGrid images={allImages} onImageClick={(url) => setLightboxImage(url)} />
+
+                                                {/* Spoiler Guard OR Normal Content */}
+                                                {isSpoilerPost && !isSpoilerRevealed ? (
+                                                    <div 
+                                                        className="social-spoiler-shield"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setRevealedSpoilers(prev => ({ ...prev, [post.id]: true }));
+                                                        }}
+                                                    >
+                                                        <div className="social-spoiler-blurred-preview">
+                                                            {cleanContent.slice(0, 220)}
+                                                        </div>
+                                                        <div className="social-spoiler-overlay-cta">
+                                                            <span className="social-spoiler-badge">
+                                                                <Icons.Spoil /> CẢNH BÁO SPOILER CỐT TRUYỆN
+                                                            </span>
+                                                            <p>Bài viết có chứa tình tiết tiết lộ trước nội dung Light Novel.</p>
+                                                            <button type="button" className="social-spoiler-reveal-btn">
+                                                                <Icons.Eye /> Nhấn để hiển thị nội dung
+                                                            </button>
+                                                        </div>
                                                     </div>
+                                                ) : (
+                                                    <>
+                                                        <div 
+                                                            className="forum-post-body-text social-post-body"
+                                                            onClick={() => { if (setInitialPostId) setInitialPostId(post.id); else fetchPostDetail(post.id); }}
+                                                        >
+                                                            {parseFormattedContent(displayBodyText)}
+                                                        </div>
+
+                                                        {isLongPost && (
+                                                            <button
+                                                                type="button"
+                                                                className="social-readmore-btn"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setExpandedPosts(prev => ({ ...prev, [post.id]: !prev[post.id] }));
+                                                                }}
+                                                            >
+                                                                {isExpanded ? 'Thu gọn nội dung ↑' : 'Xem thêm toàn bộ bài viết ↓'}
+                                                            </button>
+                                                        )}
+
+                                                        {/* Extracted Clickable Hashtags */}
+                                                        {postHashtags.length > 0 && (
+                                                            <div className="social-post-hashtags">
+                                                                {postHashtags.map(tag => (
+                                                                    <span
+                                                                        key={tag}
+                                                                        className="social-post-tag-chip"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setActiveCategory('all');
+                                                                            setForumSearch(tag);
+                                                                        }}
+                                                                    >
+                                                                        {tag}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
+
+                                                        {allImages.length > 0 && (
+                                                            <div className="social-post-media-wrap" onClick={(e) => e.stopPropagation()}>
+                                                                <ForumImageGrid images={allImages} onImageClick={(url) => setLightboxImage(url)} />
+                                                            </div>
+                                                        )}
+                                                    </>
                                                 )}
                                             </div>
 
-                                            {/* Interaction Bar */}
-                                            <div className="forum-interaction-bar-v2">
+                                            {/* Social Action Bar: Like, Comment, Save, Share */}
+                                            <div className="forum-interaction-bar-v2 social-action-bar">
                                                 <div className="forum-actions-left">
                                                     <button 
-                                                        className={`forum-action-btn-mono ${post.is_liked ? 'liked' : ''}`}
+                                                        className={`forum-action-btn-mono social-btn-like ${post.is_liked ? 'liked' : ''}`}
                                                         onClick={(e) => handleLikePost(post.id, e)}
-                                                        title="Thích bài viết"
+                                                        title="Thả tim bài viết"
                                                     >
                                                         <Icons.Heart filled={!!post.is_liked} />
-                                                        <span>{post.likes_count || 0}</span>
+                                                        <span>{post.likes_count || 0} Thích</span>
                                                     </button>
                                                     <button 
-                                                        className="forum-action-btn-mono"
+                                                        className={`forum-action-btn-mono social-btn-comment ${isCommentsOpen ? 'active' : ''}`}
                                                         onClick={(e) => toggleCommentsExpand(post.id, e)}
-                                                        title="Bình luận"
+                                                        title="Mở bình luận nhanh"
                                                     >
                                                         <Icons.Comment />
-                                                        <span>{post.comments_count || 0} bình luận</span>
+                                                        <span>{post.comments_count || 0} Bình luận</span>
                                                     </button>
                                                 </div>
-                                                <button 
-                                                    className="forum-action-btn-mono"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (navigator.clipboard) {
-                                                            navigator.clipboard.writeText(`${window.location.origin}/#/forum?post=${post.id}`);
-                                                            showAlert("Đã sao chép liên kết bài viết!");
-                                                        }
-                                                    }}
-                                                    title="Chia sẻ liên kết"
-                                                >
-                                                    <Icons.Share />
-                                                </button>
+
+                                                <div className="social-actions-right">
+                                                    <button 
+                                                        className={`forum-action-btn-mono social-btn-save ${isSaved ? 'saved' : ''}`}
+                                                        onClick={(e) => toggleSavePost(post.id, e)}
+                                                        title={isSaved ? "Bỏ lưu bài viết" : "Lưu bài viết"}
+                                                    >
+                                                        <Icons.Bookmark filled={isSaved} />
+                                                        <span>{isSaved ? 'Đã lưu' : 'Lưu'}</span>
+                                                    </button>
+                                                    <button 
+                                                        className="forum-action-btn-mono social-btn-share"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (navigator.clipboard) {
+                                                                navigator.clipboard.writeText(`${window.location.origin}/#/forum?post=${post.id}`);
+                                                                showAlert("🔗 Đã sao chép liên kết bài viết!");
+                                                            }
+                                                        }}
+                                                        title="Chia sẻ liên kết"
+                                                    >
+                                                        <Icons.Share />
+                                                    </button>
+                                                </div>
                                             </div>
 
-                                            {/* Quick Comments Accordion */}
+                                            {/* Quick Comments Drawer */}
                                             {isCommentsOpen && (
-                                                <div className="quick-comments-section" style={{ marginTop: '14px' }}>
-                                                    {loadingPostComments[post.id] ? <p role="status">Đang tải bình luận…</p> : post.comments && post.comments.length > 0 ? (
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '320px', overflowY: 'auto' }}>
+                                                <div className="quick-comments-section social-comments-drawer">
+                                                    {loadingPostComments[post.id] ? (
+                                                        <p role="status" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', margin: '10px 0' }}>
+                                                            Đang tải chuỗi bình luận...
+                                                        </p>
+                                                    ) : post.comments && post.comments.length > 0 ? (
+                                                        <div className="social-comments-list">
                                                             {post.comments.map(c => (
-                                                                <div key={c.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingBottom: '8px', borderBottom: '1px solid var(--border-color)' }}>
-                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', cursor: 'pointer' }} onClick={() => c.author_username && viewPublicProfile?.(c.author_username)}>
-                                                                            <img 
-                                                                                src={c.author_avatar_seed && (c.author_avatar_seed.startsWith('http') || c.author_avatar_seed.startsWith('/uploads') || c.author_avatar_seed.startsWith('data:')) 
-                                                                                    ? c.author_avatar_seed 
-                                                                                    : `https://api.dicebear.com/7.x/adventurer/svg?seed=${c.author_avatar_seed || 'Default'}`} 
-                                                                                style={{ width: '22px', height: '22px', borderRadius: '50%' }}
-                                                                                alt={c.author_username} 
-                                                                            />
-                                                                            <strong style={{ fontSize: '0.78rem', color: 'var(--text-main)' }}>
-                                                                                {c.author_displayname} <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>@{c.author_username}</span>
-                                                                            </strong>
-                                                                        </div>
-                                                                        <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>
-                                                                            {c.created_at ? new Date(c.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
-                                                                        </span>
-                                                                    </div>
-                                                                    <p style={{ fontSize: '0.8rem', margin: '2px 0 0 28px', lineHeight: 1.45, color: 'var(--text-content)' }}>{parseFormattedContent(c.text)}</p>
-                                                                    
-                                                                    {/* Quick Comment Replies */}
-                                                                    {c.replies && c.replies.map(reply => (
-                                                                        <div key={reply.id} style={{ marginLeft: '28px', background: 'var(--bg-base)', padding: '6px 10px', borderLeft: '2px solid var(--sakura-pink)', borderRadius: '4px', marginTop: '4px' }}>
-                                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                                                                                <strong style={{ fontSize: '0.74rem', color: 'var(--text-main)' }}>
-                                                                                    {reply.author_displayname} <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>@{reply.author_username}</span>
+                                                                <div key={c.id} className="social-comment-item">
+                                                                    <img 
+                                                                        src={getAvatarUrl(c.author_avatar_seed)} 
+                                                                        className="social-comment-avatar"
+                                                                        alt={c.author_username}
+                                                                        onClick={() => c.author_username && viewPublicProfile?.(c.author_username)}
+                                                                    />
+                                                                    <div className="social-comment-content-col">
+                                                                        <div className="social-comment-bubble">
+                                                                            <div className="social-comment-head">
+                                                                                <strong onClick={() => c.author_username && viewPublicProfile?.(c.author_username)}>
+                                                                                    {c.author_displayname || c.displayname || c.author_username}
                                                                                 </strong>
-                                                                                <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)' }}>
-                                                                                    {reply.created_at ? new Date(reply.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
-                                                                                </span>
+                                                                                <span className="social-comment-handle">@{c.author_username || c.username}</span>
+                                                                                <span className="social-comment-time">{formatRelativeTime(c.created_at)}</span>
                                                                             </div>
-                                                                            <p style={{ fontSize: '0.76rem', margin: '2px 0 0 0', lineHeight: 1.4, color: 'var(--text-content)' }}>{parseFormattedContent(reply.text)}</p>
+                                                                            <div className="social-comment-text">
+                                                                                {parseFormattedContent(c.text)}
+                                                                            </div>
                                                                         </div>
-                                                                    ))}
+
+                                                                        {/* Replies */}
+                                                                        {c.replies && c.replies.map(reply => (
+                                                                            <div key={reply.id} className="social-comment-reply">
+                                                                                <img 
+                                                                                    src={getAvatarUrl(reply.author_avatar_seed)} 
+                                                                                    className="social-comment-avatar small"
+                                                                                    alt={reply.author_username}
+                                                                                />
+                                                                                <div className="social-comment-bubble reply-bubble">
+                                                                                    <div className="social-comment-head">
+                                                                                        <strong>{reply.author_displayname || reply.displayname || reply.author_username}</strong>
+                                                                                        <span className="social-comment-time">{formatRelativeTime(reply.created_at)}</span>
+                                                                                    </div>
+                                                                                    <div className="social-comment-text">
+                                                                                        {parseFormattedContent(reply.text)}
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
                                                                 </div>
                                                             ))}
                                                         </div>
                                                     ) : (
                                                         <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textAlign: 'center', padding: '10px 0' }}>
-                                                            Chưa có bình luận nào.
+                                                            Chưa có bình luận nào. Hãy mở đầu cuộc trò chuyện!
                                                         </div>
                                                     )}
 
                                                     {/* Quick comment input */}
                                                     {currentUser && (!post.restrictComments || isStaff) ? (
                                                         <form onSubmit={(e) => handleQuickCommentSubmit(post.id, e)} className="quick-comment-input-form" style={{ marginTop: '10px' }}>
+                                                            <img 
+                                                                src={getAvatarUrl(currentUser.avatarSeed)} 
+                                                                alt="Me" 
+                                                                style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} 
+                                                            />
                                                             <input 
                                                                 id={`quick-comment-input-${post.id}`}
                                                                 type="text" 
                                                                 className="quick-comment-input" 
-                                                                placeholder="Nhập phản hồi nhanh..." 
+                                                                placeholder="Viết bình luận phản hồi..." 
                                                                 value={quickCommentVal}
                                                                 onChange={(e) => setQuickCommentTexts(prev => ({ ...prev, [post.id]: e.target.value }))}
                                                             />
@@ -1496,92 +1952,163 @@ export default function Forum({
                                                                 <Icons.Send />
                                                             </button>
                                                         </form>
-                                                    ) : currentUser && (
+                                                    ) : currentUser ? (
                                                         <div style={{ padding: '6px', color: 'var(--text-muted)', fontSize: '0.72rem', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                                                             <Icons.Lock size={12} /> Bình luận tạm khóa cho thành viên.
+                                                        </div>
+                                                    ) : (
+                                                        <div style={{ padding: '6px', color: 'var(--text-muted)', fontSize: '0.75rem', textAlign: 'center' }}>
+                                                            Đăng nhập để tham gia bình luận bài viết này.
                                                         </div>
                                                     )}
                                                 </div>
                                             )}
-                                        </div>
+                                        </article>
                                     );
                                 })}
                             </div>
                         )}
                     </div>
 
-                    {/* RIGHT COLUMN: Online Contacts & Hot Threads */}
-                    {currentUser && (
-                        <aside className="sidebar-column">
-                            
-                            {/* Live Contacts */}
-                            <div className="forum-sidebar-card">
-                                <h3 className="forum-sidebar-title">
-                                    <Icons.Users /> Bạn Bè & Liên Lạc
-                                </h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                    {forumFriends.map(friend => {
-                                        const friendAvatar = friend.avatarSeed && (friend.avatarSeed.startsWith('http') || friend.avatarSeed.startsWith('/uploads') || friend.avatarSeed.startsWith('data:')) 
-                                            ? friend.avatarSeed 
-                                            : `https://api.dicebear.com/7.x/adventurer/svg?seed=${friend.avatarSeed || 'Default'}`;
-
-                                        return (
-                                            <div 
-                                                key={friend.id} 
-                                                className="forum-contact-row" 
-                                                onClick={() => handleStartChat(friend)}
-                                            >
-                                                <div className="forum-contact-avatar-wrap">
-                                                    <img src={friendAvatar} alt={friend.displayname} />
-                                                    {onlineUsers[friend.id] && (
-                                                        <span className="forum-online-dot-pulse" title="Trực tuyến" />
-                                                    )}
+                    {/* ================= RIGHT SIDEBAR (STICKY): TOP CREATORS, HOT THREADS, FRIENDS ================= */}
+                    <aside className="sidebar-column social-sidebar-right">
+                        
+                        {/* Top Active Creators Leaderboard */}
+                        <div className="forum-sidebar-card">
+                            <h3 className="forum-sidebar-title">
+                                <Icons.Trophy /> Bảng Phong Thần Creator
+                            </h3>
+                            <div className="social-creators-list">
+                                {topCreators.map((creator, idx) => {
+                                    const lv = calculateUserLevel(creator.xp);
+                                    return (
+                                        <div 
+                                            key={creator.username} 
+                                            className="social-creator-row"
+                                            onClick={() => {
+                                                if (viewPublicProfile) viewPublicProfile(creator.username);
+                                                else setForumSearch(creator.displayname);
+                                            }}
+                                        >
+                                            <span className={`social-creator-rank rank-${idx + 1}`}>
+                                                {idx + 1}
+                                            </span>
+                                            <img 
+                                                src={getAvatarUrl(creator.avatarSeed)} 
+                                                alt={creator.displayname} 
+                                                className="social-creator-avatar"
+                                            />
+                                            <div className="social-creator-info">
+                                                <div className="social-creator-name-line">
+                                                    <strong>{creator.displayname}</strong>
+                                                    <span className={`level-badge ${lv.className}`} style={{ fontSize: '0.62rem', padding: '1px 6px' }}>
+                                                        Lv.{lv.level}
+                                                    </span>
                                                 </div>
-                                                <div style={{ flex: 1, minWidth: 0 }}>
-                                                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                        {friend.displayname}
-                                                    </div>
-                                                    <div style={{ fontSize: '0.68rem', color: onlineUsers[friend.id] ? '#2ecc71' : 'var(--text-muted)' }}>
-                                                        {onlineUsers[friend.id] ? 'Online' : 'Offline'}
-                                                    </div>
+                                                <div className="social-creator-stats">
+                                                    <span>{creator.postsCount} bài</span>
+                                                    <span>•</span>
+                                                    <span>❤️ {creator.likesReceived}</span>
                                                 </div>
                                             </div>
-                                        );
-                                    })}
-                                    {forumFriends.length === 0 && (
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: '12px 0', textAlign: 'center' }}>
-                                            Chưa có bạn bè nào trong danh sách.
                                         </div>
-                                    )}
-                                </div>
+                                    );
+                                })}
                             </div>
+                        </div>
 
-                            {/* Hot Threads Widget */}
-                            <div className="forum-sidebar-card">
-                                <h3 className="forum-sidebar-title">
-                                    <Icons.Trending /> Thảo Luận Sôi Nổi
-                                </h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                    {hotTrendingPosts.map((hp, idx) => (
+                        {/* Hot Threads Widget */}
+                        <div className="forum-sidebar-card">
+                            <h3 className="forum-sidebar-title">
+                                <Icons.Trending /> Tâm Điểm Thảo Luận
+                            </h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                {hotTrendingPosts.map((hp, idx) => {
+                                    const normCat = normalizeForumCategory(hp.category);
+                                    return (
                                         <div 
                                             key={hp.id} 
                                             className="forum-hot-thread-item"
                                             onClick={() => { if (setInitialPostId) setInitialPostId(hp.id); else fetchPostDetail(hp.id); }}
                                         >
-                                            <span className="forum-hot-num">#{idx + 1}</span>
+                                            <span className={`forum-hot-num top-${idx + 1}`}>#{idx + 1}</span>
                                             <div className="forum-hot-info">
                                                 <div className="forum-hot-title" title={hp.title}>{hp.title}</div>
                                                 <div className="forum-hot-meta">
-                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}><Icons.Heart size={11} filled={true} /> {hp.likes_count || 0}</span>
-                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}><Icons.MessageSquare size={11} /> {hp.comments_count || 0}</span>
+                                                    <span className={`social-mini-cat-dot cat-${normCat}`}>{formatCategoryName(hp.category)}</span>
+                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                                        <Icons.Heart size={11} filled={true} /> {hp.likes_count || 0}
+                                                    </span>
+                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                                        <Icons.MessageSquare size={11} /> {hp.comments_count || 0}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Live Contacts (if logged in) OR Community Rules */}
+                        {currentUser && (
+                            <div className="forum-sidebar-card">
+                                <h3 className="forum-sidebar-title">
+                                    <Icons.Users /> Bạn Bè Trực Tuyến
+                                </h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    {forumFriends.map(friend => (
+                                        <div 
+                                            key={friend.id} 
+                                            className="forum-contact-row" 
+                                            onClick={() => handleStartChat(friend)}
+                                        >
+                                            <div className="forum-contact-avatar-wrap">
+                                                <img src={getAvatarUrl(friend.avatarSeed)} alt={friend.displayname} />
+                                                {onlineUsers[friend.id] && (
+                                                    <span className="forum-online-dot-pulse" title="Trực tuyến" />
+                                                )}
+                                            </div>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    {friend.displayname}
+                                                </div>
+                                                <div style={{ fontSize: '0.68rem', color: onlineUsers[friend.id] ? '#2ecc71' : 'var(--text-muted)' }}>
+                                                    {onlineUsers[friend.id] ? 'Đang hoạt động' : 'Ngoại tuyến'}
                                                 </div>
                                             </div>
                                         </div>
                                     ))}
+                                    {forumFriends.length === 0 && (
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: '10px 0', textAlign: 'center' }}>
+                                            Kết bạn với các thành viên trên diễn đàn để trò chuyện trực tiếp!
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                        </aside>
-                    )}
+                        )}
+
+                        {/* Community Guidelines */}
+                        <div className="forum-sidebar-card">
+                            <h3 className="forum-sidebar-title">
+                                <Icons.Shield /> Văn Hóa MugenBunko
+                            </h3>
+                            <ul className="forum-guidelines-list">
+                                <li className="forum-guideline-item">
+                                    <span className="forum-guideline-dot">1.</span>
+                                    <span>Tôn trọng đa dạng gu đọc truyện, tranh luận văn minh.</span>
+                                </li>
+                                <li className="forum-guideline-item">
+                                    <span className="forum-guideline-dot">2.</span>
+                                    <span>Luôn chọn chuyên mục <strong>Spoil</strong> khi tiết lộ tình tiết quan trọng.</span>
+                                </li>
+                                <li className="forum-guideline-item">
+                                    <span className="forum-guideline-dot">3.</span>
+                                    <span>Ghi rõ nguồn khi chia sẻ tranh minh họa / Fanart.</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </aside>
                 </div>
             )}
 
@@ -1594,13 +2121,13 @@ export default function Forum({
                             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                             onClick={() => { if (setInitialPostId) setInitialPostId(null); else setSubView('list'); }}
                         >
-                            ← Quay lại danh sách bài viết
+                            ← Quay lại bảng tin cộng đồng
                         </button>
                     </div>
 
                     <div className="forum-post-card-v2" style={{ padding: '32px' }}>
                         <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.4rem', fontWeight: 700, margin: '0 0 20px 0', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Icons.Pen /> Đăng Bài Viết Mới Lên Diễn Đàn
+                            <Icons.Pen /> Đăng Bài Viết Mới Lên Quảng Trường
                         </h2>
 
                         <form onSubmit={handleCreatePost} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
@@ -1620,7 +2147,7 @@ export default function Forum({
 
                             <div>
                                 <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '6px' }}>
-                                    Chủ đề bài đăng <span style={{ color: 'var(--sakura-pink)' }}>*</span>
+                                    Chuyên mục bài đăng <span style={{ color: 'var(--sakura-pink)' }}>*</span>
                                 </label>
                                 <select 
                                     value={newCategory} 
@@ -1628,11 +2155,11 @@ export default function Forum({
                                     style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-sm)', background: 'var(--bg-base)', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none' }}
                                 >
                                     <option value="general">Thảo luận chung</option>
+                                    <option value="review">Review & Đánh giá tác phẩm</option>
+                                    <option value="spoil">Spoil & Giả thuyết tình tiết</option>
+                                    <option value="qa">Hỏi đáp & Tìm truyện</option>
+                                    <option value="misc">Góc Wibu & Fanart</option>
                                     <option value="announcement">Thông báo hệ thống</option>
-                                    <option value="review">Review tác phẩm / truyện</option>
-                                    <option value="spoil">Spoil thảo luận tình tiết</option>
-                                    <option value="qa">Hỏi đáp thắc mắc</option>
-                                    <option value="misc">Linh tinh khác</option>
                                 </select>
                             </div>
 
@@ -1641,7 +2168,7 @@ export default function Forum({
                                     Nội dung chi tiết <span style={{ color: 'var(--sakura-pink)' }}>*</span>
                                 </label>
                                 <RichTextEditor 
-                                    placeholder="Soạn nội dung thảo luận, review, chia sẻ cảm nhận..." 
+                                    placeholder="Soạn nội dung thảo luận, review, chia sẻ cảm nhận (có thể thêm hashtag như #Isekai #ReviewTruyen)..." 
                                     value={newContent} 
                                     onChange={setNewContent} 
                                     minHeight="180px"
@@ -1730,13 +2257,11 @@ export default function Forum({
             {subView === 'detail' && selectedPost && (() => {
                 const { cleanContent: detailCleanContent, images: detailExtractedImages } = extractAndCleanImages(selectedPost.content);
                 const detailAllImages = [selectedPost.image_url, ...detailExtractedImages].filter(Boolean) as string[];
-
-                const authorAvatar = selectedPost.author_avatar_seed && (selectedPost.author_avatar_seed.startsWith('http') || selectedPost.author_avatar_seed.startsWith('/uploads') || selectedPost.author_avatar_seed.startsWith('data:')) 
-                    ? selectedPost.author_avatar_seed 
-                    : `https://api.dicebear.com/7.x/adventurer/svg?seed=${selectedPost.author_avatar_seed || 'Default'}`;
+                const normCat = normalizeForumCategory(selectedPost.category);
+                const authorLv = calculateUserLevel(selectedPost.author_xp || 1000);
 
                 return (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '960px', margin: '0 auto' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '900px', margin: '0 auto' }}>
                         
                         {/* Back button */}
                         <div>
@@ -1745,14 +2270,14 @@ export default function Forum({
                                 style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                                 onClick={() => { setSubView('list'); if (setInitialPostId) setInitialPostId(null); }}
                             >
-                                ← Quay lại danh sách bài viết
+                                ← Quay lại bảng tin cộng đồng
                             </button>
                         </div>
 
                         {/* Main Article Container */}
-                        <div className="forum-post-card-v2" style={{ padding: '32px' }}>
+                        <div className={`forum-post-card-v2 social-post-card cat-border-${normCat}`} style={{ padding: '32px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                <span className="forum-cat-badge-pill">
+                                <span className={`forum-cat-badge-pill social-cat-flair flair-${normCat}`}>
                                     {formatCategoryName(selectedPost.category)}
                                 </span>
                                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -1785,27 +2310,35 @@ export default function Forum({
                                 </div>
                             </div>
 
-                            <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.65rem', fontWeight: 700, color: 'var(--text-main)', margin: '0 0 16px 0', lineHeight: 1.3 }}>
+                            <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.65rem', fontWeight: 700, color: 'var(--text-main)', margin: '0 0 16px 0', lineHeight: 1.35 }}>
                                 {selectedPost.title}
                             </h1>
 
                             {/* Author Info Bar */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '16px', borderBottom: '1px solid var(--border-color)', marginBottom: '20px' }}>
-                                <div className="forum-author-avatar-wrap">
-                                    <img src={authorAvatar} alt={selectedPost.author_username} />
+                                <div 
+                                    className="forum-author-avatar-wrap"
+                                    onClick={() => selectedPost.author_username && viewPublicProfile?.(selectedPost.author_username)}
+                                >
+                                    <img src={getAvatarUrl(selectedPost.author_avatar_seed)} alt={selectedPost.author_username} />
                                 </div>
                                 <div>
-                                    <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-main)' }}>
-                                        {selectedPost.author_displayname}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)', cursor: 'pointer' }} onClick={() => selectedPost.author_username && viewPublicProfile?.(selectedPost.author_username)}>
+                                            {selectedPost.author_displayname}
+                                        </span>
+                                        <span className={`level-badge ${authorLv.className} social-post-lv-badge`}>
+                                            Lv.{authorLv.level} {authorLv.tierName}
+                                        </span>
                                     </div>
                                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                        @{selectedPost.author_username} • {new Date(selectedPost.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                                        @{selectedPost.author_username} • {formatRelativeTime(selectedPost.created_at)}
                                     </div>
                                 </div>
                             </div>
 
                             {/* Content text */}
-                            <div style={{ fontSize: '0.96rem', lineHeight: 1.75, color: 'var(--text-content)', minHeight: '120px' }}>
+                            <div style={{ fontSize: '0.96rem', lineHeight: 1.8, color: 'var(--text-content)', minHeight: '100px' }}>
                                 {parseFormattedContent(detailCleanContent)}
                             </div>
 
@@ -1816,18 +2349,27 @@ export default function Forum({
                             )}
 
                             {/* Interaction Bar */}
-                            <div className="forum-interaction-bar-v2" style={{ marginTop: '24px' }}>
+                            <div className="forum-interaction-bar-v2 social-action-bar" style={{ marginTop: '24px' }}>
                                 <div className="forum-actions-left">
                                     <button 
-                                        className={`forum-action-btn-mono ${selectedPost.is_liked ? 'liked' : ''}`}
+                                        className={`forum-action-btn-mono social-btn-like ${selectedPost.is_liked ? 'liked' : ''}`}
                                         onClick={(e) => handleLikePost(selectedPost.id, e)}
                                     >
                                         <Icons.Heart filled={!!selectedPost.is_liked} />
                                         <span>{selectedPost.likes_count || 0} Thích</span>
                                     </button>
-                                    <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                                    <span className="forum-action-btn-mono" style={{ cursor: 'default' }}>
                                         <Icons.Comment /> {selectedPost.comments?.length || 0} Phản hồi
                                     </span>
+                                </div>
+                                <div className="social-actions-right">
+                                    <button 
+                                        className={`forum-action-btn-mono social-btn-save ${savedPostIds.includes(selectedPost.id) ? 'saved' : ''}`}
+                                        onClick={(e) => toggleSavePost(selectedPost.id, e)}
+                                    >
+                                        <Icons.Bookmark filled={savedPostIds.includes(selectedPost.id)} />
+                                        <span>{savedPostIds.includes(selectedPost.id) ? 'Đã lưu' : 'Lưu bài'}</span>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -1845,24 +2387,24 @@ export default function Forum({
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', cursor: 'pointer' }} onClick={() => comment.author_username && viewPublicProfile?.(comment.author_username)}>
                                                 <img 
-                                                    src={comment.author_avatar_seed && (comment.author_avatar_seed.startsWith('http') || comment.author_avatar_seed.startsWith('/uploads') || comment.author_avatar_seed.startsWith('data:')) 
-                                                        ? comment.author_avatar_seed 
-                                                        : `https://api.dicebear.com/7.x/adventurer/svg?seed=${comment.author_avatar_seed || 'Default'}`} 
-                                                    style={{ width: '28px', height: '28px', borderRadius: '50%' }}
+                                                    src={getAvatarUrl(comment.author_avatar_seed)} 
+                                                    style={{ width: '30px', height: '30px', borderRadius: '50%' }}
                                                     alt={comment.author_username} 
                                                 />
-                                                <strong style={{ fontSize: '0.84rem', color: 'var(--text-main)' }}>
+                                                <strong style={{ fontSize: '0.86rem', color: 'var(--text-main)' }}>
                                                     {comment.author_displayname} <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>@{comment.author_username}</span>
                                                 </strong>
                                             </div>
                                             <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                                                {new Date(comment.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                                                {formatRelativeTime(comment.created_at)}
                                             </span>
                                         </div>
-                                        <p style={{ fontSize: '0.88rem', margin: '6px 0 6px 36px', lineHeight: 1.55, color: 'var(--text-content)' }}>{parseFormattedContent(comment.text)}</p>
+                                        <div style={{ fontSize: '0.88rem', margin: '6px 0 6px 38px', lineHeight: 1.55, color: 'var(--text-content)' }}>
+                                            {parseFormattedContent(comment.text)}
+                                        </div>
                                         
                                         {currentUser && (
-                                            <div style={{ marginLeft: '36px', display: 'flex', gap: '12px' }}>
+                                            <div style={{ marginLeft: '38px', display: 'flex', gap: '12px' }}>
                                                 <button 
                                                     type="button" 
                                                     style={{ background: 'none', border: 'none', color: 'var(--sakura-pink)', cursor: 'pointer', padding: 0, fontSize: '0.75rem', fontWeight: 600 }}
@@ -1883,7 +2425,7 @@ export default function Forum({
 
                                         {/* Inline reply form */}
                                         {replyToCommentId === comment.id && (
-                                            <div style={{ marginTop: '10px', marginLeft: '36px' }}>
+                                            <div style={{ marginTop: '10px', marginLeft: '38px' }}>
                                                 <textarea 
                                                     id={`reply-textarea-${comment.id}`}
                                                     placeholder="Nhập câu trả lời phản hồi..." 
@@ -1900,16 +2442,18 @@ export default function Forum({
 
                                         {/* Child Comments List */}
                                         {comment.replies && comment.replies.map(reply => (
-                                            <div key={reply.id} style={{ marginLeft: '36px', marginTop: '10px', background: 'var(--bg-base)', padding: '10px 14px', borderLeft: '2px solid var(--sakura-pink)', borderRadius: '4px' }}>
+                                            <div key={reply.id} style={{ marginLeft: '38px', marginTop: '10px', background: 'var(--bg-base)', padding: '10px 14px', borderLeft: '2px solid var(--sakura-pink)', borderRadius: '6px' }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                                                     <strong style={{ fontSize: '0.8rem', color: 'var(--text-main)' }}>
                                                         {reply.author_displayname} <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>@{reply.author_username}</span>
                                                     </strong>
                                                     <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                                                        {new Date(reply.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                                                        {formatRelativeTime(reply.created_at)}
                                                     </span>
                                                 </div>
-                                                <p style={{ fontSize: '0.82rem', margin: '2px 0 0 0', lineHeight: 1.45, color: 'var(--text-content)' }}>{parseFormattedContent(reply.text)}</p>
+                                                <div style={{ fontSize: '0.82rem', margin: '2px 0 0 0', lineHeight: 1.45, color: 'var(--text-content)' }}>
+                                                    {parseFormattedContent(reply.text)}
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -1953,7 +2497,7 @@ export default function Forum({
                 );
             })()}
 
-            {/* 5. CHAT POPUP (Facebook-style) */}
+            {/* 5. CHAT POPUP (Messenger-style) */}
             {subView === 'list' && activeChatFriend && (
                 <div className="fb-chat-popup">
                     <div className="fb-chat-header">
@@ -1961,9 +2505,7 @@ export default function Forum({
                             <div style={{ position: 'relative' }}>
                                 <div className="fb-chat-avatar">
                                     <img 
-                                        src={activeChatFriend.avatarSeed && (activeChatFriend.avatarSeed.startsWith('http') || activeChatFriend.avatarSeed.startsWith('/uploads') || activeChatFriend.avatarSeed.startsWith('data:')) 
-                                            ? activeChatFriend.avatarSeed 
-                                            : `https://api.dicebear.com/7.x/adventurer/svg?seed=${activeChatFriend.avatarSeed || 'Default'}`} 
+                                        src={getAvatarUrl(activeChatFriend.avatarSeed)} 
                                         alt={activeChatFriend.displayname} 
                                     />
                                 </div>
@@ -2076,48 +2618,30 @@ export default function Forum({
                             style={{ color: '#fff', fontSize: '1rem', padding: '4px 10px', background: 'rgba(255,255,255,0.1)', borderRadius: '20px', border: 'none', cursor: 'pointer' }}
                             onClick={() => setLightboxZoom(prev => Math.max(0.5, prev - 0.25))}
                         >
-                            -
+                            −
                         </button>
-                        <span style={{ color: '#fff', fontSize: '0.85rem', minWidth: '50px', textAlign: 'center', fontWeight: 600 }}>
+                        <span style={{ color: '#fff', fontSize: '0.85rem', fontWeight: 700, minWidth: '48px', textAlign: 'center' }}>
                             {Math.round(lightboxZoom * 100)}%
                         </span>
                         <button 
                             style={{ color: '#fff', fontSize: '1rem', padding: '4px 10px', background: 'rgba(255,255,255,0.1)', borderRadius: '20px', border: 'none', cursor: 'pointer' }}
-                            onClick={() => setLightboxZoom(prev => Math.min(5, prev + 0.25))}
+                            onClick={() => setLightboxZoom(prev => Math.min(3, prev + 0.25))}
                         >
                             +
                         </button>
                         <button 
-                            style={{ fontSize: '0.8rem', padding: '6px 14px', background: 'var(--sakura-pink)', color: '#fff', borderRadius: '20px', border: 'none', cursor: 'pointer', fontWeight: 600 }}
-                            onClick={() => { setLightboxZoom(1); setLightboxRotation(0); }}
+                            style={{ color: '#fff', fontSize: '0.82rem', padding: '5px 12px', background: 'rgba(255,255,255,0.1)', borderRadius: '20px', border: 'none', cursor: 'pointer' }}
+                            onClick={() => setLightboxRotation(prev => (prev + 90) % 360)}
                         >
-                            Đặt lại
+                            ↻ Xoay
+                        </button>
+                        <button 
+                            style={{ color: '#fff', fontSize: '0.82rem', padding: '5px 12px', background: '#e74c3c', borderRadius: '20px', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                            onClick={() => { setLightboxImage(null); setLightboxZoom(1); setLightboxRotation(0); }}
+                        >
+                            Đóng
                         </button>
                     </div>
-
-                    <button 
-                        style={{
-                            position: 'absolute',
-                            top: '20px',
-                            right: '30px',
-                            background: 'rgba(255,255,255,0.1)',
-                            border: 'none',
-                            color: '#fff',
-                            fontSize: '1.4rem',
-                            cursor: 'pointer',
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            zIndex: 100000
-                        }} 
-                        onClick={() => { setLightboxImage(null); setLightboxZoom(1); setLightboxRotation(0); }}
-                        title="Đóng"
-                    >
-                        ✕
-                    </button>
                 </div>
             )}
         </div>

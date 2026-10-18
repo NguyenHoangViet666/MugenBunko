@@ -15,7 +15,7 @@ interface NovelCardProps {
 
 export const NovelCard: React.FC<NovelCardProps> = ({
   novel,
-  width = 135,
+  width = 138,
   layout = 'vertical',
 }) => {
   const router = useRouter();
@@ -28,7 +28,11 @@ export const NovelCard: React.FC<NovelCardProps> = ({
 
   const coverUri = resolveCoverUrl(novel.cover);
   const authorName = novel.author_name || novel.author || novel.author_username || 'Vô Danh';
-  const ratingValue = typeof novel.rating === 'number' ? novel.rating.toFixed(1) : (Number(novel.rating) || 5.0).toFixed(1);
+  const ratingValue =
+    typeof novel.rating === 'number'
+      ? novel.rating.toFixed(1)
+      : (Number(novel.rating) || 5.0).toFixed(1);
+  const chapterCount = novel.chapters?.length || (novel as any).chapters_count || 0;
 
   if (layout === 'horizontal') {
     return (
@@ -43,11 +47,14 @@ export const NovelCard: React.FC<NovelCardProps> = ({
           },
         ]}
       >
-        <Image
-          source={{ uri: coverUri }}
-          style={styles.horizontalCover}
-          resizeMode="cover"
-        />
+        <View style={styles.horizontalCoverWrap}>
+          <Image
+            source={{ uri: coverUri }}
+            style={styles.horizontalCover}
+            resizeMode="cover"
+          />
+          <View style={styles.bookSpineOverlay} />
+        </View>
         <View style={styles.horizontalInfo}>
           <View style={styles.badgeRow}>
             <View style={[styles.badge, { backgroundColor: colors.badgeBg }]}>
@@ -56,8 +63,8 @@ export const NovelCard: React.FC<NovelCardProps> = ({
               </Text>
             </View>
             {novel.type === 'oneshot' && (
-              <View style={[styles.badge, { backgroundColor: colors.badgeBg, marginLeft: 4 }]}>
-                <Text style={[styles.badgeText, { color: colors.badgeText }]}>Oneshot</Text>
+              <View style={[styles.badge, { backgroundColor: colors.accent, marginLeft: 4 }]}>
+                <Text style={[styles.badgeText, { color: '#ffffff' }]}>Oneshot</Text>
               </View>
             )}
           </View>
@@ -78,21 +85,21 @@ export const NovelCard: React.FC<NovelCardProps> = ({
 
           <View style={styles.metaRow}>
             <View style={styles.metaItem}>
-              <MonochromeIcon name="star" size={13} color={colors.textMuted} />
-              <Text style={[styles.metaText, { color: colors.textMuted }]}>
+              <MonochromeIcon name="star-fill" size={12} color="#F59E0B" />
+              <Text style={[styles.metaText, { color: colors.text }]}>
                 {ratingValue}
               </Text>
             </View>
             <View style={styles.metaItem}>
-              <MonochromeIcon name="eye" size={13} color={colors.textMuted} />
+              <MonochromeIcon name="eye" size={12} color={colors.textMuted} />
               <Text style={[styles.metaText, { color: colors.textMuted }]}>
-                {novel.reads || 0}
+                {(novel.reads || 0).toLocaleString()}
               </Text>
             </View>
             <View style={styles.metaItem}>
-              <MonochromeIcon name="bookmark" size={13} color={colors.textMuted} />
+              <MonochromeIcon name="book-open" size={12} color={colors.textMuted} />
               <Text style={[styles.metaText, { color: colors.textMuted }]}>
-                {novel.bookmarksCount || novel.bookmarks_count || 0}
+                {chapterCount} ch.
               </Text>
             </View>
           </View>
@@ -106,7 +113,7 @@ export const NovelCard: React.FC<NovelCardProps> = ({
       onPress={handlePress}
       style={({ pressed }) => [
         styles.verticalCard,
-        { width, opacity: pressed ? 0.85 : 1 },
+        { width, opacity: pressed ? 0.88 : 1 },
       ]}
     >
       <View style={[styles.coverContainer, { borderColor: colors.border }]}>
@@ -115,10 +122,24 @@ export const NovelCard: React.FC<NovelCardProps> = ({
           style={styles.verticalCover}
           resizeMode="cover"
         />
-        <View style={[styles.genreOverlay, { backgroundColor: 'rgba(0,0,0,0.65)' }]}>
+        <View style={styles.bookSpineOverlay} />
+
+        {/* Rating Pill Top Right */}
+        <View style={styles.ratingBadgeTop}>
+          <MonochromeIcon name="star-fill" size={10} color="#FBBF24" />
+          <Text style={styles.ratingBadgeTopText}>{ratingValue}</Text>
+        </View>
+
+        {/* Genre Pill Bottom Left */}
+        <View style={styles.genreOverlay}>
           <Text style={styles.genreOverlayText} numberOfLines={1}>
             {novel.genre || 'Novel'}
           </Text>
+        </View>
+
+        {/* Chapter Count Bottom Right */}
+        <View style={styles.chapOverlay}>
+          <Text style={styles.chapOverlayText}>{chapterCount} ch.</Text>
         </View>
       </View>
 
@@ -138,15 +159,9 @@ export const NovelCard: React.FC<NovelCardProps> = ({
 
       <View style={styles.statsRow}>
         <View style={styles.metaItem}>
-          <MonochromeIcon name="star" size={12} color={colors.textMuted} />
+          <MonochromeIcon name="eye" size={11} color={colors.textMuted} />
           <Text style={[styles.metaText, { color: colors.textMuted }]}>
-            {ratingValue}
-          </Text>
-        </View>
-        <View style={styles.metaItem}>
-          <MonochromeIcon name="book-open" size={12} color={colors.textMuted} />
-          <Text style={[styles.metaText, { color: colors.textMuted }]}>
-            {novel.chapters?.length || (novel as any).chapters_count || 0} ch
+            {(novel.reads || 0).toLocaleString()} đọc
           </Text>
         </View>
       </View>
@@ -160,36 +175,80 @@ const styles = StyleSheet.create({
   },
   coverContainer: {
     width: '100%',
-    aspectRatio: 3 / 4.3,
-    borderRadius: 8,
+    aspectRatio: 1 / 1.42,
+    borderRadius: 10,
     overflow: 'hidden',
     borderWidth: 1,
-    backgroundColor: '#e8e8e8',
+    backgroundColor: '#1a1d24',
     position: 'relative',
   },
   verticalCover: {
     width: '100%',
     height: '100%',
   },
+  bookSpineOverlay: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: 'rgba(0, 0, 0, 0.25)',
+  },
+  ratingBadgeTop: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(11, 15, 20, 0.82)',
+    paddingHorizontal: 6,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+  },
+  ratingBadgeTopText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '700',
+  },
   genreOverlay: {
     position: 'absolute',
     bottom: 6,
     left: 6,
+    backgroundColor: 'rgba(11, 15, 20, 0.82)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
+    maxWidth: '58%',
   },
   genreOverlayText: {
     color: '#ffffff',
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '600',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
+  },
+  chapOverlay: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    backgroundColor: 'rgba(224, 82, 117, 0.92)',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  chapOverlayText: {
+    color: '#ffffff',
+    fontSize: 9.5,
+    fontWeight: '700',
   },
   verticalTitle: {
     fontSize: 13,
     fontWeight: '700',
-    lineHeight: 18,
+    lineHeight: 17.5,
     marginTop: 8,
+    height: 35,
   },
   authorText: {
     fontSize: 11,
@@ -214,19 +273,25 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   horizontalCard: {
     flexDirection: 'row',
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
     padding: 10,
     marginBottom: 10,
   },
-  horizontalCover: {
+  horizontalCoverWrap: {
     width: 76,
-    height: 106,
+    height: 108,
     borderRadius: 6,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  horizontalCover: {
+    width: '100%',
+    height: '100%',
   },
   horizontalInfo: {
     flex: 1,
@@ -250,7 +315,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '700',
     textTransform: 'uppercase',
   },
 });

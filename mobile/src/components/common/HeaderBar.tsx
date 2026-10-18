@@ -42,6 +42,9 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
           </Pressable>
         ) : (
           <View style={styles.brandRow}>
+            <View style={[styles.kanjiStamp, { backgroundColor: colors.tint }]}>
+              <Text style={[styles.kanjiStampText, { color: colors.background }]}>無限</Text>
+            </View>
             <Text style={[styles.brandText, { color: colors.text }]}>{title}</Text>
             <View style={[styles.brandDot, { backgroundColor: colors.accent }]} />
           </View>
@@ -66,7 +69,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
 
 const styles = StyleSheet.create({
   header: {
-    height: 52,
+    height: 54,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -80,12 +83,22 @@ const styles = StyleSheet.create({
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+  },
+  kanjiStamp: {
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  kanjiStampText: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
   brandText: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
-    letterSpacing: 1.5,
+    letterSpacing: 1.4,
   },
   brandDot: {
     width: 6,
@@ -95,7 +108,7 @@ const styles = StyleSheet.create({
   rightContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   iconBtn: {
     padding: 6,

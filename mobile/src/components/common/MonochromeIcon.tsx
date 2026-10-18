@@ -95,11 +95,83 @@ export const MonochromeIcon: React.FC<MonochromeIconProps> = ({
         </Svg>
       );
 
+    case 'star-fill':
+      return (
+        <Svg {...svgProps} fill={strokeColor}>
+          <Polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+        </Svg>
+      );
+
     case 'eye':
       return (
         <Svg {...svgProps}>
           <Path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
           <Circle cx="12" cy="12" r="3" />
+        </Svg>
+      );
+
+    case 'flame':
+      return (
+        <Svg {...svgProps}>
+          <Path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+        </Svg>
+      );
+
+    case 'zap':
+      return (
+        <Svg {...svgProps}>
+          <Polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </Svg>
+      );
+
+    case 'award':
+      return (
+        <Svg {...svgProps}>
+          <Circle cx="12" cy="8" r="7" />
+          <Polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" />
+        </Svg>
+      );
+
+    case 'clock':
+      return (
+        <Svg {...svgProps}>
+          <Circle cx="12" cy="12" r="10" />
+          <Polyline points="12 6 12 12 16 14" />
+        </Svg>
+      );
+
+    case 'sparkles':
+      return (
+        <Svg {...svgProps}>
+          <Path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z" />
+        </Svg>
+      );
+
+    case 'trending-up':
+      return (
+        <Svg {...svgProps}>
+          <Polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+          <Polyline points="17 6 23 6 23 12" />
+        </Svg>
+      );
+
+    case 'layers':
+      return (
+        <Svg {...svgProps}>
+          <Polygon points="12 2 2 7 12 12 22 7 12 2" />
+          <Polyline points="2 17 12 22 22 17" />
+          <Polyline points="2 12 12 17 22 12" />
+        </Svg>
+      );
+
+    case 'shuffle':
+      return (
+        <Svg {...svgProps}>
+          <Polyline points="16 3 21 3 21 8" />
+          <Line x1="4" y1="20" x2="21" y2="3" />
+          <Polyline points="21 16 21 21 16 21" />
+          <Line x1="15" y1="15" x2="21" y2="21" />
+          <Line x1="4" y1="4" x2="9" y2="9" />
         </Svg>
       );
 

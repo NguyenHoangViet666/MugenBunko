@@ -14,6 +14,7 @@ router.get('/posts', optionalAuthentication, async (req: AuthenticatedRequest, r
     const userId = req.user?.id || null;
     try {
         const posts = await db.query<any[]>(`SELECT p.*, u.username AS author_username, u.displayname AS author_displayname, u.avatar_seed AS author_avatar_seed,
+            u.level AS author_level, u.xp AS author_xp, u.bio AS author_bio,
             (SELECT COUNT(*) FROM forum_comments c WHERE c.post_id = p.id) AS comments_count,
             (SELECT COUNT(*) FROM forum_post_likes l WHERE l.post_id = p.id) AS likes_count,
             EXISTS(SELECT 1 FROM forum_post_likes l WHERE l.post_id = p.id AND l.user_id = ?) AS is_liked
@@ -86,13 +87,17 @@ router.post('/posts/:id/like', authenticateToken, async (req: AuthenticatedReque
             [postId, userId]
         );
 
+        let liked = false;
         if (existing.length > 0) {
             await db.query("DELETE FROM forum_post_likes WHERE post_id = ? AND user_id = ?", [postId, userId]);
-            res.json({ success: true, liked: false });
+            liked = false;
         } else {
             await db.query("INSERT INTO forum_post_likes (post_id, user_id) VALUES (?, ?)", [postId, userId]);
-            res.json({ success: true, liked: true });
+            liked = true;
         }
+        const countRows = await db.query<any[]>("SELECT COUNT(*) AS cnt FROM forum_post_likes WHERE post_id = ?", [postId]);
+        const likesCount = Number(countRows[0]?.cnt || 0);
+        res.json({ success: true, liked, isLiked: liked, likesCount });
     } catch (err) {
         console.error("Toggle post like error:", err);
         res.status(500).json({ error: "Lỗi tương tác lượt thích." });
@@ -106,6 +111,7 @@ router.get('/posts/:id', optionalAuthentication, async (req: AuthenticatedReques
     try {
         const posts = await db.query<any[]>(
             `SELECT p.*, u.username as author_username, u.displayname as author_displayname, u.avatar_seed as author_avatar_seed,
+                    u.level as author_level, u.xp as author_xp, u.bio as author_bio,
                     (SELECT COUNT(*) FROM forum_post_likes l WHERE l.post_id = p.id) as likes_count,
                     IF(? IS NULL, 0, EXISTS(SELECT 1 FROM forum_post_likes l WHERE l.post_id = p.id AND l.user_id = ?)) as is_liked
              FROM forum_posts p

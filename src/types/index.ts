@@ -123,6 +123,9 @@ export interface ForumPost {
     author_displayname?: string;
     author_name?: string;
     author_avatar_seed?: string;
+    author_level?: number;
+    author_xp?: number;
+    author_bio?: string | null;
     category: string;
     restrict_comments: boolean | number;
     restrictComments?: boolean | number;
