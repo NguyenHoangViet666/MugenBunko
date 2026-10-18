@@ -8129,3 +8129,423 @@ h1, h2, h3, h4 {
 
 
 
+/* ==========================================================================
+   HOME 3.0 UI/UX ENHANCEMENTS (HERO 3.0, BALANCED BENTO GRID, LIVE FILTERING)
+   ========================================================================== */
+
+/* 1. Hero Banner 3.0: Thumbnail Queue Strip & Auto-Advance Progress Bar */
+.featured-banner {
+    height: 525px;
+    min-height: 525px;
+    max-height: 525px;
+    margin-bottom: 32px;
+}
+
+.featured-banner-content {
+    padding: 28px 48px 86px 48px;
+    grid-template-columns: 1fr 320px;
+    box-sizing: border-box;
+}
+
+.featured-kanji-watermark {
+    bottom: 68px;
+}
+
+.hero-book-wrapper {
+    width: 215px;
+}
+
+.hero-pill-tag.clickable {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.hero-pill-tag.clickable:hover {
+    background: rgba(224, 82, 117, 0.28);
+    border-color: rgba(224, 82, 117, 0.65);
+    transform: translateY(-1px);
+}
+
+.hero-bottom-bar {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 1720px;
+    padding: 0 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    z-index: 4;
+    box-sizing: border-box;
+}
+
+.hero-bottom-bar .hero-carousel-controls {
+    position: static;
+    bottom: auto;
+    right: auto;
+    flex-shrink: 0;
+}
+
+.hero-thumb-strip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 2px 0;
+}
+
+.hero-thumb-strip::-webkit-scrollbar {
+    display: none;
+}
+
+.hero-thumb-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 5px 11px 5px 5px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.72);
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+    backdrop-filter: blur(10px);
+    max-width: 198px;
+    text-align: left;
+}
+
+.hero-thumb-item:hover {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    transform: translateY(-2px);
+}
+
+.hero-thumb-item.active {
+    background: rgba(224, 82, 117, 0.22);
+    border-color: var(--sakura-pink);
+    color: #ffffff;
+    box-shadow: 0 4px 16px rgba(224, 82, 117, 0.28);
+}
+
+.hero-thumb-img {
+    width: 28px;
+    height: 38px;
+    border-radius: 4px;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.hero-thumb-meta {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 1px;
+}
+
+.hero-thumb-rank {
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: var(--sakura-pink);
+    letter-spacing: 0.3px;
+}
+
+.hero-thumb-title {
+    font-size: 0.72rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 132px;
+}
+
+.hero-progress-bar-track {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    z-index: 5;
+    overflow: hidden;
+}
+
+.hero-progress-bar-fill {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, var(--sakura-pink), #ff8da7);
+    transform-origin: left center;
+    animation: heroSlideProgress 7s linear forwards;
+}
+
+.hero-progress-bar-fill.paused {
+    animation-play-state: paused;
+}
+
+@keyframes heroSlideProgress {
+    from {
+        transform: scaleX(0);
+    }
+    to {
+        transform: scaleX(1);
+    }
+}
+
+/* 2. Balanced 5-Column Home Novel Grid (Zero Orphan Cards) */
+.novel-grid.home-novel-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 16px;
+}
+
+/* 3. Novel Card 2.5: Chapter Count Badge & Active Tag Pill */
+.novel-badge-chapters {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    z-index: 2;
+    background: rgba(15, 18, 24, 0.84);
+    color: #ffffff;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+.novel-card-v2:hover .novel-badge-chapters {
+    opacity: 0;
+}
+
+.novel-tag-pill-v2.active {
+    background: var(--text-main);
+    color: var(--bg-card);
+    border-color: var(--text-main);
+}
+
+/* 4. Interactive Discovery Hub & Active Filter Banner */
+.discovery-tag-item.active {
+    background: var(--text-main);
+    color: var(--bg-card);
+    border-color: var(--text-main);
+    font-weight: 600;
+}
+
+.genre-matrix-chip.active {
+    background: var(--text-main);
+    color: var(--bg-card);
+    border-color: var(--text-main);
+    box-shadow: var(--shadow-sm);
+}
+
+.genre-matrix-chip.active .chip-count {
+    background: rgba(255, 255, 255, 0.22);
+    opacity: 1;
+}
+
+.discovery-clear-filter-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 14px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    background: rgba(224, 82, 117, 0.12);
+    color: var(--sakura-pink);
+    border: 1px solid rgba(224, 82, 117, 0.3);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.discovery-clear-filter-btn:hover {
+    background: var(--sakura-pink);
+    color: #ffffff;
+}
+
+.discovery-active-filter-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-left: 3px solid var(--sakura-pink);
+    border-radius: var(--border-radius-sm);
+    box-shadow: var(--shadow-sm);
+}
+
+.discovery-active-filter-chips {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.active-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 14px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    background: var(--text-main);
+    color: var(--bg-card);
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+}
+
+.active-filter-chip:hover {
+    opacity: 0.85;
+}
+
+/* 5. Live Chapter Feed Enhancements */
+.live-pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #2ecc71;
+    display: inline-block;
+    box-shadow: 0 0 0 rgba(46, 204, 113, 0.6);
+    animation: livePulseGlow 2s infinite;
+    flex-shrink: 0;
+}
+
+@keyframes livePulseGlow {
+    0% {
+        box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.65);
+    }
+    70% {
+        box-shadow: 0 0 0 7px rgba(46, 204, 113, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(46, 204, 113, 0);
+    }
+}
+
+.live-chapter-cover-wrap {
+    position: relative;
+    flex-shrink: 0;
+    width: 46px;
+    height: 64px;
+}
+
+.live-chapter-cover-wrap .live-chapter-cover {
+    width: 100%;
+    height: 100%;
+}
+
+.live-chapter-num-pill {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    background: var(--text-main);
+    color: var(--bg-card);
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+    border: 1px solid var(--bg-card);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.live-chapter-time {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* 6. Sidebar Ranking Cover Thumbnails & Top 1 Highlight */
+.ranking-item-v2.is-top-1 {
+    background: var(--bg-base);
+    border: 1px solid var(--border-color);
+    padding: 10px 8px;
+    margin-bottom: 4px;
+}
+
+.ranking-cover-thumb-v2 {
+    width: 32px;
+    height: 44px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.ranking-item-v2.is-top-1 .ranking-cover-thumb-v2 {
+    width: 38px;
+    height: 52px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+}
+
+/* 7. Responsive Adjustments for Home 3.0 */
+@media (max-width: 1180px) {
+    .novel-grid.home-novel-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 12px;
+    }
+    .hero-thumb-item {
+        max-width: 165px;
+    }
+    .hero-thumb-title {
+        max-width: 100px;
+    }
+}
+
+@media (max-width: 992px) {
+    .hero-bottom-bar {
+        position: static !important;
+        transform: none !important;
+        padding: 14px 0 0 0 !important;
+        margin-top: 8px !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+    }
+    .hero-thumb-strip {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .novel-grid.home-novel-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 8px !important;
+    }
+    .hero-thumb-strip {
+        display: none !important;
+    }
+    .hero-bottom-bar {
+        padding: 6px 0 0 0 !important;
+        margin-top: 4px !important;
+    }
+    .novel-badge-chapters {
+        font-size: 0.54rem !important;
+        padding: 1px 4px !important;
+        bottom: 4px !important;
+        right: 4px !important;
+    }
+}
+
+@media (max-width: 380px) {
+    .novel-grid.home-novel-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}

@@ -519,6 +519,7 @@ export default function App() {
             fetchLatestComments();
             fetchLatestReviews();
             fetchWibuRanking();
+            fetchForumPosts();
         } else if (currentView === 'explore' || currentView === 'library' || currentView === 'studio' || currentView === 'reader' || currentView === 'collection' || currentView === 'detail' || currentView === 'admin-dashboard' || currentView === 'mod-dashboard') {
             fetchNovels();
         } else if (currentView === 'forum') {
@@ -2405,8 +2406,9 @@ export default function App() {
     // NOVEL DISCOVERY DRAWER FILTER HANDLERS
     // ----------------------------------------------------
     const handleGenreClick = (genre: string) => {
-        setFilterGenre(genre);
-        setExploreGenre(genre);
+        const normalized = genre || 'Tất cả';
+        setFilterGenre(normalized);
+        setExploreGenre(normalized);
         setCurrentView('explore');
     };
 
@@ -2774,15 +2776,15 @@ export default function App() {
                         currentView={currentView}
                         setCurrentView={setCurrentView}
                         filterGenre={filterGenre}
-                        setFilterGenre={setFilterGenre}
+                        setFilterGenre={(g) => { const norm = g || 'Tất cả'; setFilterGenre(norm); setExploreGenre(norm); }}
                         filterType={filterType}
-                        setFilterType={setFilterType}
+                        setFilterType={(t) => { setFilterType(t); setExploreType(t); }}
                         selectedTags={selectedTags}
                         setSelectedTags={setSelectedTags}
                         filterStatus={filterStatus}
                         setFilterStatus={setFilterStatus}
                         filterSort={filterSort}
-                        setFilterSort={setFilterSort}
+                        setFilterSort={(s) => { setFilterSort(s); setExploreSort(s === 'newest' ? 'new' : s); }}
                         searchQuery={searchQuery}
                         setSearchQuery={setSearchQuery}
                         activeBannerId={activeBannerId}

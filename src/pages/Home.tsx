@@ -458,33 +458,76 @@ export default function Home({
 
     // Tab state for Interactive Discovery Hub and Sidebar Rankings
     const [activeDiscoveryTab, setActiveDiscoveryTab] = React.useState<'trending' | 'newest' | 'top-rated' | 'oneshot' | 'completed'>('trending');
+    const [showAllDiscovery, setShowAllDiscovery] = React.useState<boolean>(false);
     const [activeRankingTab, setActiveRankingTab] = React.useState<'reads' | 'stars' | 'bookmarks'>('reads');
     const [activeFeedbackTab, setActiveFeedbackTab] = React.useState<'comments' | 'reviews'>('comments');
 
-    const trendingNovels = React.useMemo(() => {
+    const scrollToDiscoveryHub = () => {
+        const el = document.getElementById('interactive-discovery-hub');
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    };
+
+    const filteredPublishedNovels = React.useMemo(() => {
         const publishedNovels = novels.filter(novel => (novel.chapters || []).some(ch => ch.status === 'published'));
-        return [...publishedNovels].sort((a, b) => (parseInt(String(b.reads)) || 0) - (parseInt(String(a.reads)) || 0)).slice(0, 8);
-    }, [novels]);
+        return publishedNovels.filter(novel => {
+            if (filterGenre && filterGenre !== 'Tất cả') {
+                const novelGenres = (novel.genre || '').split(',').map(g => g.trim().toLowerCase());
+                const novelTags = (novel.tags || []).map(t => t.toLowerCase());
+                const targetGenre = filterGenre.toLowerCase();
+                if (!novelGenres.includes(targetGenre) && !novelTags.includes(targetGenre)) return false;
+            }
+            if (filterType && filterType !== 'all' && novel.type !== filterType) {
+                return false;
+            }
+            if (filterStatus && filterStatus !== 'all') {
+                if (filterStatus === 'completed' && novel.status !== 'completed') return false;
+                if (filterStatus === 'ongoing' && novel.status === 'completed') return false;
+            }
+            if (selectedTags && selectedTags.length > 0) {
+                const novelTagsLower = (novel.tags || []).map(t => t.toLowerCase());
+                const genreLower = (novel.genre || '').toLowerCase();
+                const hasMatchingTag = selectedTags.some(tag => {
+                    const tl = tag.toLowerCase();
+                    return novelTagsLower.includes(tl) || genreLower.includes(tl);
+                });
+                if (!hasMatchingTag) return false;
+            }
+            return true;
+        });
+    }, [novels, filterGenre, filterType, filterStatus, selectedTags]);
+
+    const trendingNovels = React.useMemo(() => {
+        return [...filteredPublishedNovels].sort((a, b) => (parseInt(String(b.reads)) || 0) - (parseInt(String(a.reads)) || 0)).slice(0, 10);
+    }, [filteredPublishedNovels]);
 
     const newestNovels = React.useMemo(() => {
-        const publishedNovels = novels.filter(novel => (novel.chapters || []).some(ch => ch.status === 'published'));
-        return [...publishedNovels].sort((a, b) => b.id - a.id).slice(0, 8);
-    }, [novels]);
+        return [...filteredPublishedNovels].sort((a, b) => b.id - a.id).slice(0, 10);
+    }, [filteredPublishedNovels]);
 
     const topRatedNovels = React.useMemo(() => {
-        const publishedNovels = novels.filter(novel => (novel.chapters || []).some(ch => ch.status === 'published'));
-        return [...publishedNovels].sort((a, b) => {
+        return [...filteredPublishedNovels].sort((a, b) => {
             const starsA = parseFloat(computeAverageStars(a.id)) || 0;
             const starsB = parseFloat(computeAverageStars(b.id)) || 0;
             if (starsB !== starsA) return starsB - starsA;
             return (parseInt(String(b.reads)) || 0) - (parseInt(String(a.reads)) || 0);
-        }).slice(0, 8);
-    }, [novels, computeAverageStars]);
+        }).slice(0, 10);
+    }, [filteredPublishedNovels, computeAverageStars]);
 
     const completedNovels = React.useMemo(() => {
-        const publishedNovels = novels.filter(novel => novel.status === 'completed' && (novel.chapters || []).some(ch => ch.status === 'published'));
-        return [...publishedNovels].sort((a, b) => (parseInt(String(b.reads)) || 0) - (parseInt(String(a.reads)) || 0)).slice(0, 8);
-    }, [novels]);
+        return [...filteredPublishedNovels]
+            .filter(novel => novel.status === 'completed')
+            .sort((a, b) => (parseInt(String(b.reads)) || 0) - (parseInt(String(a.reads)) || 0))
+            .slice(0, 10);
+    }, [filteredPublishedNovels]);
+
+    const oneshotFilteredNovels = React.useMemo(() => {
+        return [...filteredPublishedNovels]
+            .filter(novel => novel.type === 'oneshot')
+            .sort((a, b) => (parseInt(String(b.reads)) || 0) - (parseInt(String(a.reads)) || 0))
+            .slice(0, 10);
+    }, [filteredPublishedNovels]);
 
     // Live Chapter Feed: newly published chapters across novels
     const latestChapters = React.useMemo(() => {
@@ -738,7 +781,7 @@ export default function Home({
         return { totalNovels, totalChapters, totalReads };
     }, [novels]);
 
-    // Render helper for Novel Card 2.0
+    // Render helper for Novel Card 2.5
     const renderNovelCard = (novel: Novel) => {
         const isSaved = currentUser && currentUser.bookmarks && currentUser.bookmarks.includes(novel.id);
         const stars = computeAverageStars(novel.id);
@@ -759,6 +802,10 @@ export default function Home({
                             {novel.type === 'oneshot' ? 'Oneshot' : 'Series'}
                         </span>
                     </div>
+
+                    <span className="novel-badge-chapters">
+                        <Icons.Book /> {publishedChapters.length} ch
+                    </span>
 
                     {hasChapters && (
                         <div className="novel-card-quick-read-overlay">
@@ -788,20 +835,24 @@ export default function Home({
                     </div>
 
                     <div className="novel-card-tags-v2">
-                        {(novel.tags || []).slice(0, 3).map(t => (
-                            <span
-                                key={t}
-                                className="novel-tag-pill-v2"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleTagClick(t);
-                                }}
-                                title={`Lọc theo thẻ #${t}`}
-                                style={{ cursor: 'pointer' }}
-                            >
-                                #{t}
-                            </span>
-                        ))}
+                        {(novel.tags || []).slice(0, 3).map(t => {
+                            const isTagSelected = selectedTags.includes(t);
+                            return (
+                                <span
+                                    key={t}
+                                    className={`novel-tag-pill-v2 ${isTagSelected ? 'active' : ''}`}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleTagClick(t);
+                                        scrollToDiscoveryHub();
+                                    }}
+                                    title={`Lọc theo thẻ #${t}`}
+                                    style={{ cursor: 'pointer' }}
+                                >
+                                    #{t}
+                                </span>
+                            );
+                        })}
                     </div>
 
                     <div className="novel-card-meta-v2">
@@ -830,16 +881,30 @@ export default function Home({
         );
     };
 
+    const hasActiveHomeFilter = (filterGenre && filterGenre !== 'Tất cả') || (filterType && filterType !== 'all') || (filterStatus && filterStatus !== 'all') || (selectedTags && selectedTags.length > 0);
+
+    const clearAllHomeFilters = () => {
+        setFilterGenre('Tất cả');
+        setFilterType('all');
+        setFilterStatus('all');
+        setSelectedTags([]);
+    };
+
     return (
         <div className="page-view active">
             
-            {/* 1. FEATURED HERO BANNER 2.0 (CINEMATIC & AUTHENTIC REAL BOOK) */}
+            {/* 1. FEATURED HERO BANNER 3.0 (CINEMATIC, THUMBNAIL STRIP & PROGRESS BAR) */}
             {heroNovels.length > 0 && (() => {
                 const currentHero = heroNovels[heroIdx] || heroNovels[0];
                 const isHeroSaved = currentUser && currentUser.bookmarks && currentUser.bookmarks.includes(currentHero.id);
                 const heroStars = computeAverageStars(currentHero.id);
-                const firstChapter = (currentHero.chapters || []).find(ch => ch.status === 'published');
+                const heroPublishedChapters = (currentHero.chapters || []).filter(ch => ch.status === 'published');
+                const firstChapter = heroPublishedChapters[0];
                 const firstChapterIdx = firstChapter ? (currentHero.chapters || []).indexOf(firstChapter) : 0;
+                const heroHistoryItem = readingHistory.find(h => h.novelId === currentHero.id);
+                const heroSavedProgress = getReadingProgress(currentUser?.username, currentHero);
+                const heroResumeIdx = heroSavedProgress?.chapterIndex ?? heroHistoryItem?.chapterIndex ?? firstChapterIdx;
+                const hasHeroProgress = Boolean(heroSavedProgress || heroHistoryItem);
 
                 return (
                     <div 
@@ -861,10 +926,19 @@ export default function Home({
                                         {currentHero.type === 'oneshot' ? 'Oneshot' : 'Series'}
                                     </span>
                                     {currentHero.genre && (
-                                        <span className="hero-pill-tag">{currentHero.genre}</span>
+                                        <span
+                                            className="hero-pill-tag clickable"
+                                            onClick={() => {
+                                                setFilterGenre(currentHero.genre);
+                                                scrollToDiscoveryHub();
+                                            }}
+                                            title={`Lọc thể loại ${currentHero.genre}`}
+                                        >
+                                            {currentHero.genre}
+                                        </span>
                                     )}
                                     <span className="hero-pill-tag" style={{ color: currentHero.status === 'completed' ? '#2ecc71' : 'var(--sakura-pink)' }}>
-                                        {currentHero.status === 'completed' ? 'Hoàn' : 'Đang ra'}
+                                        {currentHero.status === 'completed' ? 'Hoàn thành' : 'Đang ra'}
                                     </span>
                                 </div>
 
@@ -878,15 +952,19 @@ export default function Home({
 
                                 <div className="featured-meta">
                                     <span className="featured-meta-item">
-                                        <Icons.User /> {currentHero.author || currentHero.author_name || "Ẩn danh"}
+                                        <Icons.User /> <strong>{currentHero.author || currentHero.author_name || "Ẩn danh"}</strong>
                                     </span>
                                     <span className="meta-sep">•</span>
                                     <span className="featured-meta-item">
-                                        <Icons.Star /> {heroStars === 'N/A' ? 'N/A' : `${heroStars} ★`}
+                                        <Icons.Star /> <strong>{heroStars === 'N/A' ? '5.0' : heroStars}</strong> ★
                                     </span>
                                     <span className="meta-sep">•</span>
                                     <span className="featured-meta-item">
-                                        <Icons.Eye /> {Number(currentHero.reads).toLocaleString()}
+                                        <Icons.Eye /> {Number(currentHero.reads).toLocaleString()} lượt đọc
+                                    </span>
+                                    <span className="meta-sep">•</span>
+                                    <span className="featured-meta-item">
+                                        <Icons.Book /> {heroPublishedChapters.length} chương
                                     </span>
                                 </div>
 
@@ -895,13 +973,13 @@ export default function Home({
                                         className="hero-primary-cta-btn" 
                                         onClick={() => {
                                             if (firstChapter) {
-                                                startReading(currentHero.id, firstChapterIdx);
+                                                startReading(currentHero.id, heroResumeIdx);
                                             } else {
                                                 openNovelDetail(currentHero.id);
                                             }
                                         }}
                                     >
-                                        <Icons.Book /> Đọc ngay
+                                        <Icons.Play /> {hasHeroProgress ? `Đọc tiếp C.${heroResumeIdx + 1}` : 'Đọc ngay'}
                                     </button>
 
                                     <button 
@@ -938,45 +1016,76 @@ export default function Home({
                             </div>
                         </div>
 
-                        {/* Multi-slide carousel controls */}
+                        {/* Interactive Thumbnail Strip & Carousel Controls */}
                         {heroNovels.length > 1 && (
-                            <div className="hero-carousel-controls">
-                                <button 
-                                    className="hero-arrow-btn" 
-                                    onClick={() => setHeroIdx(prev => (prev - 1 + heroNovels.length) % heroNovels.length)}
-                                    title="Tác phẩm trước"
-                                >
-                                    <Icons.ChevronLeft />
-                                </button>
-                                <div className="hero-carousel-dots">
+                            <div className="hero-bottom-bar">
+                                <div className="hero-thumb-strip">
                                     {heroNovels.map((n, idx) => (
-                                        <button 
+                                        <button
                                             key={n.id}
-                                            className={`hero-dot-btn ${idx === heroIdx ? 'active' : ''}`}
+                                            className={`hero-thumb-item ${idx === heroIdx ? 'active' : ''}`}
                                             onClick={() => setHeroIdx(idx)}
                                             title={n.title}
-                                        />
+                                        >
+                                            <img src={n.cover} alt={n.title} className="hero-thumb-img" />
+                                            <div className="hero-thumb-meta">
+                                                <span className="hero-thumb-rank">0{idx + 1}</span>
+                                                <span className="hero-thumb-title">{n.title}</span>
+                                            </div>
+                                        </button>
                                     ))}
                                 </div>
-                                <button 
-                                    className="hero-arrow-btn" 
-                                    onClick={() => setHeroIdx(prev => (prev + 1) % heroNovels.length)}
-                                    title="Tác phẩm tiếp theo"
-                                >
-                                    <Icons.ChevronRight />
-                                </button>
+
+                                <div className="hero-carousel-controls">
+                                    <button 
+                                        className="hero-arrow-btn" 
+                                        onClick={() => setHeroIdx(prev => (prev - 1 + heroNovels.length) % heroNovels.length)}
+                                        title="Tác phẩm trước"
+                                    >
+                                        <Icons.ChevronLeft />
+                                    </button>
+                                    <div className="hero-carousel-dots">
+                                        {heroNovels.map((n, idx) => (
+                                            <button 
+                                                key={n.id}
+                                                className={`hero-dot-btn ${idx === heroIdx ? 'active' : ''}`}
+                                                onClick={() => setHeroIdx(idx)}
+                                                title={n.title}
+                                            />
+                                        ))}
+                                    </div>
+                                    <button 
+                                        className="hero-arrow-btn" 
+                                        onClick={() => setHeroIdx(prev => (prev + 1) % heroNovels.length)}
+                                        title="Tác phẩm tiếp theo"
+                                    >
+                                        <Icons.ChevronRight />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Auto-advance visual progress bar */}
+                        {heroNovels.length > 1 && (
+                            <div className="hero-progress-bar-track">
+                                <div
+                                    key={`${heroIdx}-${isHeroHovered ? 'paused' : 'running'}`}
+                                    className={`hero-progress-bar-fill ${isHeroHovered ? 'paused' : ''}`}
+                                />
                             </div>
                         )}
                     </div>
                 );
             })()}
 
-            {/* 2. QUICK DISCOVERY & TRENDING BAR (MONOCHROME REFINED) */}
+            {/* 2. QUICK DISCOVERY & TRENDING BAR (MONOCHROME REFINED + LIVE FILTER) */}
             <div className="home-discovery-bar">
                 <div className="discovery-genres-row">
                     <button
-                        className={`discovery-genre-pill ${filterGenre === '' ? 'active' : ''}`}
-                        onClick={() => handleGenreClick('')}
+                        className={`discovery-genre-pill ${!filterGenre || filterGenre === 'Tất cả' ? 'active' : ''}`}
+                        onClick={() => {
+                            setFilterGenre('Tất cả');
+                        }}
                     >
                         <Icons.Compass /> Tất cả
                     </button>
@@ -984,7 +1093,10 @@ export default function Home({
                         <button
                             key={genre}
                             className={`discovery-genre-pill ${filterGenre === genre ? 'active' : ''}`}
-                            onClick={() => handleGenreClick(genre)}
+                            onClick={() => {
+                                setFilterGenre(filterGenre === genre ? 'Tất cả' : genre);
+                                scrollToDiscoveryHub();
+                            }}
                         >
                             {genre}
                         </button>
@@ -996,15 +1108,30 @@ export default function Home({
                         <span style={{ color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
                             <Icons.Tag /> Xu hướng:
                         </span>
-                        {['Isekai', 'Chuyển sinh', 'Romance', 'Hài hước', 'Slice of Life', 'Học đường', 'Trinh thám'].map(tag => (
+                        {['Isekai', 'Chuyển sinh', 'Romance', 'Hài hước', 'Slice of Life', 'Học đường', 'Trinh thám'].map(tag => {
+                            const isSelected = selectedTags.includes(tag);
+                            return (
+                                <button
+                                    key={tag}
+                                    className={`discovery-tag-item ${isSelected ? 'active' : ''}`}
+                                    onClick={() => {
+                                        handleTagClick(tag);
+                                        scrollToDiscoveryHub();
+                                    }}
+                                >
+                                    #{tag}
+                                </button>
+                            );
+                        })}
+                        {hasActiveHomeFilter && (
                             <button
-                                key={tag}
-                                className="discovery-tag-item"
-                                onClick={() => handleTagClick(tag)}
+                                className="discovery-clear-filter-btn"
+                                onClick={clearAllHomeFilters}
+                                title="Xóa toàn bộ bộ lọc đang chọn"
                             >
-                                #{tag}
+                                <Icons.Close /> Xóa lọc
                             </button>
-                        ))}
+                        )}
                     </div>
 
                     <div
@@ -1027,9 +1154,14 @@ export default function Home({
                     <div className={`reading-hub-bento-grid ${readingHistory.length > 0 ? 'has-split' : ''}`}>
                         {readingHistory.length > 0 ? (
                             <div className="reading-history-card-bento">
-                                <div className="reading-history-header-v2">
-                                    <Icons.History />
-                                    <span>Tiếp Tục Đọc Dở</span>
+                                <div className="reading-history-header-v2" style={{ justifyContent: 'space-between' }}>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                                        <Icons.History />
+                                        <span>Tiếp Tục Đọc Dở</span>
+                                    </span>
+                                    <span style={{ fontSize: '0.72rem', fontWeight: 500, color: 'var(--text-muted)', fontFamily: 'var(--font-sans)' }}>
+                                        Chạm để mở chương đang đọc
+                                    </span>
                                 </div>
                                 <div className="reading-history-grid-v2">
                                     {readingHistory.slice(0, 4).map((item, idx) => {
@@ -1039,7 +1171,7 @@ export default function Home({
                                         const saved = n ? getReadingProgress(currentUser?.username, n) : null;
                                         const resumeIndex = saved?.chapterIndex ?? item.chapterIndex;
                                         const readCount = saved?.completedChapterIds.length || 0;
-                                        const pct = Math.min(100, Math.round((readCount / total) * 100));
+                                        const pct = Math.max(5, Math.min(100, Math.round(((readCount || (resumeIndex + 1)) / total) * 100)));
 
                                         return (
                                             <div
@@ -1056,11 +1188,16 @@ export default function Home({
                                                     <h4 className="reading-history-title-v2" title={item.novelTitle}>
                                                         {item.novelTitle}
                                                     </h4>
-                                                    <span className="reading-history-chapter-v2" title={item.chapterTitle}>
-                                                        {item.chapterTitle}
-                                                    </span>
-                                                    <div style={{ width: '100%', height: '3px', background: 'var(--border-color)', borderRadius: '2px', marginTop: '4px', overflow: 'hidden' }}>
-                                                        <div style={{ width: `${pct}%`, height: '100%', background: 'var(--text-main)', transition: 'width 0.3s ease' }} title={`Đã đọc ${pct}%`}></div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                                                        <span className="reading-history-chapter-v2" title={item.chapterTitle}>
+                                                            {item.chapterTitle || `Chương ${resumeIndex + 1}`}
+                                                        </span>
+                                                        <span style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-main)', flexShrink: 0 }}>
+                                                            {pct}%
+                                                        </span>
+                                                    </div>
+                                                    <div style={{ width: '100%', height: '4px', background: 'var(--border-color)', borderRadius: '2px', marginTop: '3px', overflow: 'hidden' }}>
+                                                        <div style={{ width: `${pct}%`, height: '100%', background: 'var(--sakura-pink)', transition: 'width 0.3s ease' }} title={`Đã đọc ${pct}%`}></div>
                                                     </div>
                                                 </div>
                                                 <button
@@ -1191,6 +1328,7 @@ export default function Home({
                         <div className="live-chapters-card">
                             <div className="live-chapters-header">
                                 <h3 className="live-chapters-title">
+                                    <span className="live-pulse-dot" />
                                     <Icons.Zap />
                                     <span>Chương Mới Cập Nhật</span>
                                 </h3>
@@ -1207,11 +1345,14 @@ export default function Home({
                                         onClick={() => startReading(item.novel.id, item.chapterIndex)}
                                         title={`Đọc ${item.chapter.title}`}
                                     >
-                                        <img
-                                            src={item.novel.cover}
-                                            alt={item.novel.title}
-                                            className="live-chapter-cover"
-                                        />
+                                        <div className="live-chapter-cover-wrap" onClick={(e) => { e.stopPropagation(); openNovelDetail(item.novel.id); }}>
+                                            <img
+                                                src={item.novel.cover}
+                                                alt={item.novel.title}
+                                                className="live-chapter-cover"
+                                            />
+                                            <span className="live-chapter-num-pill">C.{item.chapterIndex + 1}</span>
+                                        </div>
                                         <div className="live-chapter-info">
                                             <div className="live-chapter-novel-title">{item.novel.title}</div>
                                             <div className="live-chapter-name">{item.chapter.title || `Chương ${item.chapterIndex + 1}`}</div>
@@ -1219,7 +1360,7 @@ export default function Home({
                                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                                                     <Icons.User /> {item.novel.author || item.novel.author_name || "Ẩn danh"}
                                                 </span>
-                                                <span>{item.timeAgo}</span>
+                                                <span className="live-chapter-time">{item.timeAgo}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -1240,14 +1381,14 @@ export default function Home({
                                     Dựa trên sở thích đọc của bạn
                                 </span>
                             </div>
-                            <div className="novel-grid">
+                            <div className="novel-grid home-novel-grid">
                                 {recommendedNovels.slice(0, 5).map(renderNovelCard)}
                             </div>
                         </div>
                     )}
 
-                    {/* SECTION: INTERACTIVE DISCOVERY HUB (TABBED SHOWCASE) */}
-                    <div>
+                    {/* SECTION: INTERACTIVE DISCOVERY HUB (TABBED SHOWCASE + LIVE FILTERING) */}
+                    <div id="interactive-discovery-hub" className="interactive-discovery-hub">
                         <div className="discovery-tabs-header">
                             <div className="discovery-tabs-nav">
                                 <button
@@ -1282,39 +1423,86 @@ export default function Home({
                                 </button>
                             </div>
 
-                            <button
-                                className="outline-btn small"
-                                onClick={() => {
-                                    if (activeDiscoveryTab === 'oneshot') setFilterType('oneshot');
-                                    else if (activeDiscoveryTab === 'completed') setFilterStatus('completed');
-                                    else if (activeDiscoveryTab === 'top-rated') setFilterSort('rating');
-                                    else if (activeDiscoveryTab === 'newest') setFilterSort('newest');
-                                    setCurrentView('explore');
-                                }}
-                                style={{ borderRadius: '20px', padding: '4px 12px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                            >
-                                <span>Xem tất cả</span>
-                                <Icons.ArrowRight />
-                            </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <button
+                                    className="outline-btn small"
+                                    onClick={() => setShowAllDiscovery(prev => !prev)}
+                                    style={{ borderRadius: '20px', padding: '4px 12px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                >
+                                    <span>{showAllDiscovery ? 'Thu gọn (5)' : 'Mở rộng (10)'}</span>
+                                </button>
+                                <button
+                                    className="outline-btn small"
+                                    onClick={() => {
+                                        if (activeDiscoveryTab === 'oneshot') setFilterType('oneshot');
+                                        else if (activeDiscoveryTab === 'completed') setFilterStatus('completed');
+                                        else if (activeDiscoveryTab === 'top-rated') setFilterSort('rating');
+                                        else if (activeDiscoveryTab === 'newest') setFilterSort('newest');
+                                        setCurrentView('explore');
+                                    }}
+                                    style={{ borderRadius: '20px', padding: '4px 12px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                >
+                                    <span>Xem tất cả</span>
+                                    <Icons.ArrowRight />
+                                </button>
+                            </div>
                         </div>
 
-                        <div className="novel-grid">
+                        {hasActiveHomeFilter && (
+                            <div className="discovery-active-filter-banner">
+                                <div className="discovery-active-filter-chips">
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Đang lọc:</span>
+                                    {filterGenre && filterGenre !== 'Tất cả' && (
+                                        <span className="active-filter-chip" onClick={() => setFilterGenre('Tất cả')}>
+                                            Thể loại: {filterGenre} <Icons.Close />
+                                        </span>
+                                    )}
+                                    {filterType && filterType !== 'all' && (
+                                        <span className="active-filter-chip" onClick={() => setFilterType('all')}>
+                                            Định dạng: {filterType === 'oneshot' ? 'Oneshot' : 'Series'} <Icons.Close />
+                                        </span>
+                                    )}
+                                    {filterStatus && filterStatus !== 'all' && (
+                                        <span className="active-filter-chip" onClick={() => setFilterStatus('all')}>
+                                            Trạng thái: {filterStatus === 'completed' ? 'Hoàn thành' : 'Đang ra'} <Icons.Close />
+                                        </span>
+                                    )}
+                                    {selectedTags.map(t => (
+                                        <span key={t} className="active-filter-chip" onClick={() => handleTagClick(t)}>
+                                            #{t} <Icons.Close />
+                                        </span>
+                                    ))}
+                                </div>
+                                <button className="discovery-clear-filter-btn" onClick={clearAllHomeFilters}>
+                                    Đặt lại mặc định
+                                </button>
+                            </div>
+                        )}
+
+                        <div className="novel-grid home-novel-grid">
                             {(() => {
                                 let list: Novel[] = [];
                                 if (activeDiscoveryTab === 'trending') list = trendingNovels;
                                 else if (activeDiscoveryTab === 'newest') list = newestNovels;
                                 else if (activeDiscoveryTab === 'top-rated') list = topRatedNovels;
-                                else if (activeDiscoveryTab === 'oneshot') list = oneshotNovels;
+                                else if (activeDiscoveryTab === 'oneshot') list = oneshotFilteredNovels;
                                 else if (activeDiscoveryTab === 'completed') list = completedNovels;
+
+                                const displayCount = showAllDiscovery ? 10 : 5;
 
                                 if (list.length === 0) {
                                     return (
-                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.88rem', padding: '24px 0', textAlign: 'center', gridColumn: '1 / -1' }}>
-                                            Chưa có tác phẩm trong danh mục này.
+                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.88rem', padding: '32px 16px', textAlign: 'center', gridColumn: '1 / -1', background: 'var(--bg-card)', border: '1px dashed var(--border-color)', borderRadius: 'var(--border-radius-md)' }}>
+                                            <div style={{ marginBottom: '8px' }}>Chưa có tác phẩm phù hợp với bộ lọc trong danh mục này.</div>
+                                            {hasActiveHomeFilter && (
+                                                <button className="outline-btn small" onClick={clearAllHomeFilters}>
+                                                    Xóa bộ lọc để xem tất cả
+                                                </button>
+                                            )}
                                         </div>
                                     );
                                 }
-                                return list.slice(0, 5).map(renderNovelCard);
+                                return list.slice(0, displayCount).map(renderNovelCard);
                             })()}
                         </div>
                     </div>
@@ -1322,7 +1510,7 @@ export default function Home({
                     {/* SECTION: LITERARY SPOTLIGHT & AUTHOR CARD */}
                     <div className="literary-spotlight-bento">
                         {/* Literary Quote / Story Excerpt */}
-                        <div className="literary-quote-card">
+                        <div className="literary-quote-card" onClick={() => spotlightNovel && openNovelDetail(spotlightNovel.id)} style={{ cursor: spotlightNovel ? 'pointer' : 'default' }}>
                             <div className="literary-quote-watermark">言葉</div>
                             <div>
                                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '10px' }}>
@@ -1407,11 +1595,8 @@ export default function Home({
                                 <button
                                     className="outline-btn small"
                                     onClick={() => {
-                                        setFilterGenre('Tất cả');
-                                        setFilterType('all');
-                                        setFilterStatus('all');
-                                        const novelSection = document.querySelector('.interactive-discovery-hub');
-                                        if (novelSection) novelSection.scrollIntoView({ behavior: 'smooth' });
+                                        clearAllHomeFilters();
+                                        scrollToDiscoveryHub();
                                     }}
                                     style={{ borderRadius: '20px', padding: '3px 12px', fontSize: '0.74rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                                 >
@@ -1430,8 +1615,10 @@ export default function Home({
                                         if (collection.filterGenre) setFilterGenre(collection.filterGenre);
                                         if (collection.filterType) setFilterType(collection.filterType);
                                         if (collection.filterStatus) setFilterStatus(collection.filterStatus);
-                                        const novelSection = document.querySelector('.interactive-discovery-hub');
-                                        if (novelSection) novelSection.scrollIntoView({ behavior: 'smooth' });
+                                        if (collection.filterType === 'oneshot') setActiveDiscoveryTab('oneshot');
+                                        else if (collection.filterStatus === 'completed') setActiveDiscoveryTab('completed');
+                                        else setActiveDiscoveryTab('trending');
+                                        scrollToDiscoveryHub();
                                     }}
                                 >
                                     <div>
@@ -1627,11 +1814,10 @@ export default function Home({
                                 {genreDiscoveryCounts.map(item => (
                                     <button
                                         key={item.name}
-                                        className="genre-matrix-chip"
+                                        className={`genre-matrix-chip ${filterGenre === item.name ? 'active' : ''}`}
                                         onClick={() => {
-                                            handleGenreClick(item.name);
-                                            const novelSection = document.querySelector('.interactive-discovery-hub');
-                                            if (novelSection) novelSection.scrollIntoView({ behavior: 'smooth' });
+                                            setFilterGenre(filterGenre === item.name ? 'Tất cả' : item.name);
+                                            scrollToDiscoveryHub();
                                         }}
                                     >
                                         <span>#{item.name}</span>
@@ -1717,7 +1903,7 @@ export default function Home({
                 {/* RIGHT SIDEBAR BENTO COLUMN */}
                 <aside className="sidebar-column" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     
-                    {/* BENTO 1: MULTI-CRITERIA BẢNG XẾP HẠNG */}
+                    {/* BENTO 1: MULTI-CRITERIA BẢNG XẾP HẠNG (WITH MINI COVERS) */}
                     <div className="sidebar-bento-card">
                         <h3 className="sidebar-bento-title">
                             <span className="title-icon-mono"><Icons.Trophy /></span>
@@ -1746,7 +1932,7 @@ export default function Home({
                             </button>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                             {sidebarRankings.length === 0 ? (
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Chưa có tác phẩm nào.</div>
                             ) : (
@@ -1759,15 +1945,27 @@ export default function Home({
                                         : `${Number(novel.reads).toLocaleString()} lượt đọc`;
 
                                     return (
-                                        <div key={novel.id} className="ranking-item-v2" onClick={() => openNovelDetail(novel.id)}>
+                                        <div key={novel.id} className={`ranking-item-v2 ${index === 0 ? 'is-top-1' : ''}`} onClick={() => openNovelDetail(novel.id)}>
                                             <span className={`ranking-badge-v2 ${rankClass}`}>
                                                 {index + 1}
                                             </span>
+                                            <img
+                                                src={novel.cover || 'assets/default_novel_cover.png'}
+                                                alt={novel.title}
+                                                className="ranking-cover-thumb-v2"
+                                                loading="lazy"
+                                            />
                                             <div className="ranking-info-v2">
                                                 <div className="ranking-title-v2">{novel.title}</div>
                                                 <div className="ranking-score-v2">
                                                     {activeRankingTab === 'stars' ? <Icons.Star /> : activeRankingTab === 'bookmarks' ? <Icons.Bookmark /> : <Icons.Eye />}
                                                     <span>{scoreText}</span>
+                                                    {novel.genre && (
+                                                        <>
+                                                            <span>•</span>
+                                                            <span>{novel.genre}</span>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
