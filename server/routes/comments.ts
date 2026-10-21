@@ -1,7 +1,9 @@
 import { Router, Request, Response } from 'express';
 import db from '../db.js';
-import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.js';
+import { authenticateToken, optionalAuthentication, AuthenticatedRequest } from '../middleware/auth.js';
 import { addXpToUser } from '../utils/level.js';
+import { accessibleNovel, positiveId, publicNovelSql, validText } from '../utils/novelAccess.js';
+import { contentLimit } from '../middleware/contentLimit.js';
 
 const router = Router();
 
@@ -13,6 +15,7 @@ router.get('/global/latest', async (req: Request, res: Response) => {
              FROM comments c
              JOIN users u ON c.user_id = u.id
              JOIN novels n ON c.novel_id = n.id
+             WHERE ${publicNovelSql}
              ORDER BY c.created_at DESC
              LIMIT 3`
         );
@@ -23,15 +26,19 @@ router.get('/global/latest', async (req: Request, res: Response) => {
 });
 
 // Get comments
-router.get('/:novelId', async (req: Request, res: Response) => {
+router.get('/:novelId', optionalAuthentication, async (req: AuthenticatedRequest, res: Response) => {
+    const novelId = positiveId(req.params.novelId);
+    if (!novelId) return res.status(400).json({ error: 'Tác phẩm không hợp lệ.' });
+    res.set('Cache-Control', 'private, no-store');
     try {
+        if (!await accessibleNovel(novelId, req.user)) return res.status(404).json({ error: 'Không tìm thấy tác phẩm.' });
         const list = await db.query<any[]>(
             `SELECT c.*, u.username, u.displayname, u.avatar_seed as avatarSeed, DATE_FORMAT(c.created_at, '%d/%m/%Y %H:%i') as date
              FROM comments c
              JOIN users u ON c.user_id = u.id
              WHERE c.novel_id = ?
              ORDER BY c.created_at ASC`,
-            [req.params.novelId]
+            [novelId]
         );
         res.json(list);
     } catch (err) {
@@ -40,16 +47,28 @@ router.get('/:novelId', async (req: Request, res: Response) => {
 });
 
 // Add comment
-router.post('/:novelId', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:novelId', authenticateToken, contentLimit, async (req: AuthenticatedRequest, res: Response) => {
     const { parentId, text, replyToUserId } = req.body;
-    const novelId = req.params.novelId;
+    const novelId = positiveId(req.params.novelId);
     const userId = req.user?.id;
 
-    if (!userId || !text.trim()) {
+    if (!userId || !novelId || !validText(text, 5000) ||
+        (parentId != null && !positiveId(parentId)) ||
+        (replyToUserId != null && (!positiveId(replyToUserId) || !parentId))) {
         return res.status(400).json({ error: "Nội dung bình luận không hợp lệ!" });
     }
 
     try {
+        if (!await accessibleNovel(novelId)) return res.status(404).json({ error: 'Tác phẩm hiện không thể bình luận.' });
+        if (parentId) {
+            const parents = await db.query<any[]>('SELECT user_id FROM comments WHERE id = ? AND novel_id = ?', [parentId, novelId]);
+            if (!parents.length) return res.status(400).json({ error: 'Bình luận cha không thuộc tác phẩm này.' });
+            if (replyToUserId) {
+                const targets = await db.query<any[]>(`SELECT id FROM comments WHERE novel_id = ?
+                    AND (id = ? OR parent_id = ?) AND user_id = ? LIMIT 1`, [novelId, parentId, parentId, replyToUserId]);
+                if (!targets.length) return res.status(400).json({ error: 'Người nhận không thuộc luồng trả lời.' });
+            }
+        }
         const result = await db.query<any>(
             "INSERT INTO comments (novel_id, user_id, parent_id, text) VALUES (?, ?, ?, ?)",
             [novelId, userId, parentId || null, text.trim()]
@@ -98,16 +117,18 @@ router.post('/:novelId', authenticateToken, async (req: AuthenticatedRequest, re
 });
 
 // Report comment
-router.post('/:id/report', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:id/report', authenticateToken, contentLimit, async (req: AuthenticatedRequest, res: Response) => {
     const { reason } = req.body;
-    const commentId = req.params.id;
+    const commentId = positiveId(req.params.id);
     const reporterId = req.user?.id;
 
-    if (!reporterId || !reason.trim()) {
+    if (!reporterId || !commentId || !validText(reason, 2000)) {
         return res.status(400).json({ error: "Lý do báo cáo không được trống!" });
     }
 
     try {
+        const comments = await db.query<any[]>('SELECT novel_id FROM comments WHERE id = ?', [commentId]);
+        if (!comments.length || !await accessibleNovel(comments[0].novel_id, req.user)) return res.status(404).json({ error: 'Không tìm thấy bình luận.' });
         await db.query(
             "INSERT INTO reports (reporter_id, comment_id, reason) VALUES (?, ?, ?)",
             [reporterId, commentId, reason.trim()]

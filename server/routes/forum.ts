@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import db from '../db.js';
 import { authenticateToken, optionalAuthentication, AuthenticatedRequest } from '../middleware/auth.js';
+import { positiveId, validText } from '../utils/novelAccess.js';
+import { contentLimit } from '../middleware/contentLimit.js';
 import { pagination } from '../utils/pagination.js';
 import { addXpToUser } from '../utils/level.js';
 
@@ -43,12 +45,17 @@ router.get('/posts', optionalAuthentication, async (req: AuthenticatedRequest, r
 });
 
 // Create a new forum post
-router.post('/posts', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/posts', authenticateToken, contentLimit, async (req: AuthenticatedRequest, res: Response) => {
     const { title, content, category, imageUrl } = req.body;
     const userId = req.user?.id;
 
-    if (!title || !content || !userId || !category) {
+    if (!userId || !validText(title, 255) || !validText(content, 50000) || !validText(category, 50) ||
+        (imageUrl != null && (typeof imageUrl !== 'string' || imageUrl.length > 2000 || !/^(https?:\/\/|\/uploads\/)/i.test(imageUrl)))) {
         return res.status(400).json({ error: "Vui lòng nhập đầy đủ tiêu đề, nội dung và chủ đề!" });
+    }
+    if (['announcement', 'thông báo', 'thông báo hệ thống'].includes(category.trim().toLowerCase()) &&
+        !req.user!.roles.some(role => role === 'admin' || role === 'moderator')) {
+        return res.status(403).json({ error: 'Chỉ nhân sự điều hành mới được đăng thông báo hệ thống.' });
     }
 
     try {
@@ -151,12 +158,14 @@ router.get('/posts/:id', optionalAuthentication, async (req: AuthenticatedReques
 });
 
 // Add comment to forum post
-router.post('/posts/:id/comments', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/posts/:id/comments', authenticateToken, contentLimit, async (req: AuthenticatedRequest, res: Response) => {
     const postId = req.params.id;
     const { text, replyToUserId, parentId } = req.body;
     const userId = req.user?.id;
 
-    if (!userId || !text) {
+    if (!userId || !positiveId(postId) || !validText(text, 5000) ||
+        (parentId != null && !positiveId(parentId)) ||
+        (replyToUserId != null && (!positiveId(replyToUserId) || !parentId))) {
         return res.status(400).json({ error: "Thiếu thông tin người dùng hoặc bình luận!" });
     }
 
@@ -175,6 +184,15 @@ router.post('/posts/:id/comments', authenticateToken, async (req: AuthenticatedR
             }
         }
 
+        if (parentId) {
+            const parents = await db.query<any[]>('SELECT id FROM forum_comments WHERE id = ? AND post_id = ?', [parentId, postId]);
+            if (!parents.length) return res.status(400).json({ error: 'Bình luận cha không thuộc bài viết này.' });
+            if (replyToUserId) {
+                const recipients = await db.query<any[]>(`SELECT id FROM forum_comments WHERE post_id = ?
+                    AND (id = ? OR parent_id = ?) AND user_id = ? LIMIT 1`, [postId, parentId, parentId, replyToUserId]);
+                if (!recipients.length) return res.status(400).json({ error: 'Người nhận không thuộc luồng trả lời.' });
+            }
+        }
         const result = await db.query<any>(
             "INSERT INTO forum_comments (post_id, user_id, parent_id, text) VALUES (?, ?, ?, ?)",
             [postId, userId, parentId || null, text.trim()]
@@ -258,6 +276,7 @@ router.delete('/posts/:id', authenticateToken, async (req: AuthenticatedRequest,
 router.put('/posts/:id/restrict-comments', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
     const postId = req.params.id;
     const { restrict } = req.body;
+    if (typeof restrict !== 'boolean' || !positiveId(postId)) return res.status(400).json({ error: 'Thiết lập bình luận không hợp lệ.' });
     const isAdmin = req.user?.roles.includes('admin');
 
     if (!isAdmin) {

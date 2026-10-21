@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import db from '../db.js';
 import { authenticateToken, optionalAuthentication, AuthenticatedRequest } from '../middleware/auth.js';
+import { checkRole } from '../middleware/roles.js';
+import { positiveId } from '../utils/novelAccess.js';
 
 import { pagination } from '../utils/pagination.js';
 const router = Router();
@@ -41,7 +43,7 @@ router.get('/', optionalAuthentication, async (req: AuthenticatedRequest, res: R
     });
 
 // Add Novel
-router.post('/', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/', authenticateToken, checkRole('author'), async (req: AuthenticatedRequest, res: Response) => {
     const { title, cover, summary, genre, tags, type, status } = req.body;
     if (typeof title !== 'string' || !title.trim() || title.length > 255 || typeof genre !== 'string' || !genre.trim() || genre.length > 500 ||
         (cover !== undefined && (typeof cover !== 'string' || cover.length > 255 || !/^(https?:\/\/|\/?assets\/|\/uploads\/)/.test(cover))) ||
@@ -139,6 +141,9 @@ router.put('/:id', authenticateToken, async (req: AuthenticatedRequest, res: Res
 router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
     const novelId = req.params.id;
     const { reason } = req.body;
+    if (!positiveId(novelId) || (reason != null && (typeof reason !== 'string' || reason.length > 5000))) {
+        return res.status(400).json({ error: 'Thông tin gỡ tác phẩm không hợp lệ.' });
+    }
     const requesterId = req.user?.id;
 
     if (!requesterId) {
@@ -186,8 +191,10 @@ router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res: 
 });
 
 // Get details of a deleted novel
-router.get('/deleted/:id', async (req: Request, res: Response) => {
+router.get('/deleted/:id', optionalAuthentication, async (req: AuthenticatedRequest, res: Response) => {
     const novelId = req.params.id;
+    if (!positiveId(novelId)) return res.status(400).json({ error: 'Tác phẩm không hợp lệ.' });
+    res.set('Cache-Control', 'private, no-store');
     try {
         const results = await db.query<any[]>(
             "SELECT id, title, reason, DATE_FORMAT(deleted_at, '%d/%m/%Y %H:%i') as deletedAt FROM deleted_novels WHERE id = ?",
@@ -196,7 +203,10 @@ router.get('/deleted/:id', async (req: Request, res: Response) => {
         if (results.length === 0) {
             return res.status(404).json({ error: "Không tìm thấy thông tin truyện đã xóa." });
         }
-        res.json(results[0]);
+        const staff = req.user?.roles.some(role => role === 'admin' || role === 'moderator');
+        // Legacy tombstones do not record whether the deleted work was ever public.
+        res.json(staff ? results[0] : { id: results[0].id, title: 'Tác phẩm đã gỡ bỏ',
+            reason: 'Tác phẩm không còn được cung cấp trên MugenBunko.', deletedAt: results[0].deletedAt });
     } catch (err) {
         console.error("Get deleted novel error:", err);
         res.status(500).json({ error: "Lỗi tải thông tin truyện đã xóa." });

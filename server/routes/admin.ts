@@ -105,7 +105,7 @@ router.delete('/rules/:id', async (req: Request, res: Response) => {
 // Admin adds a new genre
 router.post('/genres', async (req: Request, res: Response) => {
     const { name } = req.body;
-    if (!name || !name.trim()) {
+    if (typeof name !== 'string' || !name.trim() || name.length > 100) {
         return res.status(400).json({ error: "Vui lòng nhập tên thể loại!" });
     }
     try {

@@ -338,6 +338,18 @@ cd mobile && npm install && cd ..
 
 ## Kiểm tra các nâng cấp Reader, Tủ sách và Studio
 
+Kiểm tra tĩnh và build frontend trước khi bàn giao thay đổi:
+
+```bash
+npm run typecheck
+npm run lint
+npm run build
+npm --prefix server run build
+npm --prefix mobile run typecheck
+```
+
+Build web không thay thế bước kiểm tra TypeScript. Các trang Studio, diễn đàn, hồ sơ và quản trị được tải theo nhu cầu; khi sửa điều hướng cần kiểm tra cả mở trực tiếp URL và chuyển trang trong ứng dụng.
+
 Backend development tự tạo các bảng tiến độ đọc, kệ sách và lịch sử bản thảo khi khởi động. Production chạy migration riêng trước khi khởi động ứng dụng theo hướng dẫn dưới đây.
 
 - **Reader:** lưu đoạn đang đọc và đồng bộ theo tài khoản; vị trí khi mất mạng được gửi lại khi có kết nối. Khách chưa đăng nhập lưu trên thiết bị.
@@ -354,6 +366,22 @@ npm run test:upgrades:browser
 Bộ test dùng database riêng có tên `mugenbunko_test_*`, yêu cầu tài khoản MySQL có quyền tạo/xóa database và tự dọn sau khi chạy. Kiểm thử trình duyệt sử dụng Edge headless trên Windows; có thể đặt `UPGRADE_BROWSER_PATH` để chọn executable Chromium khác. Ảnh kiểm tra nằm trong `artifacts/upgrades/` và được Git bỏ qua.
 
 ## Đưa lên production
+
+### Bảo mật phiên và nội dung
+
+Web dùng cookie phiên `HttpOnly`, `SameSite=Strict` và `Secure` trong production; frontend và API cần cùng site, với `FRONTEND_URL` khai báo đúng origin. JWT cũ trong localStorage được đổi sang cookie khi làm mới phiên và sau đó xóa khỏi localStorage. Mobile native dùng SecureStore; token AsyncStorage cũ chỉ bị xóa sau khi đã lưu an toàn. Expo web cũng dùng cookie thay vì lưu token.
+
+Logout gọi server để thu hồi token; socket cùng phiên bị đóng và socket hết hạn tự ngắt ngay cả khi không gửi thao tác. Khi offline, ứng dụng báo chưa thể kết thúc phiên để người dùng thử lại. Token thu hồi được lưu dạng SHA-256 trong bảng `revoked_tokens`; **chạy migration trước khi cập nhật server production**. Startup production kiểm tra bảng này và dừng nếu schema chưa sẵn sàng.
+
+API đánh giá kiểm tra số chương hoàn thành từ server (series 3 chương, oneshot 1 chương), chỉ cho tương tác với truyện đã công khai, và cộng XP một lần khi các request đến đồng thời. Feed bình luận/đánh giá/thông báo và bìa kệ công khai loại truyện chưa xuất bản hoặc đã khóa. Metadata truyện đã xóa chỉ hiện đầy đủ cho nhân sự điều hành; người dùng khác nhận thông báo gỡ bỏ chung vì dữ liệu cũ không ghi trạng thái công khai. Server kiểm tra luồng trả lời, người nhận thông báo, quyền tác giả và thông báo diễn đàn. Các thao tác đăng nội dung có giới hạn 30 request/phút/tài khoản.
+
+API mobile production yêu cầu HTTPS. Native cần build lại để đóng gói SecureStore; kiểm tra lưu/khôi phục phiên trên Android/iOS trước khi phát hành. Chỉ bản xem thử web trên loopback được phép dùng API HTTP loopback.
+
+Dependency mobile được cập nhật trong Expo SDK 57, vá Axios, shell-quote, UUID và decode-uri-component. `mobile/scripts/patch-query-decoder.mjs` chạy sau cài đặt để giữ API CommonJS của query-string 7 với decoder ESM đã vá; nếu cài bằng `--ignore-scripts`, chạy `npm --prefix mobile run postinstall` trước khi build/test. Kiểm tra tương thích và input URL bất thường nằm trong `tests/mobile-dependencies.test.mjs`.
+
+Lockfile web cũng cập nhật các bản tương thích với khoảng phiên bản đã khai báo, gồm Vite và các dependency công cụ build. Khi kiểm tra bảo mật, quét cả dev dependency vì chúng được dùng khi xây dựng bản phát hành.
+
+Hai advisory upstream chưa có bản phát hành vá: [braces](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) và [node-forge](https://github.com/advisories/GHSA-86w9-cpqp-85rv). Chúng còn kéo theo cảnh báo audit trong dependency công cụ Expo/Metro/code-signing. Không công khai Metro/dev server; chỉ phát hành bundle production và theo dõi bản sửa upstream. `npm audit` sạch ở web/backend không có nghĩa đã kiểm chứng cấu hình máy chủ triển khai.
 
 Sử dụng Node.js 24. Docker image chạy bằng user `node`, chỉ chứa dependency backend cần lúc chạy và không đóng gói file `.env`. MySQL chỉ nối mạng nội bộ; cổng ứng dụng mặc định bind `127.0.0.1` để đặt sau reverse proxy HTTPS.
 
@@ -389,9 +417,14 @@ Kiểm tra hồi quy (test dùng database tạm, không gửi email thật):
 npm run test:upgrades
 npm --prefix server run test:security
 npm run test:upgrades:browser
-npm audit --omit=dev
-npm audit --prefix server --omit=dev
+npm run test:mobile
+npm run test:mobile:browser
+npm audit
+npm --prefix server audit
+npm --prefix mobile audit
 ```
+
+Audit mobile hiện vẫn trả mã lỗi do hai advisory upstream nêu trên; không bỏ qua chúng hoặc dùng `audit fix --force` để hạ Expo xuống SDK không tương thích.
 
 <p align="center">
   <i>Được xây dựng với niềm đam mê dành cho cộng đồng yêu thích Light Novel & Công nghệ phần mềm.</i><br>

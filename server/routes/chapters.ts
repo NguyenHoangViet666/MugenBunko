@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import db from '../db.js';
 import { authenticateToken, optionalAuthentication, AuthenticatedRequest } from '../middleware/auth.js';
+import { checkRole } from '../middleware/roles.js';
 import { cleanHtml } from '../utils/html.js';
 import { snapshotChapter } from '../utils/chapterVersions.js';
 
@@ -88,7 +89,7 @@ router.post('/:id/versions/:versionId/restore', async (req: AuthenticatedRequest
 });
 
 // Add or Edit Chapter
-router.post('/', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/', checkRole('author'), async (req: AuthenticatedRequest, res: Response) => {
     const { id, novelId, volumeName, title, status, scheduledRelease, source } = req.body;
     const content = typeof req.body.content === 'string' ? cleanHtml(req.body.content) : '';
     if (!Number.isInteger(novelId) || typeof volumeName !== 'string' || !volumeName.trim() || volumeName.length > 100 ||

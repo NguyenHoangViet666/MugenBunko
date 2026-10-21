@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import db from '../db.js';
 import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.js';
+import { publicNovelSql } from '../utils/novelAccess.js';
 
 const router = Router();
 
@@ -11,7 +12,7 @@ router.get('/', async (req: Request, res: Response) => {
             `SELECT a.*, n.title as novelTitle, DATE_FORMAT(a.created_at, '%d/%m/%Y') as date 
              FROM announcements a
              JOIN novels n ON a.novel_id = n.id
-             WHERE n.status <> 'suspended' ORDER BY a.created_at DESC LIMIT 100`
+             WHERE ${publicNovelSql} ORDER BY a.created_at DESC LIMIT 100`
         );
         res.json(list);
     } catch (err) {

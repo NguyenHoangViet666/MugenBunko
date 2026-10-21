@@ -35,7 +35,7 @@ const waitSelector = async (sid, selector) => {
     try { await until(() => evaluate(sid, `Boolean(document.querySelector(${JSON.stringify(selector)}))`), `Missing ${selector}`); }
     catch (error) {
         const body = await evaluate(sid, "document.body.innerText.slice(0,1200)").catch(() => 'Page unresponsive');
-        throw new Error(`${error.message}\nPage content: ${body}`, { cause: error });
+        throw new Error(`${error.message}\nPage content: ${body}\nRuntime exceptions: ${JSON.stringify(exceptions)}`, { cause: error });
     }
 };
 const clickText = (sid, text) => evaluate(sid, `(() => { const button = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(text)}); if (!button) throw Error('Missing button: ' + ${JSON.stringify(text)}); button.click(); return true; })()`);
@@ -61,9 +61,9 @@ try {
         if (data.error) task.reject(new Error(data.error.message)); else task.resolve(data.result);
     };
     socket.addEventListener('message', onMessage);
-    const newPage = async (hash, authenticated = true, width = 1440) => {
+    const newPage = async (hash, authenticated = true, width = 1440, bypassMobile = true) => {
         const { browserContextId } = await send('Target.createBrowserContext');
-        const { targetId } = await send('Target.createTarget', { url: fixture.url, browserContextId });
+        const { targetId } = await send('Target.createTarget', { url: 'about:blank', browserContextId });
         const target = await until(async () => {
             const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
             return targets.find(t => t.id === targetId && t.webSocketDebuggerUrl);
@@ -74,8 +74,9 @@ try {
         const sessionId = targetId; pageSockets.set(sessionId, pageSocket);
         pageContexts.set(sessionId, browserContextId);
         await send('Page.enable', {}, sessionId); await send('Runtime.enable', {}, sessionId); await send('Network.enable', {}, sessionId);
-        await send('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: false }, sessionId);
-        if (authenticated) await send('Page.addScriptToEvaluateOnNewDocument', { source: `localStorage.setItem('mugen_session',${JSON.stringify(JSON.stringify(fixture.user))});localStorage.setItem('mugen_token',${JSON.stringify(fixture.token(2))});sessionStorage.setItem('mugen_mobile_bypass','true');` }, sessionId);
+        await send('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: width <= 768 }, sessionId);
+        if (bypassMobile) await send('Page.addScriptToEvaluateOnNewDocument', { source: "sessionStorage.setItem('mugen_mobile_bypass','true');" }, sessionId);
+        if (authenticated) await send('Page.addScriptToEvaluateOnNewDocument', { source: `localStorage.setItem('mugen_session',${JSON.stringify(JSON.stringify(fixture.user))});localStorage.setItem('mugen_token',${JSON.stringify(fixture.token(2))});` }, sessionId);
         // A query change forces a new document so the account seeding script runs.
         await send('Page.navigate', { url: fixture.url + '/?smoke=' + targetId + hash }, sessionId);
         return sessionId;
@@ -86,10 +87,24 @@ try {
     };
     const screenshot = async (sid, name) => {
         if (name === 'library') { await evaluate(sid, "window.scrollTo({top:0,behavior:'instant'});true"); await sleep(150); }
+        await sleep(450);
         const directory = path.join(fixture.root, 'artifacts/upgrades'); await fs.mkdir(directory, { recursive: true });
         const { data } = await send('Page.captureScreenshot', { format: 'png' }, sid);
         await fs.writeFile(path.join(directory, name + '.png'), Buffer.from(data, 'base64'));
     };
+
+    const guestReader = await newPage('#/novel/1', false);
+    await waitSelector(guestReader, '.detail-actions');
+    // A last-chapter position with no completed chapters must still be resumable.
+    await evaluate(guestReader, `localStorage.setItem('mugen_readprogress_guest_1',JSON.stringify({version:2,novelId:1,chapterId:2,chapterIndex:1,scrollRatio:.4,paragraphIndex:15,paragraphOffset:.2,completedChapterIds:[],updatedAt:Date.now()}));true`);
+    await send('Page.reload', {}, guestReader);
+    await waitSelector(guestReader, '.detail-actions');
+    await clickText(guestReader, 'Đọc Tiếp (Ch.2)');
+    await waitSelector(guestReader, '.reader-content-body p');
+    assert.equal(await evaluate(guestReader, "document.querySelector('.reader-chapter-heading h1').textContent"), 'Chương 2: Khu vườn sau thư viện');
+    assert.equal(await evaluate(guestReader, 'location.hash'), '#/novel/1/reader/1');
+    console.log('PASS: guest resumes the saved last chapter without requiring completed chapters');
+    await closePage(guestReader);
 
     const reader = await newPage('#/novel/1/reader/0');
     await waitSelector(reader, '.reader-content-body p');
@@ -158,6 +173,67 @@ try {
     const preserved = await fixture.db.query("SELECT id FROM chapter_versions WHERE chapter_id = 2 AND content LIKE '%Đoạn đang viết chưa lưu%'"); assert.ok(preserved.length);
     console.log('PASS: preview and restore chapter version while preserving unsaved editor content');
     await closePage(reader);
+
+    await fixture.db.query('INSERT INTO forum_posts (title, content, author_id, category) VALUES (?, ?, 2, ?)', ['Kiểm tra phục hồi diễn đàn', '<p>Một bài thảo luận để kiểm tra kết nối.</p>', 'general']);
+    const forum = await newPage('#/explore', false);
+    await waitSelector(forum, '.app-header');
+    await send('Network.setBlockedURLs', { urls: [fixture.url + '/api/forum/posts*'] }, forum);
+    await evaluate(forum, "window.location.hash='#/forum';true");
+    await waitSelector(forum, '.load-error-card');
+    assert.equal(await evaluate(forum, "Boolean(document.querySelector('.social-empty-feed-card'))"), false, 'Network errors must not appear as an empty feed');
+    await screenshot(forum, 'forum-network-error');
+    await send('Network.setBlockedURLs', { urls: [] }, forum);
+    await clickText(forum, 'Thử lại');
+    await waitSelector(forum, '.social-post-card');
+    assert.equal(await evaluate(forum, "Boolean(document.querySelector('.load-error-card'))"), false);
+    for (const theme of ['charcoal', 'sepia', 'washi']) {
+        await evaluate(forum, "document.querySelector('.theme-toggle-btn').click();true");
+        await until(() => evaluate(forum, `document.body.classList.contains('theme-${theme}')`), 'Theme did not change');
+        assert.notEqual(await evaluate(forum, "getComputedStyle(document.querySelector('.social-banner-v3')).backgroundImage"), 'none', `Forum banner theme: ${theme}`);
+        await screenshot(forum, 'forum-' + theme);
+    }
+    console.log('PASS: forum reports network failure and retry restores the feed');
+    await closePage(forum);
+
+    for (const authenticated of [false, true]) {
+        const layout = await newPage('#/explore', authenticated);
+        await waitSelector(layout, '.app-header');
+        await evaluate(layout, 'document.fonts.ready.then(()=>true)');
+        for (const width of [320, 390, 768, 992, 1200, 1440]) {
+            await send('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: width <= 768 }, layout);
+            await sleep(150);
+            const issues = await evaluate(layout, `(() => {
+                const visible = selector => [...document.querySelectorAll(selector)].map(element => ({ element, rect: element.getBoundingClientRect() })).filter(({ rect }) => rect.width > 0 && rect.height > 0);
+                const clipped = visible('.app-header button, .app-header a').filter(({ rect }) => rect.left < -.5 || rect.right > ${width} + .5).map(({ element, rect }) => ({ text: element.getAttribute('aria-label') || element.innerText || element.title, left: rect.left, right: rect.right }));
+                const groups = visible('.header-left, .header-search, .header-actions');
+                const overlaps = groups.flatMap((a, i) => groups.slice(i + 1).filter(b => Math.min(a.rect.right,b.rect.right)-Math.max(a.rect.left,b.rect.left)>1 && Math.min(a.rect.bottom,b.rect.bottom)-Math.max(a.rect.top,b.rect.top)>1).map(b => [a.element.className,b.element.className]));
+                return { clipped, overlaps };
+            })()`);
+            assert.deepEqual(issues, { clipped: [], overlaps: [] }, `Header at ${width}px, ${authenticated ? 'signed in' : 'guest'}`);
+            if (width === 390) await screenshot(layout, authenticated ? 'header-mobile-account' : 'header-mobile-guest');
+        }
+        if (authenticated) {
+            await evaluate(layout, "document.querySelector('.user-level-badge').focus();true");
+            await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }, layout);
+            await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }, layout);
+            await waitSelector(layout, '.profile-layout-container');
+            await evaluate(layout, 'history.back();true');
+            await waitSelector(layout, '.explore-layout');
+        }
+        await closePage(layout);
+    }
+    const gate = await newPage('#/explore', false, 390, false);
+    await waitSelector(gate, '.mobile-standalone-gate');
+    await evaluate(gate, "document.querySelector('.mobile-gate-bypass-link').click();true");
+    await waitSelector(gate, '.app-header');
+    await closePage(gate);
+    console.log('PASS: guest and account headers fit 320–1440px and mobile gate bypass remains available');
+
+    const about = await newPage('#/about', false);
+    await waitSelector(about, '#about-title');
+    await closePage(about);
+    console.log('PASS: lazy pages support direct links and keyboard profile navigation with browser Back');
+
     const signup = await newPage('#/', false);
     await waitSelector(signup, '.app-header');
     await clickText(signup, 'Đăng ký'); await waitSelector(signup, '#register-email');
@@ -171,7 +247,15 @@ try {
     await until(() => evaluate(signup, "JSON.parse(localStorage.getItem('mugen_session') || 'null')?.username==='browser_verified_reader'"), 'Verified registration did not sign in');
     const registered = await fixture.db.query('SELECT email, password FROM users WHERE username = ?', ['browser_verified_reader']);
     assert.equal(registered[0].email, 'browser-signup@example.test'); assert.notEqual(registered[0].password, 'SecurePassword123!');
+    assert.equal(await evaluate(signup, "localStorage.getItem('mugen_token')"), null);
+    assert.equal(await evaluate(signup, "document.cookie.includes('mugen_auth')"), false, 'Session cookie must be HttpOnly');
+    const registeredId = await evaluate(signup, "JSON.parse(localStorage.getItem('mugen_session')).id");
+    assert.equal(await evaluate(signup, `fetch('/api/auth/refresh/${registeredId}').then(response=>response.status)`), 200);
+    await evaluate(signup, "document.querySelector('.app-header button[title=\"Đăng xuất\"]').click();true");
+    await until(() => evaluate(signup, "localStorage.getItem('mugen_session')===null"), 'Logout did not clear the client session');
+    assert.equal(await evaluate(signup, `fetch('/api/auth/refresh/${registeredId}').then(response=>response.status)`), 401);
     console.log('PASS: verified email registration and automatic sign-in');
+    console.log('PASS: cookie authentication, no persisted browser token and server logout');
     assert.deepEqual(exceptions, [], 'Browser runtime exceptions');
     console.log('Browser smoke checks passed. Screenshots: artifacts/upgrades/');
 } finally {

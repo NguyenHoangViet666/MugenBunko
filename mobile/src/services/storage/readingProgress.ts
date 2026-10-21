@@ -1,14 +1,16 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '@/services/api/client';
 import { Novel, ReadingProgress } from '@/types';
+import { Platform } from 'react-native';
+import { getAuthToken } from './authToken';
 
 type Saved = ReadingProgress & { pending?: boolean; completedChapterIds?: number[] };
 type Remote = { novelId: number; chapterId: number; scrollRatio: number; paragraphIndex?: number; paragraphOffset?: number; updatedAt: number; completedChapterIds: number[] };
 async function account() {
-  const values = await AsyncStorage.multiGet(['mugen_session', 'mugen_mobile_token']);
-  const user = values[0][1] ? JSON.parse(values[0][1]) : null;
-  if (!user?.id || !values[1][1]) throw new Error('Yêu cầu đăng nhập.');
-  return { id: Number(user.id), config: { headers: { Authorization: `Bearer ${values[1][1]}` } } };
+  const [rawUser, token] = await Promise.all([AsyncStorage.getItem('mugen_session'), getAuthToken()]);
+  const user = rawUser ? JSON.parse(rawUser) : null;
+  if (!user?.id || (!token && Platform.OS !== 'web')) throw new Error('Yêu cầu đăng nhập.');
+  return { id: Number(user.id), config: { headers: token ? { Authorization: `Bearer ${token}` } : {} } };
 }
 const key = (id: number) => `mugen_progress_${id}`;
 const bookmarkKey = (id: number) => `mugen_bookmarks_${id}`;

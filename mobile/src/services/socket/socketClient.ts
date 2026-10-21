@@ -7,13 +7,15 @@ const SOCKET_URL = SERVER_HOST;
 let socket: Socket | null = null;
 
 export const initializeSocket = (token?: string) => {
-  if (socket && (socket.auth as { token?: string }).token === token) return socket;
+  const bearer = token === 'cookie' ? undefined : token;
+  if (socket && (socket.auth as { token?: string }).token === bearer) return socket;
   if (socket) socket.disconnect();
 
   socket = io(SOCKET_URL, {
     auth: {
-      token: token,
+      token: bearer,
     },
+    withCredentials: true,
     transports: ['websocket'],
     reconnection: true,
     reconnectionAttempts: 5,

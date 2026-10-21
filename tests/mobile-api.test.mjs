@@ -27,6 +27,8 @@ test('mobile payloads support profiles, forum discussions and novel feedback', a
     assert.equal(Number(post.likes_count), 1);
     const catalog = await request('/forum/posts?comments=none&limit=20');
     assert.ok(catalog.some(p => p.id === created.postId));
+    await fixture.db.query("UPDATE novels SET type = 'oneshot' WHERE id = 1");
+    await fixture.db.query('INSERT INTO chapter_reads (user_id, chapter_id) VALUES (2, 1)');
     await request('/reviews/1', 'POST', { stars: 4, text: 'Mobile review' });
     assert.ok((await request('/reviews/1')).some(r => Number(r.stars) === 4));
     await request('/comments/1', 'POST', { text: 'Novel comment' });

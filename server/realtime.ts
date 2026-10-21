@@ -2,16 +2,26 @@ import { Server } from 'socket.io';
 import { resolveUser } from './middleware/auth.js';
 import { sendMessage } from './utils/messages.js';
 import db from './db.js';
+import { cookieToken, sessionEvents } from './utils/sessions.js';
 
 export function registerRealtime(io: Server) {
     const connections = new Map<number, Set<string>>();
+    const disconnectRevoked = (hash: string) => {
+        for (const socket of io.of('/').sockets.values()) {
+            if (socket.data.user.tokenHash === hash) socket.disconnect(true);
+        }
+    };
+    sessionEvents.on('revoked', disconnectRevoked);
+    io.httpServer?.once('close', () => sessionEvents.off('revoked', disconnectRevoked));
     io.use(async (socket, next) => {
-        const token = socket.handshake.auth?.token;
+        const token = socket.handshake.auth?.token || cookieToken(socket.handshake.headers.cookie);
         if (typeof token !== 'string' || token.length > 4096) return next(new Error('Yêu cầu đăng nhập.'));
         try {
             const user = await resolveUser(token);
             if (!user) return next(new Error('Tài khoản không hoạt động.'));
-            socket.data.user = user; next();
+            socket.data.user = user;
+            socket.data.token = token;
+            next();
         } catch { next(new Error('Không thể xác thực kết nối.')); }
     });
     const broadcast = async (id: number, status: 'online' | 'offline') => {
@@ -22,6 +32,8 @@ export function registerRealtime(io: Server) {
     };
     io.on('connection', socket => {
         const user = socket.data.user;
+        const expiry = setTimeout(() => socket.disconnect(true), Math.max(0, user.expiresAt - Date.now()));
+        expiry.unref();
         const sockets = connections.get(user.id) || new Set<string>();
         const wasOffline = sockets.size === 0;
         sockets.add(socket.id); connections.set(user.id, sockets); socket.join('user:' + user.id);
@@ -32,7 +44,7 @@ export function registerRealtime(io: Server) {
             if (Date.now() - windowStart > 60000) { windowStart = Date.now(); events = 0; }
             if (++events > 60) { socket.disconnect(true); return; }
             try {
-                const active = await resolveUser(socket.handshake.auth.token);
+                const active = await resolveUser(socket.data.token);
                 if (!active) { socket.disconnect(true); return; }
                 socket.data.user = active; next();
             } catch { next(new Error('Không thể xác thực thao tác.')); }
@@ -56,6 +68,7 @@ export function registerRealtime(io: Server) {
             } catch { callback({}); }
         });
         socket.on('disconnect', () => {
+            clearTimeout(expiry);
             sockets.delete(socket.id);
             if (!sockets.size) { connections.delete(user.id); void broadcast(user.id, 'offline'); }
         });

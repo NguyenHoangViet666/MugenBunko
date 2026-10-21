@@ -66,17 +66,17 @@ export default function Header({
     return (
         <header className="app-header">
              <div className="header-container">
-                <div className="header-left" style={{display:'flex', alignItems:'center', gap:'16px'}}>
+                <div className="header-left">
                     <button className="category-burger-btn" onClick={() => setCategoryDrawerOpen(true)} title="Danh mục & Bộ lọc">
                         <svg viewBox="0 0 24 24" width="22" height="22" style={{display:'block', fill:'var(--text-main)'}}>
                             <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
                         </svg>
                     </button>
                     
-                    <div className="header-logo" onClick={() => handleNav('home')}>
+                    <button type="button" className="header-logo" onClick={() => handleNav('home')} aria-label="MugenBunko — Trang chủ">
                         <span className="kanji">無限文庫</span>
                         <span className="alphabet">MUGENBUNKO</span>
-                    </div>
+                    </button>
 
                     {/* Desktop Navigation Links */}
                     <nav className="header-nav-desktop" id="header-nav-links">
@@ -152,11 +152,12 @@ export default function Header({
                 
                 <div className="header-search">
                     <form className="search-box" onSubmit={handleSearchSubmit}>
-                        <button type="submit" style={{background:'none', border:'none', padding:0, cursor:'pointer', display:'flex', alignItems:'center', outline:'none'}}>
+                        <button type="submit" aria-label="Tìm kiếm" style={{background:'none', border:'none', padding:0, cursor:'pointer', display:'flex', alignItems:'center'}}>
                             <svg className="icon-search" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                         </button>
                         <input 
                             type="text" 
+                            aria-label="Tìm truyện, tác giả hoặc thẻ"
                             placeholder="Tìm kiếm truyện, tác giả, tag..." 
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -169,7 +170,7 @@ export default function Header({
                         className="icon-btn theme-toggle-btn" 
                         onClick={cycleTheme} 
                         title={`Giao diện: ${theme === 'washi' ? 'Sáng (Washi)' : (theme === 'charcoal' ? 'Tối (Charcoal)' : 'Cổ điển (Sepia)')} - Bấm để chuyển đổi`} 
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '6px' }}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                         {theme === 'washi' && (
                             <svg viewBox="0 0 24 24" style={{ width: '20px', height: '20px', fill: 'var(--text-main)' }}>
@@ -189,7 +190,7 @@ export default function Header({
                     </button>
                     {currentUser ? (
                         <>
-                            <div className="user-level-badge" onClick={() => { window.location.hash = '#/profile'; }} title="Xem trang cá nhân">
+                            <a className="user-level-badge" href="#/profile" title="Xem trang cá nhân" aria-label="Xem trang cá nhân">
                                 <div className={`avatar-frame level-${calculateUserLevel(currentUser.xp).className}`}>
                                     <img src={currentUser.avatarSeed && (currentUser.avatarSeed.startsWith('http') || currentUser.avatarSeed.startsWith('/uploads') || currentUser.avatarSeed.startsWith('data:')) ? currentUser.avatarSeed : `https://api.dicebear.com/7.x/adventurer/svg?seed=${currentUser.avatarSeed || 'Default'}`} alt="Avatar" className="avatar-img" />
                                 </div>
@@ -202,17 +203,17 @@ export default function Header({
                                         EXP: {calculateUserLevel(currentUser.xp).currentXpInTier} / {calculateUserLevel(currentUser.xp).nextTierXpNeeded > 0 ? calculateUserLevel(currentUser.xp).nextTierXpNeeded : 'Max'}
                                     </p>
                                 </div>
-                            </div>
+                            </a>
 
                             <div className="notif-bell-container">
-                                <button className="icon-btn" onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}>
+                                <button className="icon-btn" aria-label="Thông báo" aria-expanded={notifDropdownOpen} aria-controls="header-notifications" onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}>
                                     <svg className="icon-bell" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 4.36 6 6.92 6 10v5l-2 2v1h16v-1l-2-2z"/></svg>
                                     {currentUser.notifications && currentUser.notifications.filter(n => !n.read).length > 0 && (
                                         <span className="badge">{currentUser.notifications.filter(n => !n.read).length}</span>
                                     )}
                                 </button>
                                 {notifDropdownOpen && (
-                                    <div className="dropdown-menu">
+                                    <div className="dropdown-menu" id="header-notifications">
                                         <div className="dropdown-header">
                                             <h3>Thông báo mới</h3>
                                             <button className="text-link-btn" onClick={markAllNotificationsRead}>Đọc tất cả</button>
@@ -250,7 +251,7 @@ export default function Header({
                         </>
                     ) : (
                         <div className="guest-buttons-wrapper">
-                            <button className="text-link-btn" style={{marginRight:'8px'}} onClick={() => setRegisterModalOpen(true)}>Đăng ký</button>
+                            <button className="text-link-btn" onClick={() => setRegisterModalOpen(true)}>Đăng ký</button>
                             <button className="outline-btn small" onClick={() => setLoginModalOpen(true)}>Đăng nhập</button>
                         </div>
                     )}

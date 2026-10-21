@@ -3,18 +3,21 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import rateLimit from 'express-rate-limit';
+import { randomUUID } from 'node:crypto';
 import db from '../db.js';
 import { JWT_SECRET, production } from '../config.js';
 import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.js';
 import { checkRole } from '../middleware/roles.js';
 import { issueOtp, verifyOtp } from '../utils/otp.js';
+import { clearSessionCookie, revokeSession, setSessionCookie } from '../utils/sessions.js';
 
 const router = Router();
+router.use((_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 const emailPattern = /^[a-zA-Z0-9.!#$%&'*+\-/=?^_`{|}~]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+$/;
 const emailValue = (value: unknown) => typeof value === 'string' ? value.trim().toLowerCase() : '';
 const limitedText = (value: unknown, max: number) => typeof value === 'string' && value.length <= max;
 const otpLimiter = rateLimit({ windowMs: 15 * 60000, limit: 20, standardHeaders: true, legacyHeaders: false });
-const tokenFor = (user: any) => jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { algorithm: 'HS256', expiresIn: '1d' });
+const tokenFor = (user: any) => jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { algorithm: 'HS256', expiresIn: '1d', jwtid: randomUUID() });
 
 async function userSession(id: number, knownRoles?: string[]) {
     const users = await db.query<any[]>(`SELECT id, username, displayname, email, coins, level, xp, bio,
@@ -67,7 +70,9 @@ router.post('/login', async (req, res) => {
         if (!users.length || !await bcrypt.compare(password, users[0].password)) return res.status(401).json({ error: 'Sai tài khoản hoặc mật khẩu.' });
         if (users[0].status !== 'active') return res.status(403).json({ error: 'Tài khoản đã bị khóa.' });
         const user = await userSession(users[0].id);
-        res.json({ user, token: tokenFor(user) });
+        const token = tokenFor(user);
+        if (req.get('X-Mugen-Client') !== 'native') setSessionCookie(res, token, Date.now() + 86400000);
+        res.json({ user, token });
     } catch { res.status(503).json({ error: 'Không thể đăng nhập lúc này.' }); }
 });
 router.post('/register', async (req, res) => {
@@ -89,13 +94,26 @@ router.post('/register', async (req, res) => {
             await connection.execute("INSERT INTO notifications (user_id, text) VALUES (?, 'Chào mừng bạn đến MugenBunko!')", [insert.insertId]);
             return insert.insertId;
         });
-        const user = await userSession(userId); res.json({ success: true, user, token: tokenFor(user) });
+        const user = await userSession(userId);
+        const token = tokenFor(user);
+        if (req.get('X-Mugen-Client') !== 'native') setSessionCookie(res, token, Date.now() + 86400000);
+        res.json({ success: true, user, token });
     } catch { res.status(503).json({ error: 'Không thể tạo tài khoản lúc này.' }); }
 });
 router.get('/refresh/:id', authenticateToken, async (req: AuthenticatedRequest, res) => {
     if (Number(req.params.id) !== req.user!.id) return res.status(403).json({ error: 'Không có quyền truy cập phiên khác.' });
-    try { res.json({ user: await userSession(req.user!.id, req.user!.roles) }); }
+    try {
+        if (req.get('X-Mugen-Client') !== 'native') setSessionCookie(res, req.authToken!, req.user!.expiresAt);
+        res.json({ user: await userSession(req.user!.id, req.user!.roles) });
+    }
     catch { res.status(503).json({ error: 'Không thể làm mới phiên.' }); }
+});
+router.post('/logout', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+        await revokeSession(req.user!.tokenHash, req.user!.id, req.user!.expiresAt);
+        clearSessionCookie(res);
+        res.json({ success: true });
+    } catch { res.status(503).json({ error: 'Không thể kết thúc phiên trên máy chủ. Vui lòng thử lại.' }); }
 });
 router.post('/update-profile', authenticateToken, async (req: AuthenticatedRequest, res) => {
     const { displayname, bio = '', avatarSeed = '' } = req.body;

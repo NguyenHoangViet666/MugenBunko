@@ -1,5 +1,10 @@
 // Applied on startup for both existing databases and fresh installations.
 export const readerSchema = `
+CREATE TABLE IF NOT EXISTS revoked_tokens (
+    token_hash CHAR(64) PRIMARY KEY, user_id INT NOT NULL, expires_at BIGINT NOT NULL,
+    INDEX idx_revoked_tokens_expiry (expires_at),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
 CREATE TABLE IF NOT EXISTS email_otps (
     email VARCHAR(150) PRIMARY KEY, code_hash CHAR(64) NOT NULL,
     expires_at BIGINT NOT NULL, sent_at BIGINT NOT NULL, attempts INT NOT NULL DEFAULT 0,

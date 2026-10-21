@@ -1,5 +1,5 @@
 import { fetchArrayPages } from './utils/pagedFetch';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import LoginModal from './components/LoginModal';
@@ -12,27 +12,28 @@ import MobileGateOverlay from './components/MobileGateOverlay';
 import { Icons } from './components/Icons';
 
 import Home from './pages/Home';
-import Library from './pages/Library';
 import NovelDetail from './pages/NovelDetail';
 import ChapterReader from './pages/ChapterReader';
-import AuthorStudio from './pages/AuthorStudio';
-import ModDashboard from './pages/ModDashboard';
-import AdminDashboard from './pages/AdminDashboard';
-import UserProfile from './pages/UserProfile';
-import Forum from './pages/Forum';
 import Explore from './pages/Explore';
-import EventDetail from './pages/EventDetail';
-import ManageRules from './pages/ManageRules';
-import ViewRules from './pages/ViewRules';
-import About from './pages/About';
 import ErrorBoundary from './components/ErrorBoundary';
-import PublicCollection from './pages/PublicCollection';
 import { PageLoading, PageError } from './components/LoadState';
 import { useReadingSync } from './hooks/useReadingSync';
 
 import { User, Novel, Comment, Review, SystemEvent, Report, ForumPost, Message, UserRole } from './types';
 import { compressImage } from './utils/imageCompressor';
 import { formatDate } from './utils/dateFormatter';
+
+const AuthorStudio = lazy(() => import('./pages/AuthorStudio'));
+const ModDashboard = lazy(() => import('./pages/ModDashboard'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const UserProfile = lazy(() => import('./pages/UserProfile'));
+const Forum = lazy(() => import('./pages/Forum'));
+const ManageRules = lazy(() => import('./pages/ManageRules'));
+const ViewRules = lazy(() => import('./pages/ViewRules'));
+const About = lazy(() => import('./pages/About'));
+const EventDetail = lazy(() => import('./pages/EventDetail'));
+const PublicCollection = lazy(() => import('./pages/PublicCollection'));
+const Library = lazy(() => import('./pages/Library'));
 
 /* ================= DATABASE CONFIG ================= */
 const DB_KEYS = {
@@ -241,7 +242,7 @@ export default function App() {
             headers['Authorization'] = `Bearer ${token}`;
         }
         try {
-            const res = await window.fetch(url, { ...options, headers });
+            const res = await window.fetch(url, { ...options, headers, credentials: 'include' });
 
             // 401 Unauthorized: Token không hợp lệ hoặc đã hết hạn
             if (res.status === 401) {
@@ -259,7 +260,7 @@ export default function App() {
                 try {
                     const clone = res.clone();
                     const data = await clone.json();
-                    if (data?.code === 'TOKEN_EXPIRED' || (typeof data?.error === 'string' && data.error.toLowerCase().includes('hết hạn'))) {
+                    if (data?.code === 'TOKEN_EXPIRED' || data?.code === 'ACCOUNT_SUSPENDED' || (typeof data?.error === 'string' && data.error.toLowerCase().includes('hết hạn'))) {
                         handleSessionExpired(data.error);
                     } else if (data && data.error) {
                         showToast(data.error);
@@ -924,6 +925,7 @@ export default function App() {
             const res = await fetchWithAuth(`${API_BASE}/auth/refresh/${userId}`);
             const data = await res.json();
             if (data.user) {
+                localStorage.removeItem('mugen_token');
                 setCurrentUser(data.user);
                 localStorage.setItem(DB_KEYS.session, JSON.stringify(data.user));
                 setProfileDisplayname(data.user.displayname || "");
@@ -1055,7 +1057,7 @@ export default function App() {
 
             setCurrentUser(data.user);
             localStorage.setItem(DB_KEYS.session, JSON.stringify(data.user));
-            localStorage.setItem('mugen_token', data.token);
+            localStorage.removeItem('mugen_token');
             
             setProfileDisplayname(data.user.displayname || "");
             setProfileAvatarSeed(data.user.avatar_seed || "");
@@ -1106,7 +1108,7 @@ export default function App() {
 
             setCurrentUser(data.user);
             localStorage.setItem(DB_KEYS.session, JSON.stringify(data.user));
-            localStorage.setItem('mugen_token', data.token);
+            localStorage.removeItem('mugen_token');
 
             setRegUsername("");
             setRegDisplayname("");
@@ -1121,10 +1123,20 @@ export default function App() {
         }
     };
 
-    const logoutUser = () => {
+    const logoutUser = async () => {
+        try {
+            const response = await fetchWithAuth(`${API_BASE}/auth/logout`, { method: 'POST' });
+            if (!response.ok && response.status !== 401) throw new Error();
+        } catch {
+            showToast('Không thể kết thúc phiên trên máy chủ. Kiểm tra kết nối rồi thử lại.');
+            return;
+        }
         setCurrentUser(null);
         localStorage.removeItem(DB_KEYS.session);
         localStorage.removeItem('mugen_token');
+        for (const key of Object.keys(sessionStorage)) {
+            if (key.startsWith('mugen_cache_')) sessionStorage.removeItem(key);
+        }
         setCurrentView('home');
         showToast("Đã đăng xuất tài khoản an toàn.");
     };
@@ -2759,6 +2771,7 @@ export default function App() {
             {/* Main Content Layout */}
             <main className={`app-content-container ${currentView === 'reader' ? '' : 'container'}`}>
                 <ErrorBoundary key={currentView}>
+                <Suspense fallback={<PageLoading reader={currentView === 'reader'} />}>
                 {novelsError && novels.length > 0 && <div className="inline-notice" role="alert">{novelsError} <button className="text-action" onClick={() => void fetchNovels(true)}>Thử lại</button></div>}
                 {(['home', 'explore', 'library', 'detail', 'reader', 'studio'].includes(currentView) && novelsLoading && !novels.length) || (currentView === 'reader' && novels.length > 0 && !readingSync.initialized)
                     ? <PageLoading reader={currentView === 'reader'} />
@@ -3119,6 +3132,7 @@ export default function App() {
                     />
                 )}
                 </>}
+                </Suspense>
                 </ErrorBoundary>
             </main>
 

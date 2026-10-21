@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clearAuthToken, getAuthToken } from '../storage/authToken';
 
 import Constants from 'expo-constants';
 
@@ -30,14 +31,21 @@ const getDevHost = () => {
 const configuredHost = process.env.EXPO_PUBLIC_API_URL?.trim().replace(/\/+$/, '').replace(/\/api$/, '');
 export const SERVER_HOST = configuredHost || (__DEV__ ? getDevHost() : '');
 if (!SERVER_HOST) throw new Error('Cần cấu hình EXPO_PUBLIC_API_URL trước khi build production.');
+const apiOrigin = new URL(SERVER_HOST);
+const loopback = (host: string) => host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
+const localWebPreview = Platform.OS === 'web' && loopback(apiOrigin.hostname) &&
+  (typeof window === 'undefined' || loopback(window.location.hostname));
+if (!__DEV__ && apiOrigin.protocol !== 'https:' && !localWebPreview) throw new Error('API production phải sử dụng HTTPS.');
 
 export const API_URL = `${SERVER_HOST}/api`;
 
 const apiClient = axios.create({
   baseURL: API_URL,
   timeout: 10000,
+  withCredentials: Platform.OS === 'web',
   headers: {
     'Content-Type': 'application/json',
+    'X-Mugen-Client': Platform.OS === 'web' ? 'web' : 'native',
   },
 });
 
@@ -45,7 +53,7 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   async (config) => {
     try {
-      const token = await AsyncStorage.getItem('mugen_mobile_token');
+      const token = await getAuthToken();
       if (token && !config.headers.Authorization) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -67,13 +75,13 @@ export const setUnauthorizedHandler = (handler: (() => void) | null) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 || error.response?.data?.code === 'ACCOUNT_SUSPENDED') {
       const isAuthRoute = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/auth/register') || error.config?.url?.includes('/auth/send-otp');
-      const currentToken = await AsyncStorage.getItem('mugen_mobile_token');
+      const currentToken = await getAuthToken();
       const rejectedToken = error.config?.headers?.Authorization;
-      if (!isAuthRoute && currentToken && rejectedToken === `Bearer ${currentToken}`) {
+      if (!isAuthRoute && ((currentToken && rejectedToken === `Bearer ${currentToken}`) || (Platform.OS === 'web' && !rejectedToken))) {
         try {
-          await AsyncStorage.removeItem('mugen_mobile_token');
+          await clearAuthToken();
           await AsyncStorage.removeItem('mugen_session');
         } catch (e) {
           console.warn('Error clearing expired mobile auth storage:', e);

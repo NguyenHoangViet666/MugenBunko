@@ -1,0 +1,4 @@
+interface:
+  display_name: "MugenBunko Frontend Design"
+  short_description: "Thiết kế frontend theo UI/UX của MugenBunko"
+  default_prompt: "Dùng $mugenbunko-frontend-design để thiết kế và triển khai giao diện bám theo UI/UX MugenBunko, bảo toàn luồng hiện có và kiểm tra các theme, responsive, accessibility."

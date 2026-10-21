@@ -77,7 +77,7 @@ try {
     socket.addEventListener('message', onMessage);
     const newPage = async (hash, authenticated = true, width = 390) => {
         const { browserContextId } = await send('Target.createBrowserContext');
-        const { targetId } = await send('Target.createTarget', { url: fixture.url, browserContextId });
+        const { targetId } = await send('Target.createTarget', { url: 'about:blank', browserContextId });
         const target = await until(async () => {
             const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
             return targets.find(t => t.id === targetId && t.webSocketDebuggerUrl);
@@ -109,6 +109,9 @@ try {
     const go = async (sid, route, text) => { await send('Page.navigate', { url: fixture.url + route }, sid); await waitText(sid, text); };
     let phone = await newPage('/profile');
     await waitText(phone, 'Studio tác giả');
+    await until(() => evaluate(phone, "localStorage.getItem('mugen_mobile_token') === null"), 'Legacy mobile browser token was not removed');
+    assert.equal(await evaluate(phone, "document.cookie.includes('mugen_auth')"), false, 'Mobile browser cookie must be HttpOnly');
+    assert.equal(await evaluate(phone, "fetch('/api/auth/refresh/2').then(response => response.status)"), 200, 'Mobile browser cookie session was not established');
     await screenshot(phone, 'profile');
     assert.ok(await evaluate(phone, 'document.documentElement.scrollWidth <= 392'), 'Profile overflows phone width');
     await go(phone, '/collections', '+ Tạo kệ sách');
@@ -179,7 +182,14 @@ try {
     assert.ok(await evaluate(phone, 'document.documentElement.scrollWidth <= 322'), 'Small-phone grid overflows');
     await screenshot(phone, 'explore-small');
 
+    await go(phone, '/profile', 'ĐĂNG XUẤT');
+    await evaluate(phone, "window.confirm = () => true; [...document.querySelectorAll('div')].find(element => element.childElementCount === 0 && element.textContent === 'ĐĂNG XUẤT').click(); true");
+    await until(() => evaluate(phone, "localStorage.getItem('mugen_session') === null"), 'Mobile logout did not clear the session');
+    assert.equal(await evaluate(phone, "localStorage.getItem('mugen_mobile_token')"), null);
+    assert.equal(await evaluate(phone, "fetch('/api/auth/refresh/2').then(response => response.status)"), 401, 'Mobile logout left a usable cookie session');
+
     assert.deepEqual(exceptions, [], 'Mobile browser runtime exceptions');
+    console.log('PASS: mobile browser token migration, HttpOnly cookie authentication and server logout.');
     console.log('PASS: mobile profile, collections, Studio draft, forum posting, chat, administration and reader sync. Screenshots: artifacts/mobile/');
 } catch (error) {
     console.error('NETWORK DEBUG:', networkFailures);

@@ -255,11 +255,9 @@ export default function NovelDetail({
                 const publishedChapters = novel.chapters ? novel.chapters.filter(ch => ch.status === 'published') : [];
                 const totalWordCount = publishedChapters.reduce((acc, ch) => acc + (ch.word_count || 0), 0);
                 
-                // Check reading history for review criteria
-                let readCount = 0;
-                if (currentUser) {
-                    readCount = getReadingProgress(currentUser.username, novel)?.completedChapterIds.length || 0;
-                }
+                const readingProgress = getReadingProgress(currentUser?.username, novel);
+                // Completion gates reviews; the saved chapter determines where reading resumes.
+                const readCount = currentUser ? readingProgress?.completedChapterIds.length || 0 : 0;
 
                 const isOneshot = novel.type === 'oneshot';
                 const minRequired = isOneshot ? 1 : 3;
@@ -413,20 +411,20 @@ export default function NovelDetail({
                                 </div>
 
                                 <div className="detail-actions" style={{ display: 'flex', gap: '12px', marginTop: 'auto', alignItems: 'center', flexWrap: 'wrap' }}>
-                                    <button className="primary-btn" onClick={() => startReading(novel.id, 0)} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                                    <button className="primary-btn" disabled={publishedChapters.length === 0} onClick={() => startReading(novel.id, 0)} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                                         <Icons.Book size={16} />
                                         <span>Đọc Từ Đầu</span>
                                     </button>
 
-                                    {readCount > 0 && publishedChapters.length > readCount && (
+                                    {readingProgress && (
                                         <button 
                                             className="outline-btn" 
-                                            onClick={() => startReading(novel.id, readCount)} 
+                                            onClick={() => startReading(novel.id, readingProgress.chapterIndex)}
                                             style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', borderColor: 'var(--text-main)' }}
-                                            title={`Tiếp tục đọc chương ${readCount + 1}`}
+                                            title={`Tiếp tục đọc chương ${readingProgress.chapterIndex + 1}`}
                                         >
                                             <Icons.Play size={14} />
-                                            <span>Đọc Tiếp (Ch.{readCount + 1})</span>
+                                            <span>Đọc Tiếp (Ch.{readingProgress.chapterIndex + 1})</span>
                                         </button>
                                     )}
 

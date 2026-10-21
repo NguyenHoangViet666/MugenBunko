@@ -43,6 +43,8 @@ Mở Studio, bạn bè/chat, thông báo, bộ sưu tập và quản trị từ 
 
 ## Lưu và đồng bộ
 
+Token native được lưu trong SecureStore; khi nâng cấp, token AsyncStorage cũ được chuyển sang kho an toàn trước khi xóa bản cũ. Expo web dùng cookie HttpOnly. Logout thu hồi phiên trên backend và cần kết nối mạng. Cần rebuild ứng dụng native sau khi thêm SecureStore; API production phải là HTTPS.
+
 Tiến độ và bản nháp được tách theo ID tài khoản. Vị trí đọc được lưu cục bộ trước; cập nhật chưa gửi sẽ thử lại khi đọc tiếp hoặc mở lại trang chủ/tủ sách. Server dùng thời điểm cập nhật để tránh vị trí cũ ghi đè vị trí mới. Bookmark và bộ sưu tập lưu qua server; thay đổi các mục này cần mạng.
 
 Chương được ghi nhận hoàn thành qua phiên đọc server khi app đang hoạt động, đủ thời gian và đã tới cuối chương. Mở chương cuối không tự được tính hoàn thành cả truyện. Bản nháp Studio chưa gửi được lưu riêng và có lựa chọn khôi phục khi mở lại.

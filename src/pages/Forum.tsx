@@ -5,6 +5,7 @@ import { User, ForumPost, ForumComment, Message } from '../types';
 import { compressImage } from '../utils/imageCompressor';
 import RichTextEditor, { parseFormattedContent, extractAndCleanImages, ForumImageGrid } from '../components/RichTextEditor';
 import { io } from 'socket.io-client';
+import { PageError } from '../components/LoadState';
 
 // ================= MONOCHROME & SOCIAL SVG ICONS =================
 const Icons = {
@@ -324,6 +325,7 @@ export default function Forum({
     const [subView, setSubView] = useState<'list' | 'detail' | 'create'>('list');
     const [selectedPost, setSelectedPost] = useState<ForumPost | null>(null);
     const [loading, setLoading] = useState(false);
+    const [postsError, setPostsError] = useState('');
     const [isSubmittingPost, setIsSubmittingPost] = useState(false);
 
     // Lightbox for viewing and zooming images
@@ -387,11 +389,11 @@ export default function Forum({
         }
 
         const token = localStorage.getItem('mugen_token');
-        if (!token) return;
 
         const socketUrl = API_BASE.replace('/api', '');
         const newSocket = io(socketUrl, {
-            auth: { token }
+            auth: token ? { token } : {},
+            withCredentials: true,
         });
 
         newSocket.on('connect', () => {
@@ -508,6 +510,7 @@ export default function Forum({
 
     const fetchPosts = async () => {
         setLoading(true);
+        setPostsError('');
         try {
             const data = await fetchArrayPages<ForumPost>(fetchWithAuth, `${API_BASE}/forum/posts?comments=none`);
             if (Array.isArray(data)) {
@@ -517,6 +520,7 @@ export default function Forum({
             }
         } catch (err) {
             console.error("Error loading forum posts:", err);
+            setPostsError('Không thể tải bài thảo luận. Kiểm tra kết nối rồi thử lại nhé.');
         } finally {
             setLoading(false);
         }
@@ -1472,7 +1476,7 @@ export default function Forum({
                                                         border: '1px solid',
                                                         borderColor: quickCategory === cat.id ? cat.color : 'var(--border-color)',
                                                         background: quickCategory === cat.id ? cat.color : 'var(--bg-base)',
-                                                        color: quickCategory === cat.id ? '#fff' : 'var(--text-secondary)'
+                                                        color: quickCategory === cat.id ? '#fff' : 'var(--text-content)'
                                                     }}
                                                 >
                                                     {cat.shortName}
@@ -1636,12 +1640,14 @@ export default function Forum({
 
                         {/* 2D. SOCIAL POST STREAM */}
                         {loading && (
-                            <div className="social-loading-card">
+                            <div className="social-loading-card" role="status" aria-busy="true">
                                 Đang tải luồng thảo luận cộng đồng...
                             </div>
                         )}
 
-                        {!loading && displayedPosts.length === 0 && (
+                        {!loading && postsError && <PageError message={postsError} onRetry={() => void fetchPosts()} />}
+
+                        {!loading && !postsError && displayedPosts.length === 0 && (
                             <div className="social-empty-feed-card">
                                 <div style={{ marginBottom: '8px', opacity: 0.6 }}><Icons.All /></div>
                                 <h4>Không tìm thấy bài thảo luận nào phù hợp</h4>

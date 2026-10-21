@@ -2,11 +2,12 @@ import { Router, Response } from 'express';
 import { randomBytes } from 'crypto';
 import db from '../db.js';
 import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.js';
+import { publicNovelSql } from '../utils/novelAccess.js';
 
 const router = Router();
 const collectionSelect = `SELECT c.id, c.name, c.description, c.cover_novel_id AS coverNovelId,
     c.is_public AS isPublic, c.share_id AS shareId, u.displayname AS ownerName,
-    n.cover AS cover FROM library_collections c JOIN users u ON u.id = c.user_id
+    CASE WHEN ${publicNovelSql} THEN n.cover ELSE NULL END AS cover FROM library_collections c JOIN users u ON u.id = c.user_id
     LEFT JOIN novels n ON n.id = c.cover_novel_id`;
 
 router.get('/public/:shareId', async (req, res) => {
@@ -42,7 +43,7 @@ router.post('/collections', async (req: AuthenticatedRequest, res: Response) => 
     const { name, description, isPublic, coverNovelId } = req.body;
     try {
         if (coverNovelId !== null) {
-            const cover = await db.query<any[]>('SELECT id FROM novels WHERE id = ? AND status <> ?', [coverNovelId, 'suspended']);
+            const cover = await db.query<any[]>(`SELECT n.id FROM novels n WHERE n.id = ? AND ${publicNovelSql}`, [coverNovelId]);
             if (!cover.length) return res.status(400).json({ error: 'Bìa tác phẩm không hợp lệ.' });
         }
         const result = await db.query<any>(`INSERT INTO library_collections (user_id, name, description, is_public, cover_novel_id, share_id)
@@ -56,7 +57,7 @@ router.put('/collections/:id', async (req: AuthenticatedRequest, res: Response) 
     const { name, description, isPublic, coverNovelId } = req.body;
     try {
         if (coverNovelId !== null) {
-            const cover = await db.query<any[]>('SELECT id FROM novels WHERE id = ? AND status <> ?', [coverNovelId, 'suspended']);
+            const cover = await db.query<any[]>(`SELECT n.id FROM novels n WHERE n.id = ? AND ${publicNovelSql}`, [coverNovelId]);
             if (!cover.length) return res.status(400).json({ error: 'Bìa tác phẩm không hợp lệ.' });
         }
         const result = await db.query<any>(`UPDATE library_collections SET name = ?, description = ?, is_public = ?, cover_novel_id = ? WHERE id = ? AND user_id = ?`,

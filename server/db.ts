@@ -40,6 +40,7 @@ export async function initializeDbConnection(options: { migrate?: boolean } = {}
             pool = openPool();
             await pool.execute('SELECT id, email FROM users LIMIT 0');
             await pool.execute('SELECT email FROM email_otps LIMIT 0');
+            await pool.execute('SELECT token_hash FROM revoked_tokens LIMIT 0');
             return;
         }
         console.log(`Connecting to MySQL server at ${dbConfig.host}:${dbConfig.port}...`);

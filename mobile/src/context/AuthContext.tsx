@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clearAuthToken, getAuthToken, setAuthToken } from '@/services/storage/authToken';
 import apiClient, { setUnauthorizedHandler } from '@/services/api/client';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { initializeSocket, disconnectSocket } from '@/services/socket/socketClient';
 import { User } from '@/types';
 
@@ -62,12 +63,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const loadStoredAuth = async () => {
       try {
-        const storedToken = await AsyncStorage.getItem('mugen_mobile_token');
+        const storedToken = await getAuthToken();
         const storedUser = await AsyncStorage.getItem('mugen_session');
 
-        if (storedToken && storedUser) {
-          setToken(storedToken);
-          setUser(JSON.parse(storedUser));
+        if (storedUser && (storedToken || Platform.OS === 'web')) {
+          let restored = JSON.parse(storedUser);
+          if (Platform.OS === 'web' && storedToken) {
+            restored = (await apiClient.get(`/auth/refresh/${restored.id}`)).data.user;
+            await clearAuthToken();
+          }
+          setToken(Platform.OS === 'web' ? 'cookie' : storedToken);
+          setUser(restored);
         }
       } catch (e) {
         console.warn('Lỗi đọc session từ AsyncStorage:', e);
@@ -85,10 +91,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const { user: userData, token: userToken } = response.data;
 
       if (userData && userToken) {
-        await AsyncStorage.setItem('mugen_mobile_token', userToken);
+        await setAuthToken(userToken);
         await AsyncStorage.setItem('mugen_session', JSON.stringify(userData));
         setUser(userData);
-        setToken(userToken);
+        setToken(Platform.OS === 'web' ? 'cookie' : userToken);
         return { success: true };
       }
       return { success: false, error: 'Dữ liệu đăng nhập không hợp lệ!' };
@@ -132,10 +138,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (response.data?.success) {
         const { user: userData, token: userToken } = response.data;
         if (userData && userToken) {
-          await AsyncStorage.setItem('mugen_mobile_token', userToken);
+          await setAuthToken(userToken);
           await AsyncStorage.setItem('mugen_session', JSON.stringify(userData));
           setUser(userData);
-          setToken(userToken);
+          setToken(Platform.OS === 'web' ? 'cookie' : userToken);
         }
         return { success: true };
       }
@@ -154,9 +160,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = async () => {
     try {
+      await apiClient.post('/auth/logout');
+    } catch (error: any) {
+      if (error.response?.status !== 401 && error.response?.data?.code !== 'ACCOUNT_SUSPENDED') {
+        throw error;
+      }
+    }
+    try {
       setUser(null);
       setToken(null);
-      await AsyncStorage.removeItem('mugen_mobile_token');
+      await clearAuthToken();
       await AsyncStorage.removeItem('mugen_session');
     } catch (e) {
       console.warn('Lỗi đăng xuất:', e);

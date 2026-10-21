@@ -57,7 +57,7 @@ const PORT = process.env.PORT || 5000;
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
         maxHttpBufferSize: 64 * 1024,
-        cors: { origin: (origin, callback) => callback(null, isAllowedOrigin(origin)), credentials: false },
+        cors: { origin: (origin, callback) => callback(null, isAllowedOrigin(origin)), credentials: true },
         allowRequest: (req, callback) => callback(null, isAllowedOrigin(req.headers.origin)),
     });
     configureSecurity(app);

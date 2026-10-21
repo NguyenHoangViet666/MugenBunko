@@ -57,7 +57,9 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleLogout = () => confirmAction('Đăng xuất?', () => void logout(), 'Bạn có thể đăng nhập lại để tiếp tục đồng bộ.');
+  const handleLogout = () => confirmAction('Đăng xuất?', () => {
+    void logout().catch(error => Alert.alert('Chưa thể đăng xuất', error.response?.data?.error || 'Kiểm tra kết nối rồi thử lại để kết thúc phiên trên máy chủ.'));
+  }, 'Bạn có thể đăng nhập lại để tiếp tục đồng bộ.');
 
   const displayName = user?.displayname || user?.username || 'Wibu Độc Giả';
   const username = user?.username ? `@${user.username}` : '@user';
