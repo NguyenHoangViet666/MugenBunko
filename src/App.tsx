@@ -98,6 +98,7 @@ interface InitialRoute {
     chapterIndex: number | null;
     triggerLogin: boolean;
     profileViewingUsername: string | null;
+    eventId?: number;
 }
 
 // Helper to parse hash on initial load to prevent state races
@@ -106,7 +107,7 @@ const getInitialRoute = (): InitialRoute => {
     const hash = window.location.hash;
     
     // Private routes protection (requires check user from localStorage)
-    const privateRoutes = ['#/library', '#/studio', '#/mod-dashboard', '#/admin-dashboard', '#/profile'];
+    const privateRoutes = ['#/library', '#/studio', '#/mod-dashboard', '#/admin-dashboard', '#/manage-rules', '#/profile'];
     const isPrivate = privateRoutes.includes(hash);
     
     let sessionUser: User | null = null;
@@ -126,7 +127,7 @@ const getInitialRoute = (): InitialRoute => {
         if (hash === '#/mod-dashboard' && !rolesData.includes('moderator') && !rolesData.includes('admin')) {
             return { view: 'home', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
         }
-        if (hash === '#/admin-dashboard' && !rolesData.includes('admin')) {
+        if (['#/admin-dashboard', '#/manage-rules'].includes(hash) && !rolesData.includes('admin')) {
             return { view: 'home', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
         }
     }
@@ -137,10 +138,13 @@ const getInitialRoute = (): InitialRoute => {
     if (hash === '#/studio') return { view: 'studio', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
     if (hash === '#/mod-dashboard') return { view: 'mod-dashboard', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
     if (hash === '#/admin-dashboard') return { view: 'admin-dashboard', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
+    if (hash === '#/manage-rules') return { view: 'manage-rules', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
     if (hash === '#/profile') return { view: 'profile', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
     if (hash === '#/about') return { view: 'about', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
     if (/^#\/collection\/[a-f0-9]{32}$/.test(hash)) return { view: 'collection', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
 
+    const eventMatch = hash.match(/^#\/event\/([1-9]\d{0,14})$/);
+    if (eventMatch) return { view: 'event-detail', eventId: Number(eventMatch[1]), novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
     const profileMatch = hash.match(/^#\/profile\/([^/]+)$/);
     if (profileMatch) {
         const username = decodeURIComponent(profileMatch[1]);
@@ -285,6 +289,8 @@ export default function App() {
     // React Database States (Synchronized with MySQL Backend)
     // ----------------------------------------------------
     const [users, setUsers] = useState<User[]>([]);
+    const [dashboardLoading, setDashboardLoading] = useState(true);
+    const [dashboardError, setDashboardError] = useState('');
     const [novels, setNovels] = useState<Novel[]>([]);
     const [novelsLoading, setNovelsLoading] = useState(true);
     const [novelsError, setNovelsError] = useState('');
@@ -295,13 +301,15 @@ export default function App() {
     const [reviews, setReviews] = useState<Record<number, Review[]>>({});
     const [reports, setReports] = useState<Report[]>([]);
     const [events, setEvents] = useState<SystemEvent[]>([]);
+    const [eventsLoading, setEventsLoading] = useState(initialRoute.view === 'event-detail');
+    const [eventsError, setEventsError] = useState('');
     const [announcements, setAnnouncements] = useState<any[]>([]);
     const [forumPosts, setForumPosts] = useState<ForumPost[]>([]);
     const [latestComments, setLatestComments] = useState<any[]>([]);
     const [latestReviews, setLatestReviews] = useState<any[]>([]);
     const [activeForumPostId, setActiveForumPostId] = useState<number | null>(null);
     const [activeBannerId, setActiveBannerId] = useState<number | null>(null);
-    const [activeEventId, setActiveEventId] = useState<number | null>(null);
+    const [activeEventId, setActiveEventId] = useState<number | null>(initialRoute.eventId || null);
     const [adminEventContent, setAdminEventContent] = useState<string>("");
     const [wibuRanking, setWibuRanking] = useState<any[]>([]);
 
@@ -525,6 +533,8 @@ export default function App() {
             fetchNovels();
         } else if (currentView === 'forum') {
             fetchForumPosts();
+        } else if (currentView === 'event-detail') {
+            fetchEvents();
         } else if (currentView === 'profile') {
             fetchNovels();
             fetchForumPosts();
@@ -542,7 +552,7 @@ export default function App() {
         setProfileViewingUsername(null);
         
         // Private routes protection
-        const privateRoutes = ['#/library', '#/studio', '#/mod-dashboard', '#/admin-dashboard', '#/profile'];
+        const privateRoutes = ['#/library', '#/studio', '#/mod-dashboard', '#/admin-dashboard', '#/manage-rules', '#/profile'];
         const isPrivate = privateRoutes.includes(hash);
         
         let sessionUser: User | null = null;
@@ -572,7 +582,7 @@ export default function App() {
                 window.location.hash = '#/';
                 return;
             }
-            if (hash === '#/admin-dashboard' && !rolesData.includes('admin')) {
+            if (['#/admin-dashboard', '#/manage-rules'].includes(hash) && !rolesData.includes('admin')) {
                 setCurrentView('home');
                 window.location.hash = '#/';
                 return;
@@ -636,6 +646,18 @@ export default function App() {
 
         if (hash === '#/admin-dashboard') {
             setCurrentView('admin-dashboard');
+            return;
+        }
+
+        if (hash === '#/manage-rules') {
+            setCurrentView('manage-rules');
+            return;
+        }
+
+        const eventMatch = hash.match(/^#\/event\/([1-9]\d{0,14})$/);
+        if (eventMatch) {
+            setActiveEventId(Number(eventMatch[1]));
+            setCurrentView('event-detail');
             return;
         }
 
@@ -709,6 +731,10 @@ export default function App() {
             expectedHash = '#/mod-dashboard';
         } else if (currentView === 'admin-dashboard') {
             expectedHash = '#/admin-dashboard';
+        } else if (currentView === 'manage-rules') {
+            expectedHash = '#/manage-rules';
+        } else if (currentView === 'event-detail' && activeEventId !== null) {
+            expectedHash = `#/event/${activeEventId}`;
         } else if (currentView === 'profile') {
             if (profileViewingUsername && (!currentUser || profileViewingUsername !== currentUser.username)) {
                 expectedHash = `#/profile/${encodeURIComponent(profileViewingUsername)}`;
@@ -732,7 +758,7 @@ export default function App() {
         if (window.location.hash !== expectedHash) {
             window.location.hash = expectedHash;
         }
-    }, [currentView, activeNovelId, activeChapterIndex, profileViewingUsername, activeForumPostId, activeCollectionShareId, currentUser]);
+    }, [currentView, activeNovelId, activeChapterIndex, profileViewingUsername, activeForumPostId, activeCollectionShareId, activeEventId, currentUser]);
 
     // ----------------------------------------------------
     // FETCH HELPER METHOD INTEGRATIONS WITH REST API
@@ -786,12 +812,18 @@ export default function App() {
             const cached = getCachedData(CACHE_KEYS.events + ':' + (currentUser?.id || 'guest'), 120000);
             if (cached) {
                 setEvents(cached);
+                setEventsError('');
+                setEventsLoading(false);
                 return;
             }
         }
+        setEventsLoading(true);
+        setEventsError('');
         try {
             const res = await fetchWithAuth(`${API_BASE}/events`);
+            if (!res.ok) throw new Error('Không thể tải danh sách sự kiện.');
             const data = await res.json();
+            if (!Array.isArray(data)) throw new Error('Dữ liệu sự kiện không hợp lệ.');
             const mapped: SystemEvent[] = (Array.isArray(data) ? data : []).map((ev: any) => ({
                 id: ev.id,
                 title: ev.title,
@@ -804,7 +836,9 @@ export default function App() {
             setCachedData(CACHE_KEYS.events + ':' + (currentUser?.id || 'guest'), mapped);
         } catch (err) {
             console.error("Error fetching events:", err);
-            setEvents([]);
+            setEventsError('Không thể tải danh sách sự kiện. Hãy thử làm mới.');
+        } finally {
+            setEventsLoading(false);
         }
     };
 
@@ -905,14 +939,23 @@ export default function App() {
 
     const [pendingChapters, setPendingChapters] = useState<any[]>([]);
     const fetchDashboardData = async () => {
+        setDashboardLoading(true);
+        setDashboardError('');
         try {
             const res = await fetchWithAuth(`${API_BASE}/mod/dashboard`);
+            if (!res.ok) throw new Error('Không thể tải dữ liệu quản trị.');
             const data = await res.json();
+            if (!Array.isArray(data.usersList) || !Array.isArray(data.pendingChapters) || !Array.isArray(data.reportedComments)) {
+                throw new Error('Dữ liệu quản trị không hợp lệ.');
+            }
             setPendingChapters(data.pendingChapters || []);
             setReports(data.reportedComments || []);
             setUsers(data.usersList || []);
         } catch (err) {
             console.error("Error fetching dashboard data:", err);
+            setDashboardError('Không thể tải tài khoản và hàng đợi kiểm duyệt. Hãy thử làm mới.');
+        } finally {
+            setDashboardLoading(false);
         }
     };
 
@@ -976,6 +1019,7 @@ export default function App() {
         if (currentView === 'mod-dashboard' || currentView === 'admin-dashboard') {
             fetchDashboardData();
             fetchNovels(true);
+            if (currentView === 'admin-dashboard') fetchEvents(true);
         }
     }, [currentView]);
 
@@ -1400,7 +1444,7 @@ export default function App() {
 
     const handleCommentReportAction = async (index: number, action: 'keep' | 'delete') => {
         const report = reports[index] as any;
-        if (!report) return;
+        if (!report) return false;
         const reportId = report.reportId || report.id;
         const commentId = report.commentId || report.comment_id;
         try {
@@ -1411,11 +1455,16 @@ export default function App() {
             });
             if (res.ok) {
                 showToast(action === 'delete' ? "Đã xóa bình luận vi phạm!" : "Đã giữ bình luận và đóng báo cáo.");
-                fetchDashboardData();
+                await fetchDashboardData();
+                return true;
             }
+            const data = await res.json();
+            showToast(data.error || 'Không thể xử lý báo cáo.');
         } catch (err) {
             console.error("Report action error:", err);
+            showToast('Không thể xử lý báo cáo. Kiểm tra kết nối rồi thử lại.');
         }
+        return false;
     };
 
     // ----------------------------------------------------
@@ -1886,17 +1935,20 @@ export default function App() {
                 body: JSON.stringify({ action })
             });
             if (res.ok) {
-                fetchNovels(true);
-                fetchDashboardData();
-                showToast(action === 'approve' ? "Đã duyệt xuất bản chương truyện thành công!" : "Đã từ chối xuất bản (trả về nháp).");
+                await Promise.all([fetchNovels(true), fetchDashboardData()]);
+                showToast(action === 'approve' ? "Đã phê duyệt chương truyện." : "Đã trả chương về nháp để chỉnh sửa.");
+                return true;
             }
+            const data = await res.json();
+            showToast(data.error || 'Không thể xét duyệt chương.');
         } catch (err) {
             console.error("Chapter review action error:", err);
+            showToast('Không thể xét duyệt chương. Kiểm tra kết nối rồi thử lại.');
         }
+        return false;
     };
 
     const modRejectChapter = async (chapterId: number) => {
-        if (!confirm("Bạn có chắc chắn muốn gỡ chương này không?")) return;
         try {
             const res = await fetchWithAuth(`${API_BASE}/mod/chapters/${chapterId}/action`, {
                 method: 'POST',
@@ -1904,18 +1956,22 @@ export default function App() {
                 body: JSON.stringify({ action: 'reject' })
             });
             if (res.ok) {
-                fetchNovels(true);
-                fetchDashboardData();
+                await Promise.all([fetchNovels(true), fetchDashboardData()]);
                 showToast("Đã gỡ chương truyện và chuyển về bản nháp.");
+                return true;
             }
+            const data = await res.json();
+            showToast(data.error || 'Không thể ẩn chương.');
         } catch (err) {
             console.error("Reject chapter error:", err);
+            showToast('Không thể ẩn chương. Kiểm tra kết nối rồi thử lại.');
         }
+        return false;
     };
 
     const toggleUserSuspension = async (username: string, nextStatus: 'active' | 'suspended') => {
         const user = users.find(u => u.username === username);
-        if (!user) return;
+        if (!user) return false;
 
         try {
             const res = await fetchWithAuth(`${API_BASE}/admin/users/${user.id}/status`, {
@@ -1924,15 +1980,20 @@ export default function App() {
                 body: JSON.stringify({ status: nextStatus })
             });
             if (res.ok) {
-                fetchDashboardData();
+                await fetchDashboardData();
                 if (nextStatus === 'suspended' && currentUser && currentUser.username === username) {
                     logoutUser();
                 }
                 showToast(nextStatus === 'suspended' ? `Đã khóa tài khoản @${username}.` : `Đã mở khóa hoạt động lại cho @${username}.`);
+                return true;
             }
+            const data = await res.json();
+            showToast(data.error || 'Không thể thay đổi trạng thái tài khoản.');
         } catch (err) {
             console.error("Toggle suspension error:", err);
+            showToast('Không thể cập nhật tài khoản. Kiểm tra kết nối rồi thử lại.');
         }
+        return false;
     };
 
     const modMergeTagsSubmit = async () => {
@@ -1992,11 +2053,15 @@ export default function App() {
                 setAdminEventTitle("");
                 setAdminEventDesc("");
                 setAdminEventContent("");
-                fetchEvents(true);
+                await fetchEvents(true);
                 showToast("Đã lưu sự kiện bản nháp! Bạn có thể xem trước hoặc phát sự kiện.");
+            } else {
+                const data = await res.json();
+                showToast(data.error || 'Không thể lưu bản nháp. Nội dung đã nhập vẫn được giữ.');
             }
         } catch (err) {
             console.error("Create event error:", err);
+            showToast('Không thể lưu bản nháp. Kiểm tra kết nối rồi thử lại.');
         }
     };
 
@@ -2007,7 +2072,7 @@ export default function App() {
             // Deactivate other events first
             for (const other of events) {
                 if (other.status === 'active') {
-                    await fetchWithAuth(`${API_BASE}/events/${other.id}`, {
+                    const stopped = await fetchWithAuth(`${API_BASE}/events/${other.id}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
@@ -2017,6 +2082,7 @@ export default function App() {
                             status: 'draft' 
                         })
                     });
+                    if (!stopped.ok) throw new Error('Không thể dừng sự kiện đang hiển thị.');
                 }
             }
 
@@ -2032,11 +2098,17 @@ export default function App() {
                 })
             });
             if (res.ok) {
-                fetchEvents(true);
+                await fetchEvents(true);
                 showToast("Sự kiện hệ thống đã được phát trực tiếp toàn trang! 🌸");
+            } else {
+                const data = await res.json();
+                showToast(data.error || 'Không thể phát hành sự kiện.');
+                await fetchEvents(true);
             }
         } catch (err) {
             console.error("Publish event error:", err);
+            showToast('Chưa thể phát hành sự kiện. Hãy kiểm tra kết nối và thử lại.');
+            await fetchEvents(true);
         }
     };
 
@@ -2044,11 +2116,15 @@ export default function App() {
         try {
             const res = await fetchWithAuth(`${API_BASE}/events/${eventId}`, { method: 'DELETE' });
             if (res.ok) {
-                fetchEvents(true);
+                await fetchEvents(true);
                 showToast("Đã xóa sự kiện hoàn toàn.");
+            } else {
+                const data = await res.json();
+                showToast(data.error || 'Không thể xóa sự kiện.');
             }
         } catch (err) {
             console.error("Delete event error:", err);
+            showToast('Không thể xóa sự kiện. Kiểm tra kết nối rồi thử lại.');
         }
     };
 
@@ -2057,7 +2133,7 @@ export default function App() {
             let cleared = false;
             for (const ev of events) {
                 if (ev.status === 'active') {
-                    await fetchWithAuth(`${API_BASE}/events/${ev.id}`, {
+                    const stopped = await fetchWithAuth(`${API_BASE}/events/${ev.id}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
@@ -2067,10 +2143,11 @@ export default function App() {
                             status: 'draft' 
                         })
                     });
+                    if (!stopped.ok) throw new Error('Không thể dừng sự kiện.');
                     cleared = true;
                 }
             }
-            fetchEvents(true);
+            await fetchEvents(true);
             if (cleared) {
                 showToast("Đã gỡ bỏ sự kiện đang chạy toàn trang.");
             } else {
@@ -2078,6 +2155,8 @@ export default function App() {
             }
         } catch (err) {
             console.error("Clear events error:", err);
+            showToast('Chưa thể dừng sự kiện. Hãy làm mới và thử lại.');
+            await fetchEvents(true);
         }
     };
 
@@ -2111,14 +2190,18 @@ export default function App() {
                 body: JSON.stringify({ userId: user.id, roles, requesterId: currentUser?.id })
             });
             if (res.ok) {
-                fetchDashboardData();
+                await fetchDashboardData();
                 if (currentUser && currentUser.username === username) {
                     refreshSession(currentUser.id);
                 }
                 showToast(`Đã cập nhật vai trò cho @${username}.`);
+            } else {
+                const data = await res.json();
+                showToast(data.error || 'Không thể cập nhật vai trò.');
             }
         } catch (err) {
             console.error("Update roles error:", err);
+            showToast('Không thể cập nhật vai trò. Kiểm tra kết nối rồi thử lại.');
         }
     };
 
@@ -2970,15 +3053,16 @@ export default function App() {
                         modRejectChapter={modRejectChapter}
                         handleCommentReportAction={handleCommentReportAction}
                         toggleUserSuspension={toggleUserSuspension}
-                        toggleAdminUserRole={toggleAdminUserRole}
                         novels={novels}
-                        setCurrentView={setCurrentView}
-                        tagMergeFrom={tagMergeFrom}
-                        setTagMergeFrom={setTagMergeFrom}
-                        tagMergeTo={tagMergeTo}
-                        setTagMergeTo={setTagMergeTo}
-                        modMergeTagsSubmit={modMergeTagsSubmit}
                         currentUser={currentUser}
+                        loading={dashboardLoading || novelsLoading}
+                        error={[dashboardError, novelsError].filter(Boolean).join(' ')}
+                        onRefresh={() => { void Promise.all([fetchDashboardData(), fetchNovels(true)]); }}
+                        loadChapter={async id => {
+                            const response = await fetchWithAuth(`${API_BASE}/chapters/${id}`);
+                            if (!response.ok) throw new Error('Không thể tải nội dung chương.');
+                            return response.json();
+                        }}
                     />
                 )}
 
@@ -3019,6 +3103,9 @@ export default function App() {
                         publishSystemEvent={publishSystemEvent}
                         deleteSystemEvent={deleteSystemEvent}
                         setActiveEventId={setActiveEventId}
+                        loading={dashboardLoading || novelsLoading || eventsLoading}
+                        error={[dashboardError, novelsError, eventsError].filter(Boolean).join(' ')}
+                        onRefresh={() => { void Promise.all([fetchDashboardData(), fetchNovels(true), fetchEvents(true)]); }}
                     />
                 )}
 
@@ -3047,7 +3134,7 @@ export default function App() {
                 )}
 
                 {currentView === 'event-detail' && (
-                    <EventDetail
+                    eventsLoading ? <PageLoading /> : eventsError ? <PageError message={eventsError} onRetry={() => void fetchEvents(true)} /> : <EventDetail
                         events={events}
                         activeEventId={activeEventId}
                         setCurrentView={setCurrentView}

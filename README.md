@@ -141,12 +141,20 @@ Dự án ra đời nhằm giải quyết bài toán thiếu hụt các nền t�
 - 🎮 **Gamification:** Hệ thống cấp độ (`level`), kinh nghiệm (`xp`) và điểm tích lũy (`coins`) thưởng khi tham gia hoạt động.
 
 ### 4.4. Kiểm duyệt & Quản trị (Mod & Admin Dashboard)
-- 🛡️ **Mod Dashboard:** Xem và xử lý danh sách chương truyện chờ phê duyệt, xử lý các báo cáo vi phạm (`reports`) bình luận/nội dung.
+
+- 🛡️ **Mod Dashboard:**
+  - Sidebar dọc chia năm tab: Tổng quan, Chờ duyệt, Báo cáo, Tài khoản và Nội dung đã đăng; cùng hệ giao diện với Admin và menu thu gọn trên màn hình nhỏ.
+  - Tìm kiếm/phân trang hàng đợi, xem nội dung chương ngay trong trang, thử tải lại khi lỗi, duyệt xuất bản hoặc trả chương về nháp. Nội dung đã đăng có thể được ẩn để tác giả chỉnh sửa.
+  - Báo cáo hiển thị bình luận, người gửi và lý do; giữ hoặc xóa đúng bình luận kể cả khi đang lọc danh sách.
+  - Tab Tài khoản hỗ trợ tra cứu/lọc trạng thái. Chỉ Admin có thao tác khóa/mở khóa theo quyền API hiện có; Mod không được cấp thêm quyền quản trị.
+  - Giữ danh sách khi mất mạng, có thử lại và khóa nút trong lúc xử lý; hỗ trợ bàn phím và các theme Washi/Sepia/Charcoal.
 - 👑 **Admin Dashboard:**
-  - Thống kê toàn cảnh hệ thống (Tổng người dùng, tổng tác phẩm, tổng chương, doanh thu).
-  - Quản lý danh sách người dùng: Phân vai trò (`reader`, `author`, `moderator`, `admin`), khóa/mở khóa tài khoản (`active`/`suspended`).
-  - Phê duyệt đơn đăng ký tác giả (`author_request`).
-  - Quản lý thể loại truyện (Genres) và thông báo toàn hệ thống.
+  - Sidebar dọc chia sáu tab: Tổng quan, Tài khoản, Tác phẩm, Danh mục, Sự kiện và Trang chủ. Trên màn hình nhỏ, menu dọc có thể thu gọn.
+  - Tổng quan hiển thị số tài khoản, tác phẩm, chương chờ duyệt và báo cáo; các hàng công việc mở đúng khu vực cần xử lý.
+  - Tìm kiếm, lọc và phân trang tài khoản/tác phẩm; phân quyền thành viên và phê duyệt đơn đăng ký tác giả (`author_request`). Khu vực kiểm duyệt vẫn phụ trách khóa/mở khóa tài khoản.
+  - Thêm/xóa thể loại, gộp thẻ, soạn nháp, xem trước, phát hành/dừng và xóa sự kiện. Nội dung đang soạn được giữ khi đổi tab hoặc lưu thất bại.
+  - Tab Trang chủ chọn banner tiêu điểm trên trình duyệt hiện tại. Đây là lựa chọn cục bộ, chưa phải cấu hình banner dùng chung cho mọi người.
+  - Hỗ trợ bàn phím trong sidebar, các theme Washi/Sepia/Charcoal, trạng thái đang xử lý và tải lỗi có thử lại. Xem trước sự kiện (`#/event/:id`) và quản lý quy định (`#/manage-rules`) hỗ trợ tải lại URL.
 
 ---
 

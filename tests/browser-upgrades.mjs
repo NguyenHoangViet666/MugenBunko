@@ -38,7 +38,7 @@ const waitSelector = async (sid, selector) => {
         throw new Error(`${error.message}\nPage content: ${body}\nRuntime exceptions: ${JSON.stringify(exceptions)}`, { cause: error });
     }
 };
-const clickText = (sid, text) => evaluate(sid, `(() => { const button = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(text)}); if (!button) throw Error('Missing button: ' + ${JSON.stringify(text)}); button.click(); return true; })()`);
+const clickText = (sid, text) => evaluate(sid, `(() => { const button = [...document.querySelectorAll('button')].find(b => b.getClientRects().length > 0 && b.textContent.trim() === ${JSON.stringify(text)}); if (!button) throw Error('Missing button: ' + ${JSON.stringify(text)}); button.click(); return true; })()`);
 const setValue = (sid, selector, value) => evaluate(sid, `(() => { const element = document.querySelector(${JSON.stringify(selector)}); if (!element) throw Error('Missing field'); const proto = element.tagName === 'SELECT' ? HTMLSelectElement.prototype : element.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype; Object.getOwnPropertyDescriptor(proto,'value').set.call(element,${JSON.stringify(value)}); element.dispatchEvent(new Event(element.tagName === 'SELECT' ? 'change' : 'input',{bubbles:true})); return true; })()`);
 
 try {
@@ -233,6 +233,244 @@ try {
     await waitSelector(about, '#about-title');
     await closePage(about);
     console.log('PASS: lazy pages support direct links and keyboard profile navigation with browser Back');
+
+    // Shared staff scenarios use only the isolated fixture database.
+    for (let i = 0; i < 12; i++) {
+        await fixture.db.query("INSERT INTO users (username, password, displayname, status) VALUES (?, 'test-only', ?, 'active')", [`admin_smoke_${i}`, `Thành viên thử nghiệm ${i + 1}`]);
+    }
+    await fixture.db.query("INSERT INTO user_roles (user_id, role) SELECT id, 'reader' FROM users WHERE username LIKE 'admin_smoke_%'");
+
+    await fixture.db.query("INSERT INTO user_roles (user_id, role) VALUES (2, 'moderator')");
+    fixture.user.roles.push('moderator');
+    const pendingIds = [];
+    for (let i = 0; i < 13; i++) {
+        const inserted = await fixture.db.query("INSERT INTO chapters (novel_id, volume_name, title, content, status, word_count) VALUES (1, 'Tập kiểm duyệt', ?, '<p>Nội dung dành cho kiểm duyệt.</p>', 'pending', 7)", [`Chương kiểm duyệt ${i + 1}`]);
+        pendingIds.push(inserted.insertId);
+    }
+    const publishedItem = await fixture.db.query("INSERT INTO chapters (novel_id, volume_name, title, content, status) VALUES (1, 'Tập kiểm duyệt', 'Chương kiểm tra ẩn', '<p>Nội dung đã được xuất bản.</p>', 'published')");
+    const reportIds = [];
+    const commentIds = [];
+    for (let i = 0; i < 12; i++) {
+        const comment = await fixture.db.query("INSERT INTO comments (novel_id, user_id, text) VALUES (1, 3, ?)", [`Bình luận kiểm duyệt ${i + 1}`]);
+        const report = await fixture.db.query("INSERT INTO reports (reporter_id, comment_id, reason) VALUES (2, ?, ?)", [comment.insertId, `Lý do cần xem xét ${i + 1}`]);
+        commentIds.push(comment.insertId); reportIds.push(report.insertId);
+    }
+    const mod = await newPage('#/mod-dashboard');
+    await waitSelector(mod, '.mod-workspace');
+    await until(() => evaluate(mod, "!document.querySelector('.admin-refresh').disabled"), 'Mod data did not finish loading');
+    assert.equal(await evaluate(mod, "document.querySelectorAll('.mod-workspace [role=tab]').length"), 5);
+    assert.equal(await evaluate(mod, "document.querySelector('.mod-workspace a[href=\"#/admin-dashboard\"]')"), null, 'Pure moderators must not have admin navigation');
+    const modTab = async tab => {
+        await evaluate(mod, "(() => {const toggle=document.querySelector('.admin-menu-toggle');if(toggle.getClientRects().length && toggle.getAttribute('aria-expanded')==='false')toggle.click();return true})()");
+        await evaluate(mod, `document.querySelector('#mod-tab-${tab}').click();true`);
+        await until(() => evaluate(mod, `document.querySelector('#mod-panel-${tab}').hidden===false`), `Mod tab ${tab} did not open`);
+    };
+    await screenshot(mod, 'mod-overview');
+    await evaluate(mod, "document.querySelector('#mod-tab-overview').focus();true");
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'ArrowDown', code: 'ArrowDown', windowsVirtualKeyCode: 40 }, mod);
+    assert.equal(await evaluate(mod, 'document.activeElement.id'), 'mod-tab-pending');
+    await evaluate(mod, "document.querySelector('[aria-label=\"Trang sau chờ duyệt\"]').click();true");
+    assert.ok(await evaluate(mod, "document.querySelector('#mod-panel-pending .admin-pagination').textContent.includes('Trang 2 / 2')"));
+    await setValue(mod, '#mod-panel-pending input[type=search]', 'Chương kiểm duyệt 1');
+    await send('Network.setBlockedURLs', { urls: [fixture.url + '/api/chapters/' + pendingIds[0]] }, mod);
+    await evaluate(mod, "document.querySelector('[aria-label=\"Xem chương Chương kiểm duyệt 1\"]').click();true");
+    await waitSelector(mod, '.mod-preview .admin-notice');
+    assert.equal(await evaluate(mod, "document.querySelector('.mod-chapter-body')"), null);
+    await send('Network.setBlockedURLs', { urls: [] }, mod);
+    await clickText(mod, 'Thử lại');
+    await waitSelector(mod, '.mod-chapter-body');
+    assert.ok(await evaluate(mod, "document.querySelector('.mod-chapter-body').textContent.includes('Nội dung dành cho kiểm duyệt.')"));
+    await screenshot(mod, 'mod-preview');
+    await clickText(mod, 'Duyệt xuất bản');
+    await until(async () => (await fixture.db.query('SELECT status FROM chapters WHERE id = ?', [pendingIds[0]]))[0]?.status === 'published', 'Mod approval did not persist');
+    await until(() => evaluate(mod, "!document.querySelector('.mod-preview') && !document.querySelector('.admin-refresh').disabled"), 'Approval did not return to the queue');
+    await setValue(mod, '#mod-panel-pending input[type=search]', 'Chương kiểm duyệt 2');
+    await evaluate(mod, "window.confirm=()=>false;document.querySelector('[aria-label=\"Trả về nháp Chương kiểm duyệt 2\"]').click();true");
+    assert.equal((await fixture.db.query('SELECT status FROM chapters WHERE id = ?', [pendingIds[1]]))[0].status, 'pending');
+    await evaluate(mod, "window.confirm=()=>true;document.querySelector('[aria-label=\"Trả về nháp Chương kiểm duyệt 2\"]').click();true");
+    await until(async () => (await fixture.db.query('SELECT status FROM chapters WHERE id = ?', [pendingIds[1]]))[0]?.status === 'draft', 'Mod rejection did not persist');
+    await until(() => evaluate(mod, "!document.querySelector('.admin-refresh').disabled"), 'Rejection did not refresh');
+
+    await modTab('reports');
+    await setValue(mod, '#mod-panel-reports input[type=search]', 'Bình luận kiểm duyệt 11');
+    await evaluate(mod, `document.querySelector('[aria-label="Giữ bình luận báo cáo ${reportIds[10]}"]').click();true`);
+    await until(async () => (await fixture.db.query('SELECT id FROM reports WHERE id = ?', [reportIds[10]])).length === 0, 'Filtered report keep action targeted the wrong report');
+    assert.equal((await fixture.db.query('SELECT id FROM comments WHERE id = ?', [commentIds[10]])).length, 1, 'Keeping a comment must preserve it');
+    await until(() => evaluate(mod, "!document.querySelector('.admin-refresh').disabled"), 'Report keep did not refresh');
+    await setValue(mod, '#mod-panel-reports input[type=search]', 'Bình luận kiểm duyệt 12');
+    await evaluate(mod, `document.querySelector('[aria-label="Xóa bình luận báo cáo ${reportIds[11]}"]').click();true`);
+    await until(async () => (await fixture.db.query('SELECT id FROM comments WHERE id = ?', [commentIds[11]])).length === 0, 'Filtered report delete targeted the wrong comment');
+    await until(() => evaluate(mod, "!document.querySelector('.admin-refresh').disabled"), 'Report delete did not refresh');
+    await setValue(mod, '#mod-panel-reports input[type=search]', '');
+    await screenshot(mod, 'mod-reports');
+    await modTab('users');
+    assert.equal(await evaluate(mod, "document.querySelector('#mod-panel-users [aria-label^=\"Khóa @\"]')"), null, 'Pure moderators must not receive account suspension controls');
+    await setValue(mod, '#mod-panel-users input[type=search]', 'upgrade_other');
+    assert.equal(await evaluate(mod, "document.querySelectorAll('.mod-users-table tbody tr').length"), 1);
+    await setValue(mod, '[aria-label="Lọc trạng thái tài khoản kiểm duyệt"]', 'suspended');
+    await waitSelector(mod, '#mod-panel-users .admin-empty');
+    await clickText(mod, 'Xóa bộ lọc');
+
+    await modTab('published');
+    await setValue(mod, '#mod-panel-published input[type=search]', 'Chương kiểm tra ẩn');
+    await evaluate(mod, "document.querySelector('[aria-label=\"Xem chương Chương kiểm tra ẩn\"]').click();true");
+    await waitSelector(mod, '.mod-chapter-body');
+    await evaluate(mod, "window.confirm=()=>false;true");
+    await clickText(mod, 'Ẩn chương');
+    assert.equal((await fixture.db.query('SELECT status FROM chapters WHERE id = ?', [publishedItem.insertId]))[0].status, 'published');
+    await evaluate(mod, "window.confirm=()=>true;true");
+    await clickText(mod, 'Ẩn chương');
+    await until(async () => (await fixture.db.query('SELECT status FROM chapters WHERE id = ?', [publishedItem.insertId]))[0]?.status === 'draft', 'Published chapter did not return to draft');
+    await until(() => evaluate(mod, "!document.querySelector('.mod-preview') && !document.querySelector('.admin-refresh').disabled"), 'Hide did not return to the list');
+    await until(() => evaluate(mod, "document.activeElement.id==='mod-tab-published'"), 'Closing the last filtered preview did not restore keyboard focus');
+    await setValue(mod, '#mod-panel-published input[type=search]', '');
+
+    await send('Network.setBlockedURLs', { urls: [fixture.url + '/api/mod/dashboard'] }, mod);
+    await evaluate(mod, "document.querySelector('.admin-refresh').click();true");
+    await waitSelector(mod, '.admin-notice');
+    await send('Network.setBlockedURLs', { urls: [] }, mod);
+    await until(() => evaluate(mod, "!document.querySelector('.admin-notice button').disabled"), 'Mod retry stayed disabled');
+    await evaluate(mod, "document.querySelector('.admin-notice button').click();true");
+    await until(() => evaluate(mod, "!document.querySelector('.admin-notice') && !document.querySelector('.admin-refresh').disabled"), 'Mod retry failed');
+    await setValue(mod, '#mod-panel-pending input[type=search]', '');
+    for (const theme of ['washi', 'sepia', 'charcoal']) {
+        await evaluate(mod, `document.body.className='theme-${theme}';true`);
+        for (const width of [1440, 992, 768, 390, 320]) {
+            await send('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: width <= 768 }, mod);
+            for (const tab of ['pending', 'reports', 'users', 'published']) {
+                await modTab(tab);
+                const clipped = await evaluate(mod, `(() => {
+                    const root=document.querySelector('.mod-workspace').getBoundingClientRect();
+                    const controls=[...document.querySelectorAll('.mod-workspace button,.mod-workspace input,.mod-workspace select')].filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0}).filter(e=>{const r=e.getBoundingClientRect();return r.left<-.5||r.right>${width}+.5}).map(e=>e.getAttribute('aria-label')||e.textContent.trim());
+                    return {rootClipped:root.left<-.5||root.right>${width}+.5,controls};
+                })()`);
+                assert.deepEqual(clipped, { rootClipped: false, controls: [] }, `Mod ${tab}, ${theme}, ${width}px`);
+                if ((width === 1440 || width === 390) && tab === 'pending') await screenshot(mod, `mod-pending-${theme}-${width}`);
+            }
+        }
+    }
+    await closePage(mod);
+    await fixture.db.query("DELETE FROM user_roles WHERE user_id = 2 AND role = 'moderator'");
+    fixture.user.roles.splice(fixture.user.roles.indexOf('moderator'), 1);
+    console.log('PASS: moderator sidebar, preview/retry, chapter approval/rejection/hiding, filtered report actions, role-aware controls and responsive themes.');
+
+    // Administration is exercised with a real staff account in the isolated fixture.
+    await fixture.db.query("INSERT INTO user_roles (user_id, role) VALUES (2, 'admin')");
+    fixture.user.roles.push('admin');
+    await fixture.db.query("UPDATE users SET author_request = 'pending', displayname = 'Độc giả khác với tên hiển thị rất dài để kiểm tra bố cục' WHERE id = 3");
+    const admin = await newPage('#/admin-dashboard');
+    await waitSelector(admin, '.admin-workspace');
+    await until(() => evaluate(admin, "document.querySelector('.admin-refresh') && !document.querySelector('.admin-refresh').disabled"), 'Admin data did not finish loading');
+    assert.equal(await evaluate(admin, "document.querySelectorAll('.admin-nav-item').length"), 6);
+    assert.equal(await evaluate(admin, "getComputedStyle(document.querySelector('.admin-workspace')).display"), 'grid');
+    const adminTab = async tab => {
+        await evaluate(admin, `document.querySelector('#admin-tab-${tab}').click();true`);
+        await until(() => evaluate(admin, `document.querySelector('#admin-panel-${tab}').hidden === false`), `Admin tab ${tab} did not open`);
+    };
+    await screenshot(admin, 'admin-overview');
+    await evaluate(admin, "document.querySelector('#admin-tab-overview').focus();true");
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'ArrowDown', code: 'ArrowDown', windowsVirtualKeyCode: 40 }, admin);
+    assert.equal(await evaluate(admin, 'document.activeElement.id'), 'admin-tab-users');
+    assert.equal(await evaluate(admin, "document.querySelector('#admin-tab-users').getAttribute('aria-selected')"), 'true');
+    await evaluate(admin, "document.querySelector('[aria-label=\"Trang sau tài khoản\"]').click();true");
+    assert.ok(await evaluate(admin, "document.querySelector('#admin-panel-users .admin-pagination').textContent.includes('Trang 2 / 2')"));
+    await setValue(admin, '#admin-panel-users input[type=search]', 'upgrade_other');
+    assert.equal(await evaluate(admin, "document.querySelectorAll('.admin-users-table tbody tr').length"), 1);
+    await setValue(admin, '#admin-panel-users input[type=search]', 'no-such-account');
+    await waitSelector(admin, '#admin-panel-users .admin-empty');
+    await clickText(admin, 'Xóa bộ lọc');
+    await setValue(admin, '[aria-label="Lọc tài khoản"]', 'pending');
+    await screenshot(admin, 'admin-users');
+    await evaluate(admin, "document.querySelector('.admin-request-actions .text-action').click();true");
+    await until(async () => (await fixture.db.query('SELECT author_request FROM users WHERE id = 3'))[0]?.author_request === 'approved', 'Author approval did not persist');
+    await until(() => evaluate(admin, "!document.querySelector('.admin-refresh').disabled"), 'Author approval did not refresh');
+
+    await adminTab('events');
+    await setValue(admin, '#admin-event-title', 'Sự kiện quản trị thử nghiệm');
+    await setValue(admin, '#admin-event-description', 'Một thông báo được lưu từ giao diện mới.');
+    await setValue(admin, '#admin-event-content', '<p>Nội dung vẫn còn khi đổi tab.</p>');
+    await adminTab('novels');
+    await setValue(admin, '#admin-panel-novels input[type=search]', 'khong-co-tac-pham');
+    await waitSelector(admin, '#admin-panel-novels .admin-empty');
+    await clickText(admin, 'Xóa bộ lọc');
+    await waitSelector(admin, '.admin-novels-table tbody tr');
+    await screenshot(admin, 'admin-novels');
+    await adminTab('events');
+    assert.equal(await evaluate(admin, "document.querySelector('#admin-event-title').value"), 'Sự kiện quản trị thử nghiệm');
+    await send('Network.setBlockedURLs', { urls: [fixture.url + '/api/events'] }, admin);
+    await clickText(admin, 'Lưu bản nháp');
+    await until(() => evaluate(admin, "document.querySelector('.toast-message').textContent.includes('Không thể lưu bản nháp')"), 'Failed event save did not report an error');
+    assert.equal(await evaluate(admin, "document.querySelector('#admin-event-content').value"), '<p>Nội dung vẫn còn khi đổi tab.</p>');
+    await send('Network.setBlockedURLs', { urls: [] }, admin);
+    await clickText(admin, 'Lưu bản nháp');
+    const savedEvent = await until(async () => (await fixture.db.query("SELECT id FROM events WHERE title = 'Sự kiện quản trị thử nghiệm'"))[0], 'Event draft was not saved');
+    await until(() => evaluate(admin, "document.querySelector('.admin-event-list').textContent.includes('Sự kiện quản trị thử nghiệm')"), 'Saved event did not reach the list');
+    await clickText(admin, 'Phát hành Sự kiện quản trị thử nghiệm');
+    await until(async () => (await fixture.db.query('SELECT status FROM events WHERE id = ?', [savedEvent.id]))[0]?.status === 'active', 'Event did not publish');
+    await waitSelector(admin, '.admin-live-event');
+    await screenshot(admin, 'admin-events');
+    await clickText(admin, 'Dừng hiển thị');
+    await until(async () => (await fixture.db.query('SELECT status FROM events WHERE id = ?', [savedEvent.id]))[0]?.status === 'draft', 'Event did not stop');
+    await until(() => evaluate(admin, "!document.querySelector('.admin-refresh').disabled"), 'Event stop did not finish');
+
+    await adminTab('genres');
+    await setValue(admin, '#admin-new-genre', 'Thể loại thử nghiệm');
+    await clickText(admin, 'Thêm thể loại');
+    await until(async () => (await fixture.db.query("SELECT name FROM genres WHERE name = 'Thể loại thử nghiệm'")).length === 1, 'Genre was not saved');
+    await adminTab('homepage');
+    await setValue(admin, '#admin-featured-novel', '1');
+    assert.equal(await evaluate(admin, "localStorage.getItem('mugen_active_banner_id')"), '1');
+    await waitSelector(admin, '.admin-featured-preview');
+
+    await send('Network.setBlockedURLs', { urls: [fixture.url + '/api/mod/dashboard'] }, admin);
+    await evaluate(admin, "document.querySelector('.admin-refresh').click();true");
+    await waitSelector(admin, '.admin-notice');
+    assert.equal(await evaluate(admin, "document.querySelector('[aria-label=\"Lọc tài khoản\"]').value"), 'pending', 'Existing filter should be retained after a network error');
+    assert.equal(await evaluate(admin, "document.querySelector('#admin-panel-users .admin-empty') !== null"), false, 'A network error must not be presented as an empty list');
+    await send('Network.setBlockedURLs', { urls: [] }, admin);
+    await until(() => evaluate(admin, "!document.querySelector('.admin-notice button').disabled"), 'Admin retry stayed disabled');
+    await evaluate(admin, "document.querySelector('.admin-notice button').click();true");
+    await until(() => evaluate(admin, "!document.querySelector('.admin-notice') && !document.querySelector('.admin-refresh').disabled"), 'Admin retry failed');
+
+    for (const theme of ['washi', 'sepia', 'charcoal']) {
+        await evaluate(admin, `document.body.className='theme-${theme}';true`);
+        for (const width of [1440, 992, 768, 390, 320]) {
+            await send('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: width <= 768 }, admin);
+            await sleep(150);
+            if (width <= 760) {
+                await evaluate(admin, "document.querySelector('.admin-menu-toggle').click();true");
+                await until(() => evaluate(admin, "document.querySelector('.admin-menu-toggle').getAttribute('aria-expanded')==='true'"), 'Mobile admin menu did not expand');
+            }
+            await adminTab('users');
+            await setValue(admin, '[aria-label="Lọc tài khoản"]', 'all');
+            const clipped = await evaluate(admin, `(() => {
+                const root=document.querySelector('.admin-workspace').getBoundingClientRect();
+                const controls=[...document.querySelectorAll('.admin-workspace button,.admin-workspace input,.admin-workspace select')].filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0}).filter(e=>{const r=e.getBoundingClientRect();return r.left<-.5||r.right>${width}+.5}).map(e=>e.getAttribute('aria-label')||e.textContent.trim());
+                return {rootClipped:root.left<-.5||root.right>${width}+.5,controls};
+            })()`);
+            assert.deepEqual(clipped, { rootClipped: false, controls: [] }, `Admin ${theme}, ${width}px`);
+            if (width === 1440 || width === 390) await screenshot(admin, `admin-users-${theme}-${width}`);
+        }
+    }
+    await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false }, admin);
+    await adminTab('events');
+    await clickText(admin, 'Xem trước Sự kiện quản trị thử nghiệm');
+    await waitSelector(admin, '.event-rich-content');
+    assert.equal(await evaluate(admin, 'location.hash'), '#/event/' + savedEvent.id);
+    await send('Page.reload', {}, admin);
+    await waitSelector(admin, '.event-rich-content');
+    assert.ok(await evaluate(admin, "document.querySelector('.event-rich-content').textContent.includes('Nội dung vẫn còn khi đổi tab.')"));
+    await clickText(admin, '← Quay lại');
+    await waitSelector(admin, '.admin-workspace');
+    await evaluate(admin, "document.querySelector('.admin-sidebar-links a[href=\"#/manage-rules\"]').click();true");
+    await waitSelector(admin, '.author-studio-container');
+    assert.equal(await evaluate(admin, 'location.hash'), '#/manage-rules');
+    await send('Page.reload', {}, admin);
+    await waitSelector(admin, '.author-studio-container');
+    await evaluate(admin, 'history.back();true');
+    await waitSelector(admin, '.admin-workspace');
+    await closePage(admin);
+    console.log('PASS: admin sidebar, keyboard tabs, filters, pagination, author approval, event lifecycle, drafts, retry and responsive themes.');
 
     const signup = await newPage('#/', false);
     await waitSelector(signup, '.app-header');
