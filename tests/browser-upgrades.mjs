@@ -258,7 +258,7 @@ try {
     const mod = await newPage('#/mod-dashboard');
     await waitSelector(mod, '.mod-workspace');
     await until(() => evaluate(mod, "!document.querySelector('.admin-refresh').disabled"), 'Mod data did not finish loading');
-    assert.equal(await evaluate(mod, "document.querySelectorAll('.mod-workspace [role=tab]').length"), 5);
+    assert.equal(await evaluate(mod, "document.querySelectorAll('.mod-workspace [role=tab]').length"), 6);
     assert.equal(await evaluate(mod, "document.querySelector('.mod-workspace a[href=\"#/admin-dashboard\"]')"), null, 'Pure moderators must not have admin navigation');
     const modTab = async tab => {
         await evaluate(mod, "(() => {const toggle=document.querySelector('.admin-menu-toggle');if(toggle.getClientRects().length && toggle.getAttribute('aria-expanded')==='false')toggle.click();return true})()");
@@ -361,7 +361,7 @@ try {
     const admin = await newPage('#/admin-dashboard');
     await waitSelector(admin, '.admin-workspace');
     await until(() => evaluate(admin, "document.querySelector('.admin-refresh') && !document.querySelector('.admin-refresh').disabled"), 'Admin data did not finish loading');
-    assert.equal(await evaluate(admin, "document.querySelectorAll('.admin-nav-item').length"), 6);
+    assert.equal(await evaluate(admin, "document.querySelectorAll('.admin-nav-item').length"), 7);
     assert.equal(await evaluate(admin, "getComputedStyle(document.querySelector('.admin-workspace')).display"), 'grid');
     const adminTab = async tab => {
         await evaluate(admin, `document.querySelector('#admin-tab-${tab}').click();true`);

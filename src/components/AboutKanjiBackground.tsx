@@ -6,21 +6,27 @@ export default function AboutKanjiBackground() {
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
+        const container = canvas.parentElement;
+        if (!container) return;
 
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        let animationFrameId: number;
-        let width = (canvas.width = canvas.parentElement?.clientWidth || window.innerWidth);
-        let height = (canvas.height = canvas.parentElement?.clientHeight || 600);
+        let animationFrameId: number | undefined;
+        let width = 0;
+        let height = 0;
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
         const handleResize = () => {
-            if (!canvas || !canvas.parentElement) return;
-            width = canvas.width = canvas.parentElement.clientWidth;
-            height = canvas.height = canvas.parentElement.clientHeight;
+            width = container.clientWidth;
+            height = container.clientHeight;
+            const scale = Math.min(window.devicePixelRatio || 1, 2);
+            canvas.width = Math.round(width * scale);
+            canvas.height = Math.round(height * scale);
+            ctx.setTransform(scale, 0, 0, scale, 0, 0);
         };
 
-        window.addEventListener('resize', handleResize);
+        handleResize();
 
         // Particle configuration
         const kanjiList = ['無', '限', '文', '庫', '墨', '夢', '道', '心', '語', '魂', '書', '創', '星', '風'];
@@ -57,6 +63,7 @@ export default function AboutKanjiBackground() {
         let mouseY = -1000;
 
         const handleMouseMove = (e: MouseEvent) => {
+            if (reducedMotion.matches) return;
             const rect = canvas.getBoundingClientRect();
             mouseX = e.clientX - rect.left;
             mouseY = e.clientY - rect.top;
@@ -67,8 +74,8 @@ export default function AboutKanjiBackground() {
             mouseY = -1000;
         };
 
-        canvas.addEventListener('mousemove', handleMouseMove);
-        canvas.addEventListener('mouseleave', handleMouseLeave);
+        container.addEventListener('mousemove', handleMouseMove);
+        container.addEventListener('mouseleave', handleMouseLeave);
 
         const render = () => {
             ctx.clearRect(0, 0, width, height);
@@ -141,16 +148,28 @@ export default function AboutKanjiBackground() {
                 ctx.restore();
             }
 
-            animationFrameId = requestAnimationFrame(render);
+            if (!reducedMotion.matches) animationFrameId = requestAnimationFrame(render);
         };
 
+        const restart = () => {
+            if (animationFrameId !== undefined) cancelAnimationFrame(animationFrameId);
+            animationFrameId = undefined;
+            render();
+        };
+        const resizeObserver = new ResizeObserver(() => {
+            handleResize();
+            restart();
+        });
+        resizeObserver.observe(container);
+        reducedMotion.addEventListener('change', restart);
         render();
 
         return () => {
-            window.removeEventListener('resize', handleResize);
-            canvas.removeEventListener('mousemove', handleMouseMove);
-            canvas.removeEventListener('mouseleave', handleMouseLeave);
-            cancelAnimationFrame(animationFrameId);
+            resizeObserver.disconnect();
+            reducedMotion.removeEventListener('change', restart);
+            container.removeEventListener('mousemove', handleMouseMove);
+            container.removeEventListener('mouseleave', handleMouseLeave);
+            if (animationFrameId !== undefined) cancelAnimationFrame(animationFrameId);
         };
     }, []);
 

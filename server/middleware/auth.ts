@@ -16,7 +16,10 @@ export async function resolveUser(token: string) {
     const hash = tokenHash(token);
     const users = await db.query<any[]>(`SELECT u.id, u.username, u.status, r.role,
         EXISTS(SELECT 1 FROM revoked_tokens revoked WHERE revoked.token_hash = ?) AS revoked FROM users u
-        LEFT JOIN user_roles r ON r.user_id = u.id WHERE u.id = ?`, [hash, decoded.id]);
+        LEFT JOIN user_roles r ON r.user_id = u.id AND (r.role <> 'moderator' OR NOT EXISTS (
+            SELECT 1 FROM election_candidates ec WHERE ec.user_id=u.id AND ec.decision='appointed'
+            AND ec.ended_at IS NULL AND ec.term_ends_at<=UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000
+        )) WHERE u.id = ?`, [hash, decoded.id]);
     if (users[0]?.revoked) throw new jwt.JsonWebTokenError('Session revoked');
     if (!users.length || users[0].status !== 'active') return null;
     return { id: users[0].id as number, username: users[0].username as string,

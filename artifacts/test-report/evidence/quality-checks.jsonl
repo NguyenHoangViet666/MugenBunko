@@ -1,0 +1,4 @@
+﻿{"ended_utc":"2026-10-21T17:25:34.4804218Z","command":"npm run typecheck","name":"web-typecheck","started_utc":"2026-10-21T17:25:12.0335972Z","exit_code":0}
+{"ended_utc":"2026-10-21T17:25:52.1089758Z","command":"npm run lint","name":"web-lint","started_utc":"2026-10-21T17:25:35.8939692Z","exit_code":0}
+{"ended_utc":"2026-10-21T17:25:57.0763289Z","command":"npm run build","name":"web-build","started_utc":"2026-10-21T17:25:52.1245163Z","exit_code":0}
+{"ended_utc":"2026-10-21T17:26:35.3953344Z","command":"npm --prefix mobile run typecheck","name":"mobile-typecheck","started_utc":"2026-10-21T17:25:57.4137012Z","exit_code":0}

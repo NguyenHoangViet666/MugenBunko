@@ -34,6 +34,7 @@ const About = lazy(() => import('./pages/About'));
 const EventDetail = lazy(() => import('./pages/EventDetail'));
 const PublicCollection = lazy(() => import('./pages/PublicCollection'));
 const Library = lazy(() => import('./pages/Library'));
+const Elections = lazy(() => import('./pages/Elections'));
 
 /* ================= DATABASE CONFIG ================= */
 const DB_KEYS = {
@@ -141,6 +142,7 @@ const getInitialRoute = (): InitialRoute => {
     if (hash === '#/manage-rules') return { view: 'manage-rules', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
     if (hash === '#/profile') return { view: 'profile', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
     if (hash === '#/about') return { view: 'about', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
+    if (/^#\/elections(?:\/[1-9]\d*)?$/.test(hash)) return { view: 'elections', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
     if (/^#\/collection\/[a-f0-9]{32}$/.test(hash)) return { view: 'collection', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
 
     const eventMatch = hash.match(/^#\/event\/([1-9]\d{0,14})$/);
@@ -634,6 +636,10 @@ export default function App() {
             return;
         }
 
+        if (/^#\/elections(?:\/[1-9]\d*)?$/.test(hash)) {
+            setCurrentView('elections'); setActiveNovelId(null); setActiveChapterIndex(null); return;
+        }
+
         if (hash === '#/studio') {
             setCurrentView('studio');
             return;
@@ -747,6 +753,8 @@ export default function App() {
             expectedHash = '#/explore';
         } else if (currentView === 'about') {
             expectedHash = '#/about';
+        } else if (currentView === 'elections') {
+            expectedHash = /^#\/elections(?:\/[1-9]\d*)?$/.test(window.location.hash) ? window.location.hash : '#/elections';
         } else if (currentView === 'collection') {
             expectedHash = activeCollectionShareId ? `#/collection/${activeCollectionShareId}` : '#/';
         } else if (currentView === 'detail' && activeNovelId !== null) {
@@ -1111,7 +1119,7 @@ export default function App() {
             setLoginUsername("");
             setLoginPassword("");
             setLoginModalOpen(false);
-            setCurrentView('home');
+            if (currentView !== 'elections') setCurrentView('home');
             showToast(`Đăng nhập thành công! Chào mừng trở lại, ${data.user.displayname}.`);
         } catch (err) {
             alert("Lỗi kết nối máy chủ API!");
@@ -1159,7 +1167,7 @@ export default function App() {
             setRegPassword("");
             setRegRole("reader");
             setRegisterModalOpen(false);
-            setCurrentView('home');
+            if (currentView !== 'elections') setCurrentView('home');
             showToast("Đăng ký thành công! Chào mừng bạn đến với MugenBunko.");
             fetchNovels(true);
         } catch (err) {
@@ -2720,6 +2728,7 @@ export default function App() {
                                             Tủ Sách Cá Nhân
                                         </button>
                                     )}
+                                    <button className={`drawer-opt-btn ${currentView === 'elections' ? 'active' : ''}`} onClick={() => { setCurrentView('elections'); setActiveNovelId(null); setCategoryDrawerOpen(false); }}>Bầu chọn kiểm duyệt viên</button>
                                     <button
                                         className={`drawer-opt-btn ${currentView === 'about' ? 'active' : ''}`}
                                         onClick={() => { setCurrentView('about'); setActiveNovelId(null); setCategoryDrawerOpen(false); }}
@@ -2852,7 +2861,7 @@ export default function App() {
             )}
 
             {/* Main Content Layout */}
-            <main className={`app-content-container ${currentView === 'reader' ? '' : 'container'}`}>
+            <main className={`app-content-container ${currentView === 'reader' ? '' : ['admin-dashboard', 'mod-dashboard'].includes(currentView) ? 'staff-content' : 'container'}`}>
                 <ErrorBoundary key={currentView}>
                 <Suspense fallback={<PageLoading reader={currentView === 'reader'} />}>
                 {novelsError && novels.length > 0 && <div className="inline-notice" role="alert">{novelsError} <button className="text-action" onClick={() => void fetchNovels(true)}>Thử lại</button></div>}
@@ -3046,6 +3055,8 @@ export default function App() {
 
                 {currentView === 'mod-dashboard' && (
                     <ModDashboard
+                        API_BASE={API_BASE}
+                        fetchWithAuth={fetchWithAuth}
                         pendingChapters={pendingChapters}
                         reports={reports as any}
                         users={users}
@@ -3068,6 +3079,8 @@ export default function App() {
 
                 {currentView === 'admin-dashboard' && (
                     <AdminDashboard
+                        API_BASE={API_BASE}
+                        fetchWithAuth={fetchWithAuth}
                         novels={novels}
                         users={users}
                         events={events}
@@ -3132,6 +3145,8 @@ export default function App() {
                         openNovelDetail={openNovelDetail}
                     />
                 )}
+
+                {currentView === 'elections' && <Elections currentUser={currentUser} API_BASE={API_BASE} fetchWithAuth={fetchWithAuth} onLogin={() => setLoginModalOpen(true)} />}
 
                 {currentView === 'event-detail' && (
                     eventsLoading ? <PageLoading /> : eventsError ? <PageError message={eventsError} onRetry={() => void fetchEvents(true)} /> : <EventDetail

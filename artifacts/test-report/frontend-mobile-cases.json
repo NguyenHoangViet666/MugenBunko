@@ -1,0 +1,217 @@
+[
+  {
+    "id": "RP-01",
+    "group": "Tiến độ đọc trên web",
+    "title": "Chuyển cache cũ mà không tự đánh dấu đọc xong",
+    "precondition": "localStorage giả lập được xóa trước ca; truyện ID 1 có chương 10 và 20 đã xuất bản.",
+    "steps": [
+      "Ghi cache mugen_readprogress_reader_1 với chapterIndex=1 và readChaptersList=[0,1].",
+      "Gọi getReadingProgress('reader', novel).",
+      "Đổi trạng thái truyện sang completed và gọi getShelfStatus."
+    ],
+    "testData": "Tài khoản reader; truyện 1; chapterIndex=1.",
+    "expected": "chapterId=20; completedChapterIds=[]; tủ sách vẫn ở trạng thái reading.",
+    "actual": "Các giá trị trả về đúng 20, [] và reading; toàn bộ assertion đạt.",
+    "status": "PASS",
+    "source": "tests/readingProgress.test.ts",
+    "testTitle": "migrates the last opened chapter without falsely marking it completed",
+    "durationMs": 2.4788,
+    "evidence": "artifacts/test-report/evidence/frontend-mobile-unit.log"
+  },
+  {
+    "id": "RP-02",
+    "group": "Tiến độ đọc trên web",
+    "title": "Giữ vị trí đọc theo ID khi đổi thứ tự chương",
+    "precondition": "localStorage trống; truyện 1 có chương 10 và 20.",
+    "steps": [
+      "Lưu cache v2 cho chapterId=20, chapterIndex=1, completedChapterIds=[10,20], paragraphIndex=8.",
+      "Đảo danh sách chương thành [20,10].",
+      "Đọc tiến độ và tính trạng thái tủ sách cho truyện ongoing và completed."
+    ],
+    "testData": "scrollRatio=0.4; paragraphOffset=0.2.",
+    "expected": "chapterIndex=0; paragraphIndex=8; trạng thái caught-up cho ongoing và completed cho truyện hoàn thành.",
+    "actual": "Vị trí được ánh xạ sang index 0, giữ đoạn 8; hai trạng thái tủ sách đúng như mong đợi.",
+    "status": "PASS",
+    "source": "tests/readingProgress.test.ts",
+    "testTitle": "uses chapter IDs when chapters are inserted or reordered",
+    "durationMs": 0.668,
+    "evidence": "artifacts/test-report/evidence/frontend-mobile-unit.log"
+  },
+  {
+    "id": "RP-03",
+    "group": "Tiến độ đọc trên web",
+    "title": "Loại bỏ mốc đọc của chương đã bị xóa",
+    "precondition": "Truyện 1 chỉ có chương ID 10 và 20.",
+    "steps": [
+      "Lưu cache tham chiếu chapterId=99, chapterIndex=99, completedChapterIds=[99], scrollRatio=0.9, paragraphIndex=50.",
+      "Gọi getReadingProgress('reader', novel)."
+    ],
+    "testData": "ID chương không còn tồn tại: 99.",
+    "expected": "Index được chặn về 1; scrollRatio=0; paragraphIndex=0; completedChapterIds rỗng.",
+    "actual": "Không tái sử dụng mốc chương 99; index=1, tỷ lệ=0, đoạn=0 và danh sách hoàn thành=[].",
+    "status": "PASS",
+    "source": "tests/readingProgress.test.ts",
+    "testTitle": "does not reuse a deleted chapter anchor or count deleted chapters as finished",
+    "durationMs": 0.3747,
+    "evidence": "artifacts/test-report/evidence/frontend-mobile-unit.log"
+  },
+  {
+    "id": "RP-04",
+    "group": "Tiến độ đọc trên web",
+    "title": "Tách tiến độ của khách và tài khoản, cập nhật lịch sử",
+    "precondition": "localStorage trống; truyện 1 và chương 10.",
+    "steps": [
+      "Gọi storeReadingProgress(undefined, novel, progress) để lưu vị trí khách tại đoạn 3.",
+      "Đọc lại tiến độ của khách và của tài khoản reader.",
+      "Đọc mugen_reading_history_guest."
+    ],
+    "testData": "chapterId=10; scrollRatio=0.5; paragraphIndex=3; paragraphOffset=0.1; updatedAt=100.",
+    "expected": "Khách nhận paragraphIndex=3; tài khoản reader nhận null; mục lịch sử đầu tiên có chapterId=10.",
+    "actual": "Dữ liệu khách và tài khoản tách biệt; lịch sử khách ghi đúng chương 10.",
+    "status": "PASS",
+    "source": "tests/readingProgress.test.ts",
+    "testTitle": "isolates guest and account positions and maintains recent history",
+    "durationMs": 1.885,
+    "evidence": "artifacts/test-report/evidence/frontend-mobile-unit.log"
+  },
+  {
+    "id": "RP-05",
+    "group": "Tiến độ đọc trên web",
+    "title": "Khôi phục cache sai cấu trúc và loại bỏ ID hoàn thành không hợp lệ",
+    "precondition": "localStorage giả lập; truyện 1 có chương 10 và 20.",
+    "steps": [
+      "Ghi chuỗi 'null' vào cache tiến độ và gọi getReadingProgress.",
+      "Ghi '{}' vào cache lịch sử của reader.",
+      "Lưu tiến độ với completedChapterIds=[10,10,99] rồi đọc lại."
+    ],
+    "testData": "mugen_readprogress_reader_1='null'; mugen_reading_history_reader='{}'.",
+    "expected": "Cache null cho kết quả null; danh sách hoàn thành chỉ còn [10]; lịch sử có một mục.",
+    "actual": "Cache sai không gây lỗi; ID trùng/đã xóa bị loại bỏ; lịch sử phục hồi thành danh sách một mục.",
+    "status": "PASS",
+    "source": "tests/readingProgress.test.ts",
+    "testTitle": "recovers from malformed caches without corrupting progress counts",
+    "durationMs": 3.1174,
+    "evidence": "artifacts/test-report/evidence/frontend-mobile-unit.log"
+  },
+  {
+    "id": "MC-01",
+    "group": "Xử lý nội dung mobile",
+    "title": "Giữ văn bản hai phía của ảnh đính kèm diễn đàn",
+    "precondition": "Nạp contentBlocks từ mobile/src/utils/content.ts trong Node.",
+    "steps": [
+      "Gọi contentBlocks với văn bản, figure chứa ảnh và chú thích cuối.",
+      "Kiểm tra lần lượt ba khối đầu ra."
+    ],
+    "testData": "Nội dung bài viết<figure><img src=\"/uploads/cover.jpg\" /></figure>Chú thích cuối",
+    "expected": "Khối 0 là 'Nội dung bài viết'; khối 1 chứa img; khối 2 là 'Chú thích cuối'.",
+    "actual": "Văn bản và khối ảnh được giữ nguyên theo thứ tự; ba assertion đạt.",
+    "status": "PASS",
+    "source": "tests/mobile-content.test.ts",
+    "testTitle": "a forum attachment retains the plain text before and after it",
+    "durationMs": 3.3393,
+    "evidence": "artifacts/test-report/evidence/frontend-mobile-unit.log"
+  },
+  {
+    "id": "MC-02",
+    "group": "Xử lý nội dung mobile",
+    "title": "Giữ thứ tự tiêu đề, đoạn văn, ghi chú và ảnh trong chương",
+    "precondition": "Nạp contentBlocks và plainText.",
+    "steps": [
+      "Tách HTML chứa div, h2, p, văn bản rời và img bằng contentBlocks.",
+      "Chuyển từng khối sang plainText và so sánh mảng kết quả."
+    ],
+    "testData": "<div><h2>Chương 1</h2><p>Đoạn đầu</p>Ghi chú<img src=\"/a.png\"><p>Đoạn cuối</p></div>",
+    "expected": "Mảng ['Chương 1\\n\\n','Đoạn đầu\\n\\n','Ghi chú','','Đoạn cuối\\n\\n'].",
+    "actual": "Năm khối đúng thứ tự và nội dung, gồm vị trí ảnh với plainText rỗng.",
+    "status": "PASS",
+    "source": "tests/mobile-content.test.ts",
+    "testTitle": "chapter blocks preserve headings, paragraphs, images and loose text in order",
+    "durationMs": 4.3822,
+    "evidence": "artifacts/test-report/evidence/frontend-mobile-unit.log"
+  },
+  {
+    "id": "MC-03",
+    "group": "Xử lý nội dung mobile",
+    "title": "Mã hóa văn bản thuần an toàn khi chuyển sang HTML",
+    "precondition": "Nạp textHtml và plainText.",
+    "steps": [
+      "Gọi textHtml với biểu thức có ký tự <, >, &, xuống dòng và chuỗi script.",
+      "Xác nhận HTML không chứa thẻ <script> thực.",
+      "Chuyển lại plainText và kiểm tra biểu thức cùng dòng kế tiếp."
+    ],
+    "testData": "2 < 3 & 5 > 4\\nDòng tiếp\\n\\n<script>alert(1)</script>",
+    "expected": "Không diễn giải chuỗi script thành thẻ; văn bản biểu thức và xuống dòng được bảo toàn.",
+    "actual": "Không có thẻ script trong HTML; plainText khớp nội dung biểu thức và dòng tiếp.",
+    "status": "PASS",
+    "source": "tests/mobile-content.test.ts",
+    "testTitle": "plain text becomes safe HTML without interpreting user markup",
+    "durationMs": 0.5604,
+    "evidence": "artifacts/test-report/evidence/frontend-mobile-unit.log"
+  },
+  {
+    "id": "MD-01",
+    "group": "Phụ thuộc mobile",
+    "title": "Tương thích query-string CommonJS và bộ giải mã URI đã vá",
+    "precondition": "mobile/node_modules/query-string có sẵn và require được.",
+    "steps": [
+      "require query-string bằng CommonJS.",
+      "parse title tiếng Việt được percent-encode và tag lặp.",
+      "stringify tiêu đề 'Mùa xuân'."
+    ],
+    "testData": "title=M%C3%B9a%20xu%C3%A2n&tag=one&tag=two",
+    "expected": "title='Mùa xuân'; tag=['one','two']; stringify trả title=M%C3%B9a%20xu%C3%A2n.",
+    "actual": "API CommonJS hoạt động; giải mã tiếng Việt, mảng tag và mã hóa ngược đúng.",
+    "status": "PASS",
+    "source": "tests/mobile-dependencies.test.mjs",
+    "testTitle": "Expo query-string keeps its CommonJS API with the patched ESM URI decoder",
+    "durationMs": 195.9969,
+    "evidence": "artifacts/test-report/evidence/frontend-mobile-unit.log"
+  },
+  {
+    "id": "MD-02",
+    "group": "Phụ thuộc mobile",
+    "title": "Không treo khi giải mã query percent-encode sai",
+    "precondition": "query-string nạp được; Node tạo tiến trình con ẩn với timeout 3 giây.",
+    "steps": [
+      "Tạo tiến trình Node con nạp query-string.",
+      "parse lần lượt chuỗi %E0%A4 lặp 2.000 lần, %C0%AF lặp 2.000 lần và % lặp 10.000 lần.",
+      "Kiểm tra không có lỗi timeout và exit status=0."
+    ],
+    "testData": "Ba chuỗi percent-encode sai/thiếu byte; timeout=3.000 ms.",
+    "expected": "Cả ba lần parse kết thúc trong giới hạn; tiến trình con thoát mã 0.",
+    "actual": "Không có result.error; tiến trình con thoát 0. Tổng ca 148,66 ms.",
+    "status": "PASS",
+    "source": "tests/mobile-dependencies.test.mjs",
+    "testTitle": "malformed percent-encoded input cannot stall URL query decoding",
+    "durationMs": 148.6636,
+    "evidence": "artifacts/test-report/evidence/frontend-mobile-unit.log"
+  },
+  {
+    "id": "MA-01",
+    "group": "API tích hợp cho mobile",
+    "title": "Luồng tổng hợp hồ sơ, cộng đồng, thư viện, Studio và phân quyền",
+    "precondition": "Backend đã build; MySQL localhost:3306 truy cập được. Fixture tạo DB riêng mugenbunko_test_23573eb8862b0c6e, user 2 reader/author, user 3 reader; SMTP bị tắt; API chỉ nghe 127.0.0.1.",
+    "steps": [
+      "POST /auth/update-profile để đổi displayname thành Mobile Reader.",
+      "POST bài Mobile discussion; like; thêm bình luận A mobile comment; GET chi tiết và danh sách posts.",
+      "Đổi truyện 1 thành oneshot và thêm lượt đọc thử; POST/GET review 4 sao; POST/GET bình luận Novel comment và reply A reply.",
+      "Bật/tắt bookmark truyện 1 rồi GET /auth/refresh/2 để xác nhận trạng thái server.",
+      "Tạo kệ Mobile shelf công khai; thêm truyện 1; GET kệ và public share; thử user 3 DELETE kệ của user 2.",
+      "PUT tiến độ đoạn 30 với updatedAt hiện tại rồi gửi bản cũ hơn 1 giây ở đoạn 1; GET lại tiến độ.",
+      "POST tác phẩm Mobile author story; tạo chương nháp; gửi trạng thái published và GET chương.",
+      "GET lịch sử phiên bản; restore phiên bản cũ với currentDraft chứa Unsaved mobile text.",
+      "Tạo chương scheduled sau 48 giờ và kiểm tra pending cùng scheduled_release.",
+      "GET /mod/dashboard bằng reader; thêm role admin thử nghiệm, gửi lại pending, duyệt chương và kiểm tra published.",
+      "Report bình luận; vào dashboard; dismiss report; POST quy định Mobile policy và sự kiện Mobile event; GET danh sách xác nhận.",
+      "Thử gửi tin cho user 3 khi chưa là bạn; gửi lời mời, user 3 chấp nhận, gửi Hello from mobile và GET lịch sử chat."
+    ],
+    "testData": "Bearer token thử của user 2/3; truyện/chương fixture 1; stars=4; progress paragraphIndex=30; updatedAt bản cũ = now-1000; kệ công khai có truyện 1.",
+    "expected": "Mọi request nghiệp vụ hợp lệ thành công; dữ liệu hồ sơ/forum/review/comment/reply/bookmark/kệ được đọc lại đúng; xóa kệ người khác trả 404; tiến độ cũ không ghi đè đoạn 30; published/scheduled của tác giả chuyển pending; có >=2 phiên bản và restore về draft nội dung First draft; reader vào mod trả 403; admin duyệt thành published; chat trước kết bạn trả 403 và sau chấp nhận lưu được tin.",
+    "actual": "Toàn bộ assertion trong test tổng hợp đạt: phản hồi/dữ liệu và ranh giới tài khoản đúng; tiến độ giữ đoạn 30; Studio duyệt và phục hồi phiên bản đúng; phân quyền 404/403 đúng; tin nhắn sau kết bạn đọc lại được. Fixture đóng sau ca.",
+    "status": "PASS",
+    "source": "tests/mobile-api.test.mjs",
+    "testTitle": "mobile payloads support profiles, forum discussions and novel feedback",
+    "durationMs": 23840.9658,
+    "evidence": "artifacts/test-report/evidence/frontend-mobile-api.log"
+  }
+]

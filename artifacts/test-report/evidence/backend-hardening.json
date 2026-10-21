@@ -1,0 +1,8 @@
+﻿{
+    "suite":  "hardening",
+    "command":  "node --test --test-reporter=tap server/dist/tests/hardening.test.js",
+    "startedAt":  "2026-10-22T00:26:20.0593056+07:00",
+    "endedAt":  "2026-10-22T00:26:54.2607435+07:00",
+    "exitCode":  0,
+    "log":  "artifacts/test-report/evidence/backend-hardening.log"
+}

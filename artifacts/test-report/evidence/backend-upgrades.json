@@ -1,0 +1,8 @@
+﻿{
+    "suite":  "upgrades",
+    "command":  "node --test --test-reporter=tap server/dist/tests/upgrades.test.js",
+    "startedAt":  "2026-10-22T00:25:23.8688039+07:00",
+    "endedAt":  "2026-10-22T00:25:49.5675614+07:00",
+    "exitCode":  0,
+    "log":  "artifacts/test-report/evidence/backend-upgrades.log"
+}

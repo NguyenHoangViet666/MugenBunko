@@ -373,6 +373,12 @@ npm run test:upgrades:browser
 
 Bộ test dùng database riêng có tên `mugenbunko_test_*`, yêu cầu tài khoản MySQL có quyền tạo/xóa database và tự dọn sau khi chạy. Kiểm thử trình duyệt sử dụng Edge headless trên Windows; có thể đặt `UPGRADE_BROWSER_PATH` để chọn executable Chromium khác. Ảnh kiểm tra nằm trong `artifacts/upgrades/` và được Git bỏ qua.
 
+## Bầu chọn và bổ nhiệm kiểm duyệt viên
+
+Web có trang `#/elections`, tab **Bầu chọn mod** trong Admin và **Hội đồng bầu chọn** trong Mod. Mobile mở từ mục Cá nhân hoặc khu Quản trị/kiểm duyệt. Luồng gồm đề cử có đồng ý, hồ sơ, hai vòng phiếu riêng, thống kê đã chốt, quyết định admin, khiếu nại và nhiệm kỳ.
+
+Xem thể lệ, phân quyền, migration và lệnh kiểm thử tại [docs/ELECTIONS.md](docs/ELECTIONS.md). Development tự tạo bảng mới khi khởi động backend; production cần chạy migration trước khi cập nhật server.
+
 ## Đưa lên production
 
 ### Bảo mật phiên và nội dung

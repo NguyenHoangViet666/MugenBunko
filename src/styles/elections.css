@@ -1,0 +1,415 @@
+.elections {
+  max-width: 1280px;
+  margin: 0 auto;
+  color: var(--text-main);
+  min-width: 0;
+}
+.elections * {
+  box-sizing: border-box;
+}
+.election-heading {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+.election-heading h1 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  margin: 6px 0 12px;
+}
+.election-heading p {
+  max-width: 740px;
+  color: var(--text-content);
+  margin: 0;
+}
+.election-eyebrow {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.election-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.election-actions button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+}
+.election-process {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  border-block: 1px solid var(--border-color);
+  padding: 16px 0;
+  margin-bottom: 24px;
+  font-size: 0.85rem;
+  color: var(--text-content);
+}
+.election-layout {
+  display: grid;
+  grid-template-columns: minmax(210px, 270px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.election-index {
+  display: grid;
+  gap: 10px;
+  position: sticky;
+  top: 110px;
+}
+.election-index > button {
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-main);
+  border-radius: 12px;
+  text-align: left;
+  padding: 16px;
+  cursor: pointer;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.election-index > button.is-selected {
+  border-color: var(--sakura-pink);
+  box-shadow: inset 3px 0 var(--sakura-pink);
+}
+.election-index strong {
+  font-family: var(--font-serif);
+  overflow-wrap: anywhere;
+}
+.election-index small {
+  color: var(--text-muted);
+}
+.election-main {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.election-panel {
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--bg-card);
+  padding: 24px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.election-panel h2 {
+  font-size: 1.2rem;
+  margin: 0 0 16px;
+}
+.election-panel h3 {
+  font-size: 1.2rem;
+  margin: 0 0 4px;
+}
+.election-panel h4 {
+  margin: 18px 0 6px;
+}
+.election-panel p {
+  line-height: 1.75;
+}
+.election-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.election-title-row a {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+.election-badge {
+  display: inline-block;
+  width: fit-content;
+  font-size: 0.76rem;
+  background: var(--accent-glow);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  border-radius: 30px;
+  padding: 4px 10px;
+  white-space: normal;
+}
+.election-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 22px 0;
+}
+.election-metrics > div {
+  border-left: 2px solid var(--sakura-pink);
+  padding-left: 12px;
+  display: grid;
+  gap: 4px;
+}
+.election-metrics strong {
+  font-size: 1.4rem;
+}
+.election-metrics span {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+.election-panel details {
+  border-top: 1px solid var(--border-color);
+  padding-top: 12px;
+  margin-top: 14px;
+}
+.election-panel summary {
+  cursor: pointer;
+  min-height: 32px;
+  font-weight: 600;
+}
+.election-panel pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.78rem;
+  background: var(--bg-base);
+  padding: 12px;
+  border-radius: 8px;
+}
+.election-rules {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.election-rules div {
+  display: grid;
+  gap: 4px;
+  border-bottom: 1px solid var(--border-color);
+  padding: 8px 0;
+}
+.election-rules dt {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.election-rules dd {
+  margin: 0;
+  font-weight: 600;
+}
+.election-preserve {
+  white-space: pre-wrap;
+}
+.election-form,
+.election-panel form {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+.election-form {
+  margin-bottom: 24px;
+}
+.elections label {
+  display: grid;
+  gap: 7px;
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+.elections label small {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+.elections input:not([type="checkbox"]),
+.elections select,
+.elections textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border-color);
+  background: var(--bg-base);
+  color: var(--text-main);
+  border-radius: 8px;
+  font: inherit;
+  padding: 11px 12px;
+  min-height: 44px;
+}
+.elections textarea {
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.6;
+}
+.elections .election-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-weight: 400;
+  padding: 7px 0;
+  min-height: 38px;
+}
+.election-check input {
+  accent-color: var(--sakura-pink);
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.election-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.elections fieldset {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px;
+}
+.elections legend {
+  padding: 0 6px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+.election-admin-controls {
+  border-top: 1px solid var(--border-color);
+  padding-top: 18px;
+  margin-top: 20px;
+  display: grid;
+  gap: 14px;
+}
+.election-candidates {
+  display: grid;
+  gap: 18px;
+}
+.election-candidates > h2 {
+  font-size: 1.25rem;
+  margin: 8px 0 0;
+}
+.election-feedback,
+.election-notice {
+  border-left: 3px solid var(--sakura-pink);
+  background: var(--bg-card);
+  padding: 16px;
+  margin-bottom: 18px;
+  overflow-wrap: anywhere;
+}
+.election-feedback {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.election-empty {
+  text-align: center;
+  padding: 40px 20px;
+  background: var(--bg-card);
+  border: 1px dashed var(--border-color);
+  border-radius: 14px;
+  color: var(--text-muted);
+}
+.election-empty h2 {
+  color: var(--text-main);
+}
+.election-decision {
+  background: var(--accent-glow);
+  border-left: 3px solid var(--sakura-pink);
+  padding: 14px;
+  margin: 18px 0;
+}
+.election-table-wrap {
+  overflow-x: auto;
+}
+.election-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+.election-table th,
+.election-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+.election-table small {
+  display: block;
+  color: var(--text-muted);
+  margin-top: 5px;
+}
+.election-complaint {
+  border-bottom: 1px solid var(--border-color);
+  padding: 16px 0;
+}
+.elections button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.elections :focus-visible {
+  outline: 2px solid var(--sakura-pink);
+  outline-offset: 3px;
+}
+.elections-embedded .election-layout {
+  grid-template-columns: 1fr;
+}
+.elections-embedded .election-index {
+  position: static;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+.elections-embedded .election-heading {
+  flex-direction: column;
+}
+.elections-embedded .election-heading h1 {
+  font-size: 1.5rem;
+}
+@media (max-width: 900px) {
+  .election-heading {
+    flex-direction: column;
+  }
+  .election-layout {
+    grid-template-columns: 1fr;
+  }
+  .election-index {
+    position: static;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .election-panel {
+    padding: 16px;
+  }
+  .election-heading {
+    gap: 16px;
+  }
+  .election-fields,
+  .election-rules,
+  .election-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .election-index {
+    grid-template-columns: 1fr;
+  }
+  .election-process {
+    gap: 8px 14px;
+    font-size: 0.76rem;
+  }
+  .election-actions {
+    align-items: stretch;
+  }
+  .election-actions button {
+    max-width: 100%;
+    white-space: normal;
+  }
+  .election-table th,
+  .election-table td {
+    padding: 10px 5px;
+    font-size: 0.76rem;
+  }
+  .elections input[type="datetime-local"] {
+    font-size: 0.85rem;
+  }
+  .election-title-row {
+    gap: 10px;
+  }
+  .election-title-row h2 {
+    max-width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .elections * {
+    scroll-behavior: auto;
+    transition: none;
+  }
+}

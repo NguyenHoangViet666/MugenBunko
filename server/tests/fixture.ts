@@ -48,7 +48,7 @@ export async function startFixture(options: { webRoot?: string } = {}) {
     const uploadDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'mugenbunko-upload-test-'));
     const app = express(); configureSecurity(app);
     app.use('/api/upload', uploadRouter(uploadDirectory, false));
-    for (const name of ['reader', 'library', 'chapters', 'auth', 'novels', 'events', 'announcements', 'comments', 'reviews', 'social', 'forum', 'policies']) {
+    for (const name of ['reader', 'library', 'chapters', 'auth', 'novels', 'events', 'announcements', 'comments', 'reviews', 'social', 'forum', 'policies', 'elections']) {
         const route = await import(`../routes/${name}.js`); app.use(`/api/${name}`, route.default);
     }
     const { authenticateToken } = await import('../middleware/auth.js');

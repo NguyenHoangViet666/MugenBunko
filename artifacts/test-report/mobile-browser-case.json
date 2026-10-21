@@ -1,0 +1,45 @@
+{
+  "id": "MOBILE-E2E",
+  "group": "Trình duyệt mobile (Expo web)",
+  "title": "Luồng mobile trên trình duyệt: phiên đăng nhập, thư viện, Studio, cộng đồng và đồng bộ đọc",
+  "precondition": "Backend đã build; MySQL chạy; fixture tạo DB ngẫu nhiên và tắt SMTP; Expo export web gắn API URL fixture; Edge headless chạy bằng profile tạm; user 2 có quyền admin thử nghiệm. Đây là mobile web giả lập viewport, không phải thiết bị Android/iOS thật.",
+  "steps": [
+    "Xuất Expo web với EXPO_PUBLIC_API_URL trỏ tới API fixture và kiểm tra bundle chứa đúng URL.",
+    "Mở /profile ở 390×844; kiểm tra token cũ bị xóa, cookie HttpOnly không xuất hiện qua document.cookie, refresh session trả 200 và không tràn ngang.",
+    "Mở /collections; tạo kệ Mobile UI shelf, xác nhận bản ghi trong DB.",
+    "Mở /studio; tạo Mobile UI novel, tạo Mobile UI chapter, nhập nội dung vào editor iframe và Lưu nháp; xác nhận DB.",
+    "Mở /community; tạo Mobile UI post với nội dung A post from a phone viewport.; xác nhận DB.",
+    "Tạo quan hệ bạn bè trong fixture; mở /chat/3; gửi Hello from mobile UI; xác nhận DB.",
+    "Mở /moderation; chọn Người dùng và chờ @upgrade_reader.",
+    "Mở /reader/1/0; chờ tiến độ khởi tạo; cuộn khoảng nửa chương; đợi paragraph_index trên server >10.",
+    "Đóng context thứ nhất; mở context mới ở cùng chương; kiểm tra tiến độ server khôi phục vào cache và lệch không quá một đoạn.",
+    "Mở /library, chọn tab Yêu thích và chờ truyện Những ngày dưới tán anh đào.",
+    "Mở /explore; kiểm tra chiều rộng tài liệu không quá 770px ở viewport 768px và 322px ở viewport 320px.",
+    "Đăng xuất qua /profile; kiểm tra mugen_session bị xóa, không còn mugen_mobile_token và refresh session trả 401.",
+    "Xác nhận không có Runtime.exceptionThrown; đóng browser và dọn profile/DB fixture."
+  ],
+  "testData": "User ID 2/3; truyện fixture 1, chương 1; viewport 390×844, 768×1024 và 320×720; các tiêu đề dữ liệu bắt đầu Mobile UI.",
+  "expected": "Expo export thành công; các thao tác UI lưu đúng dữ liệu; phiên cookie hoạt động và đăng xuất vô hiệu hóa server session; đồng bộ vị trí giữa context lệch tối đa một đoạn; không tràn ngang tại các điểm kiểm tra; không có runtime exception.",
+  "source": "tests/mobile-browser.mjs",
+  "testTitle": "mobile-browser.mjs (aggregate smoke flow)",
+  "evidence": "artifacts/test-report/evidence/frontend-mobile-browser.log",
+  "screenshots": [
+    "artifacts/mobile/profile.png",
+    "artifacts/mobile/collections.png",
+    "artifacts/mobile/studio-editor.png",
+    "artifacts/mobile/community.png",
+    "artifacts/mobile/chat.png",
+    "artifacts/mobile/moderation.png",
+    "artifacts/mobile/reader.png",
+    "artifacts/mobile/library.png",
+    "artifacts/mobile/explore-small.png"
+  ],
+  "status": "PASS",
+  "actual": "Tiến trình thoát 0. Expo export web hoàn thành (25 static routes; web bundle 1.306 modules/166.053 ms). Toàn bộ assertion UI/cookie/đăng xuất, ghi DB cho kệ/chương/bài/tin nhắn, đồng bộ đọc giữa hai context, giới hạn chiều rộng và danh sách runtime exception rỗng đều đạt. Chín ảnh dưới artifacts/mobile được ghi mới trong lần chạy ngày 22/10/2026. Đây là một ca E2E tổng hợp, không cộng mỗi thao tác thành một ca độc lập.",
+  "environment": {
+    "browser": "Microsoft Edge 155.0.4283.62 (headless)",
+    "database": "mugenbunko_test_0fd4d709dd777028",
+    "viewport": "390×844, 768×1024, 320×720",
+    "platform": "Expo web trên Windows; chưa kiểm thử native Android/iOS"
+  }
+}

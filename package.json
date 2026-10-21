@@ -18,7 +18,10 @@
     "test:upgrades": "node --test tests/readingProgress.test.ts && npm --prefix server run test:upgrades",
     "test:upgrades:browser": "npm run build && npm --prefix server run build && node tests/browser-upgrades.mjs",
     "test:mobile": "npm --prefix mobile run typecheck && npm --prefix server run build && node --test tests/mobile-content.test.ts tests/mobile-dependencies.test.mjs tests/mobile-api.test.mjs",
-    "test:mobile:browser": "npm --prefix server run build && node tests/mobile-browser.mjs"
+    "test:mobile:browser": "npm --prefix server run build && node tests/mobile-browser.mjs",
+    "test:elections": "npm --prefix server run build && node --test server/dist/tests/elections.test.js",
+    "test:elections:browser": "npm run build && npm --prefix server run build && node tests/browser-elections.mjs",
+    "test:elections:mobile": "npm --prefix server run build && node tests/browser-elections.mjs --mobile"
   },
   "dependencies": {
     "dompurify": "^3.4.16",

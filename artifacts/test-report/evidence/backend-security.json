@@ -1,0 +1,8 @@
+﻿{
+    "suite":  "security",
+    "command":  "node --test --test-reporter=tap server/dist/tests/security.test.js",
+    "startedAt":  "2026-10-22T00:25:49.7705030+07:00",
+    "endedAt":  "2026-10-22T00:26:20.0408518+07:00",
+    "exitCode":  0,
+    "log":  "artifacts/test-report/evidence/backend-security.log"
+}

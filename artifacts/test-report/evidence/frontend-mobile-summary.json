@@ -1,0 +1,58 @@
+{
+  "scope": "Node unit/API tests for reading progress and mobile; supplementary mobile TypeScript check",
+  "tester": "Nguyễn Hoàng Việt",
+  "reportDate": "2026-10-22",
+  "environment": {
+    "os": "Windows (PowerShell)",
+    "node": "v24.13.0",
+    "edge": "155.0.4283.62",
+    "chrome": "156.0.8078.47",
+    "mobileExpoPackageRange": "~57.0.15",
+    "mysql": "localhost:3306"
+  },
+  "commands": [
+    {
+      "command": "node --test --test-reporter=tap tests/readingProgress.test.ts tests/mobile-content.test.ts tests/mobile-dependencies.test.mjs",
+      "exitCode": 0,
+      "tests": 10,
+      "pass": 10,
+      "fail": 0,
+      "skip": 0,
+      "durationMs": 800.833,
+      "evidence": "artifacts/test-report/evidence/frontend-mobile-unit.log"
+    },
+    {
+      "command": "node --test --test-reporter=tap tests/mobile-api.test.mjs",
+      "exitCode": 0,
+      "tests": 1,
+      "pass": 1,
+      "fail": 0,
+      "skip": 0,
+      "durationMs": 25338.9337,
+      "evidence": "artifacts/test-report/evidence/frontend-mobile-api.log"
+    },
+    {
+      "command": "npm --prefix mobile run typecheck",
+      "exitCode": 0,
+      "evidence": "artifacts/test-report/evidence/frontend-mobile-typecheck.log"
+    }
+  ],
+  "counts": {
+    "tests": 11,
+    "pass": 11,
+    "fail": 0,
+    "skip": 0
+  },
+  "fixtures": {
+    "apiDatabase": "mugenbunko_test_23573eb8862b0c6e",
+    "smtp": "Disabled by fixture (SMTP_USER/SMTP_PASS empty; DEV_OTP=true)",
+    "cleanup": "startFixture finally closes fixture; temporary DB name pattern checked before DROP; temporary upload directory checked before removal",
+    "appCodeChanged": false
+  },
+  "notes": [
+    "Node reported MODULE_TYPELESS_PACKAGE_JSON for mobile/src/utils/content.ts, reparsed it as ES module; tests still passed.",
+    "Mobile Node tests do not establish native Android/iOS behavior.",
+    "No reviewed-only case was marked PASS; API test remains one aggregate runner case.",
+    "Browser run completed with exit 0; one aggregate MOBILE-E2E PASS is recorded separately in mobile-browser-case.json. Its 9 screenshots under artifacts/mobile were refreshed in the current run."
+  ]
+}

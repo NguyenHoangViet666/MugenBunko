@@ -28,6 +28,7 @@ import socialRouter from './routes/social.js';
 import policiesRouter from './routes/policies.js';
 import readerRouter from './routes/reader.js';
 import libraryRouter from './routes/library.js';
+import electionsRouter, { expireElectionTerms } from './routes/elections.js';
 import { authenticateToken } from './middleware/auth.js';
 import { checkRole } from './middleware/roles.js';
 
@@ -100,6 +101,7 @@ app.use('/api/social', socialRouter);
 app.use('/api/policies', policiesRouter);
 app.use('/api/reader', readerRouter);
 app.use('/api/library', libraryRouter);
+app.use('/api/elections', electionsRouter);
 
 // Public genres endpoint
 app.get('/api/genres', async (req, res) => {
@@ -137,13 +139,14 @@ app.use(apiErrorHandler);
 let scheduler: ReturnType<typeof setInterval> | undefined;
 async function start() {
     await initializeDbConnection();
+    await expireElectionTerms();
     await new Promise<void>((resolve, reject) => {
         httpServer.once('error', reject);
         httpServer.listen(PORT, () => { httpServer.removeListener('error', reject); resolve(); });
     });
     console.log('MugenBunko server ready on port ' + PORT);
     scheduler = setInterval(async () => {
-        try { await db.query("UPDATE chapters SET status = 'published' WHERE status = 'scheduled' AND scheduled_release <= CURRENT_TIMESTAMP"); }
+        try { await db.query("UPDATE chapters SET status = 'published' WHERE status = 'scheduled' AND scheduled_release <= CURRENT_TIMESTAMP"); await expireElectionTerms(); }
         catch { console.error('Scheduled publishing failed.'); }
     }, 30000);
 }

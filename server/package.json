@@ -11,7 +11,8 @@
     "test:upgrades": "npm run build && node --test dist/tests/upgrades.test.js",
     "migrate:production": "node dist/migrateProduction.js",
     "create:admin": "node dist/createAdmin.js",
-    "test:security": "npm run build && node --test dist/tests/security.test.js dist/tests/hardening.test.js"
+    "test:security": "npm run build && node --test dist/tests/security.test.js dist/tests/hardening.test.js",
+    "test:elections": "npm run build && node --test dist/tests/elections.test.js"
   },
   "dependencies": {
     "@types/nodemailer": "^8.0.1",

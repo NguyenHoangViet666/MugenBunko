@@ -144,6 +144,14 @@ router.post('/update-roles', authenticateToken, async (req: AuthenticatedRequest
             if (currentRoles.includes('admin') && !roles.includes('admin') && admins.length <= 1) return 409;
             await connection.execute('DELETE FROM user_roles WHERE user_id = ?', [target]);
             for (const role of roles) await connection.execute('INSERT INTO user_roles (user_id, role) VALUES (?, ?)', [target, role]);
+            if (currentRoles.includes('moderator') && !roles.includes('moderator')) {
+                const [terms] = await connection.execute<any[]>("SELECT id,election_id FROM election_candidates WHERE user_id=? AND decision='appointed' AND ended_at IS NULL", [target]);
+                for (const term of terms) {
+                    await connection.execute("UPDATE election_candidates SET ended_at=?,end_reason='Admin thay đổi quyền thủ công' WHERE id=?", [Date.now(), term.id]);
+                    await connection.execute('INSERT INTO election_audit (election_id,actor_id,action,details) VALUES (?,?,?,?)',
+                        [term.election_id,req.user!.id,'manual_role_change',JSON.stringify({candidateId:term.id,roles})]);
+                }
+            }
             if (roles.includes('author')) await connection.execute("UPDATE users SET author_request = 'approved' WHERE id = ?", [target]);
             return 200;
         });

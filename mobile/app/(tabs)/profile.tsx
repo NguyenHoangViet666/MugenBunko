@@ -81,6 +81,7 @@ export default function ProfileScreen() {
           <Button title="Bạn bè & tin nhắn" onPress={() => router.push('/social' as any)} />
           <Button title={`Thông báo (${user?.notifications?.filter(n => !n.read).length || 0})`} onPress={() => router.push('/updates' as any)} />
           <Button title="Bộ sưu tập" onPress={() => router.push('/collections' as any)} />
+          <Button title="Bầu chọn kiểm duyệt viên" onPress={() => router.push('/elections' as any)} />
           {user?.roles.some(r => r === 'admin' || r === 'moderator') && <Button title="Quản trị / kiểm duyệt" onPress={() => router.push('/moderation' as any)} />}
         </Row></View>
         {/* User Profile Card */}

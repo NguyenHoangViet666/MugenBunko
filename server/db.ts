@@ -1,5 +1,6 @@
 import mysql, { Pool, PoolConnection } from 'mysql2/promise';
 import { readerSchema } from './readerSchema.js';
+import { electionSchema } from './electionSchema.js';
 import { production } from './config.js';
 import fs from 'fs';
 import path from 'path';
@@ -41,6 +42,12 @@ export async function initializeDbConnection(options: { migrate?: boolean } = {}
             await pool.execute('SELECT id, email FROM users LIMIT 0');
             await pool.execute('SELECT email FROM email_otps LIMIT 0');
             await pool.execute('SELECT token_hash FROM revoked_tokens LIMIT 0');
+            await pool.execute('SELECT id, result_snapshot FROM elections LIMIT 0');
+            await pool.execute('SELECT id, term_ends_at, ended_at FROM election_candidates LIMIT 0');
+            for (const table of ['election_voters','election_ballots','election_reviews','election_complaints']) {
+                await pool.execute(`SELECT * FROM ${table} LIMIT 0`);
+            }
+            await pool.execute('SELECT action FROM election_audit LIMIT 0');
             return;
         }
         console.log(`Connecting to MySQL server at ${dbConfig.host}:${dbConfig.port}...`);
@@ -364,6 +371,9 @@ export async function initializeDbConnection(options: { migrate?: boolean } = {}
         console.log("Performance indexes verification completed.");
 
         await connectionWithDb.query(readerSchema);
+        await connectionWithDb.query(electionSchema);
+        await ensureIndexExists('election_candidates', 'idx_election_candidate_term', 'CREATE INDEX idx_election_candidate_term ON election_candidates (user_id, decision, ended_at, term_ends_at)');
+        await ensureIndexExists('election_candidates', 'idx_election_term_expiry', 'CREATE INDEX idx_election_term_expiry ON election_candidates (decision, ended_at, term_ends_at, election_id)');
         await connectionWithDb.end();
 
         pool = openPool();

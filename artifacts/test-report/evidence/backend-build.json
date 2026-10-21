@@ -1,0 +1,6 @@
+﻿{
+    "command":  "npm run build --prefix server",
+    "startedAt":  "2026-10-22T00:24:38.1760688+07:00",
+    "endedAt":  "2026-10-22T00:25:09.3088241+07:00",
+    "exitCode":  0
+}

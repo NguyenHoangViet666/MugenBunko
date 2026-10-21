@@ -1,0 +1,1803 @@
+{
+  "tester": "Nguyễn Hoàng Việt",
+  "reportDate": "2026-10-22",
+  "timezone": "Asia/Saigon",
+  "commit": "2d7d95c",
+  "summary": {
+    "PASS": 48,
+    "NOT_RUN": 20
+  },
+  "qualityChecks": [
+    {
+      "ended_utc": "2026-10-21T17:25:34.4804218Z",
+      "command": "npm run typecheck",
+      "name": "web-typecheck",
+      "started_utc": "2026-10-21T17:25:12.0335972Z",
+      "exit_code": 0
+    },
+    {
+      "ended_utc": "2026-10-21T17:25:52.1089758Z",
+      "command": "npm run lint",
+      "name": "web-lint",
+      "started_utc": "2026-10-21T17:25:35.8939692Z",
+      "exit_code": 0
+    },
+    {
+      "ended_utc": "2026-10-21T17:25:57.0763289Z",
+      "command": "npm run build",
+      "name": "web-build",
+      "started_utc": "2026-10-21T17:25:52.1245163Z",
+      "exit_code": 0
+    },
+    {
+      "ended_utc": "2026-10-21T17:26:35.3953344Z",
+      "command": "npm --prefix mobile run typecheck",
+      "name": "mobile-typecheck",
+      "started_utc": "2026-10-21T17:25:57.4137012Z",
+      "exit_code": 0
+    },
+    {
+      "name": "backend-build",
+      "command": "npm run build --prefix server",
+      "exit_code": 0
+    }
+  ],
+  "cases": [
+    {
+      "id": "BE-001",
+      "suite": "upgrades",
+      "module": "Đọc truyện, bộ sưu tập và phiên bản chương",
+      "title": "Xác thực và kiểm tra dữ liệu tiến độ đọc",
+      "testTitle": "requires authentication and rejects malformed progress",
+      "source": "server/tests/upgrades.test.ts",
+      "sourceLine": 16,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "Guest; chapterId=1; scrollRatio=2; novelId=2 với chapterId=1.",
+      "steps": [
+        "GET /api/reader/progress không token.",
+        "PUT /api/reader/progress/1 với scrollRatio=2.",
+        "PUT /api/reader/progress/2 với chapterId=1, scrollRatio=0.4, paragraphIndex=2, paragraphOffset=0.5."
+      ],
+      "expected": "Lần lượt trả HTTP 401, 400 và 404; chương không thuộc truyện không được ghi tiến độ.",
+      "evidence": "artifacts/test-report/evidence/backend-upgrades.log",
+      "durationMs": 641.1287,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Đọc truyện, bộ sưu tập và phiên bản chương",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-002",
+      "suite": "upgrades",
+      "module": "Đọc truyện, bộ sưu tập và phiên bản chương",
+      "title": "Lưu neo đoạn theo tài khoản và ngăn dữ liệu cũ ghi đè",
+      "testTitle": "persists paragraph anchors per account and prevents stale overwrites",
+      "source": "server/tests/upgrades.test.ts",
+      "sourceLine": 21,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "Token user 2; payload userId=3, chapterId=1, scrollRatio=0.55, paragraphIndex=22, paragraphOffset=0.3, updatedAt=t; bản cũ t−1000 ms.",
+      "steps": [
+        "PUT tiến độ truyện 1 với payload mới.",
+        "PUT lại với paragraphIndex=2 và updatedAt cũ hơn 1000 ms.",
+        "GET tiến độ lần lượt bằng token user 2 và user 3."
+      ],
+      "expected": "Lưu mới trả 200; bản cũ vẫn trả paragraphIndex=22; user 2 đọc lại offset=0.3, user 3 nhận []; userId giả trong payload không đổi chủ sở hữu.",
+      "evidence": "artifacts/test-report/evidence/backend-upgrades.log",
+      "durationMs": 170.6132,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Đọc truyện, bộ sưu tập và phiên bản chương",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-003",
+      "suite": "upgrades",
+      "module": "Đọc truyện, bộ sưu tập và phiên bản chương",
+      "title": "Hoàn tất chương đúng điều kiện và cộng XP duy nhất khi đồng thời",
+      "testTitle": "rejects premature completion and awards fixed XP only once under concurrent requests",
+      "source": "server/tests/upgrades.test.ts",
+      "sourceLine": 30,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "chapterId=1; scrollRatio=0.95; xp giả=50000; reading session được đặt đã bắt đầu 20 giây.",
+      "steps": [
+        "POST /reader/sessions và hoàn tất ngay.",
+        "Đặt thời điểm phiên lùi 20 giây; hoàn tất với scrollRatio=0.2.",
+        "Gửi đồng thời 2 yêu cầu hoàn tất với scrollRatio=0.95.",
+        "Đọc XP, danh sách chương hoàn tất; gọi /auth/add-xp với xp=50000."
+      ],
+      "expected": "Hoàn tất sớm trả 409; cuộn chưa đủ trả 400; hai yêu cầu hợp lệ đều 200 nhưng tổng xpAwarded=50, XP DB=50, completedChapterIds=[1]; API cộng XP cũ trả 410.",
+      "evidence": "artifacts/test-report/evidence/backend-upgrades.log",
+      "durationMs": 380.443,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Đọc truyện, bộ sưu tập và phiên bản chương",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-004",
+      "suite": "upgrades",
+      "module": "Đọc truyện, bộ sưu tập và phiên bản chương",
+      "title": "Bộ sưu tập riêng tư, công khai và quyền chủ sở hữu",
+      "testTitle": "keeps private collections hidden and enforces owner-only mutations",
+      "source": "server/tests/upgrades.test.ts",
+      "sourceLine": 43,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "name=Để dành cuối tuần; description=Những câu chuyện yên bình; isPublic=false; coverNovelId=1.",
+      "steps": [
+        "User 2 tạo bộ sưu tập; thêm truyện 1, thử thêm truyện riêng tư 2.",
+        "User 3 thử sửa và xóa truyện khỏi bộ sưu tập.",
+        "Guest mở shareId khi riêng tư, sau bật công khai, sau chuyển riêng tư.",
+        "User 2 xóa bộ sưu tập."
+      ],
+      "expected": "Tạo trả 201; thêm truyện 1 trả 200, thêm truyện 2 trả 404; user 3 sửa/xóa trả 404; novelIds=[1]; link lần lượt 404/200/404, bản công khai chứa truyện 1; xóa trả 200.",
+      "evidence": "artifacts/test-report/evidence/backend-upgrades.log",
+      "durationMs": 461.7248,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Đọc truyện, bộ sưu tập và phiên bản chương",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-005",
+      "suite": "upgrades",
+      "module": "Đọc truyện, bộ sưu tập và phiên bản chương",
+      "title": "Phiên bản chương: autosave, khôi phục và bảo vệ bản chưa lưu",
+      "testTitle": "preserves baseline versions, deduplicates autosaves and protects chapter ownership",
+      "source": "server/tests/upgrades.test.ts",
+      "sourceLine": 60,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "Chương 1, title=Bản chỉnh sửa, source=autosave, content=<p>Nội dung mới</p>; currentDraft title=Chưa bấm lưu.",
+      "steps": [
+        "User 2 lưu chỉnh sửa chương 1 hai lần cùng nội dung.",
+        "User 3 thử đọc versions; user 2 thử sửa chương 3.",
+        "Khôi phục phiên bản initial kèm currentDraft chưa lưu.",
+        "Đọc danh sách và xem trước phiên bản bản nháp chưa lưu."
+      ],
+      "expected": "Lưu trả 200; lần đầu có 2 phiên bản, lưu trùng vẫn 2; truy cập chéo trả 404; khôi phục 200 với status=draft và nội dung gốc Đoạn 1; có 5 phiên bản và giữ lại nội dung chưa lưu.",
+      "evidence": "artifacts/test-report/evidence/backend-upgrades.log",
+      "durationMs": 286.1998,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Đọc truyện, bộ sưu tập và phiên bản chương",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-006",
+      "suite": "security",
+      "module": "Bảo mật production",
+      "title": "Chống giả danh người yêu cầu và sửa hồ sơ chéo tài khoản",
+      "testTitle": "rejects unauthenticated mutations, forged requester IDs and cross-account profile changes",
+      "source": "server/tests/security.test.ts",
+      "sourceLine": 20,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "requesterId=1 giả; userId=3; roles=[reader,admin]; displayname=hacked hoặc Updated reader.",
+      "steps": [
+        "Guest và user 2 gọi update-roles với requesterId=1.",
+        "User 2 sửa hồ sơ user 3, sau đó sửa hồ sơ chính mình.",
+        "Guest/user 2 tạo event; user 3 đăng announcement truyện 1; user 2 refresh user 3.",
+        "Guest đọc hồ sơ upgrade_reader."
+      ],
+      "expected": "Update roles guest 401/user 2 403; sửa chéo 403/sửa mình 200; tạo event 401/403; announcement trái quyền và refresh chéo 403; hồ sơ công khai không có email/password.",
+      "evidence": "artifacts/test-report/evidence/backend-security.log",
+      "durationMs": 536.9131,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Bảo mật production",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-007",
+      "suite": "security",
+      "module": "Bảo mật production",
+      "title": "Quyền hiện tại, admin cuối cùng và lỗi DB",
+      "testTitle": "uses current account status and roles, preserves the last admin, and fails closed on DB errors",
+      "source": "server/tests/security.test.ts",
+      "sourceLine": 32,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "userId=99999 không tồn tại; user 3 suspended/active; gán rồi thu hồi role admin; lỗi DB mô phỏng.",
+      "steps": [
+        "Refresh tài khoản không tồn tại và tài khoản suspended.",
+        "Admin 1 thử tự bỏ role admin cuối cùng.",
+        "Gán admin cho user 3 trong DB, tạo event rồi thu hồi role và thử lại.",
+        "Thay query bằng hàm ném lỗi, refresh user 2 và phục hồi query."
+      ],
+      "expected": "Refresh không hợp lệ/suspended trả 403; bỏ admin cuối cùng 409; quyền gán mới có hiệu lực 200 và thu hồi có hiệu lực 403; lỗi DB trả 503.",
+      "evidence": "artifacts/test-report/evidence/backend-security.log",
+      "durationMs": 183.5189,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Bảo mật production",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-008",
+      "suite": "security",
+      "module": "Bảo mật production",
+      "title": "Ẩn bản nháp và khóa kiểm duyệt truyện",
+      "testTitle": "hides drafts and suspended novels, and prevents an owner from unlocking moderation",
+      "source": "server/tests/security.test.ts",
+      "sourceLine": 47,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "Chương nháp 3 của user 3; truyện 1 chuyển suspended; limit=1 và limit=100000.",
+      "steps": [
+        "Guest/user 2/chủ user 3 lần lượt đọc chương 3.",
+        "Đọc danh sách truyện limit=1 và trang 2; thử limit=100000.",
+        "Đặt truyện 1 suspended; guest đọc chương 1, chủ truyện thử đổi status=active.",
+        "Đặt lại ongoing rồi thử tạo truyện với status=suspended; đếm bản ghi."
+      ],
+      "expected": "Chương nháp: 404/404/200; guest chỉ thấy truyện 1; chủ truyện 2 có X-Next-Page=2 và thấy truyện 2 tại trang 2; limit quá lớn 400; truyện suspended bị ẩn 404, tự mở khóa 403; tạo trạng thái cấm 403 và số truyện không tăng.",
+      "evidence": "artifacts/test-report/evidence/backend-security.log",
+      "durationMs": 173.7891,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Bảo mật production",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-009",
+      "suite": "security",
+      "module": "Bảo mật production",
+      "title": "Chống tăng lượt đọc đồng thời và giả IP",
+      "testTitle": "counts concurrent reads once and ignores spoofed forwarded IP headers",
+      "source": "server/tests/security.test.ts",
+      "sourceLine": 65,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "10 POST đồng thời từ guest; X-Forwarded-For=203.0.113.123.",
+      "steps": [
+        "Đọc bộ đếm reads ban đầu của truyện 1.",
+        "Gửi 10 POST /novels/1/read-increment đồng thời.",
+        "Gửi tiếp với header X-Forwarded-For giả; kiểm tra DB.",
+        "Thử tăng lượt đọc truyện riêng tư 2."
+      ],
+      "expected": "10 phản hồi đều 200 nhưng chỉ 1 có cooldown=false; IP giả vẫn cooldown=true; DB tăng đúng 1; truyện riêng tư trả 404.",
+      "evidence": "artifacts/test-report/evidence/backend-security.log",
+      "durationMs": 232.4117,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Bảo mật production",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-010",
+      "suite": "security",
+      "module": "Bảo mật production",
+      "title": "Phân trang diễn đàn và gắn bình luận đúng bài",
+      "testTitle": "paginates forum posts and keeps nested comments with their own post",
+      "source": "server/tests/security.test.ts",
+      "sourceLine": 75,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "3 forum_posts: Post 0..2; Post 2 có Root và Reply; limit=1.",
+      "steps": [
+        "Chèn 3 bài và luồng bình luận con tại bài mới nhất.",
+        "Guest GET /forum/posts?limit=1.",
+        "Guest GET trang 2 cùng limit."
+      ],
+      "expected": "Trang 1 có X-Next-Page=2, đúng 1 bài mới nhất và Reply lồng trong Root; trang 2 là bài liền trước, comments=[].",
+      "evidence": "artifacts/test-report/evidence/backend-security.log",
+      "durationMs": 82.558,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Bảo mật production",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-011",
+      "suite": "security",
+      "module": "Bảo mật production",
+      "title": "Lọc HTML thực thi và giữ định dạng nội dung",
+      "testTitle": "sanitizes executable HTML while preserving reader formatting and event publication",
+      "source": "server/tests/security.test.ts",
+      "sourceLine": 89,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "HTML chứa <strong>text</strong>, <script>alert(1)</script>, img onerror, link javascript:.",
+      "steps": [
+        "Admin tạo event active với HTML thử nghiệm.",
+        "Guest đọc event đã công bố.",
+        "Ghi cùng HTML vào chương 1, guest đọc chương."
+      ],
+      "expected": "Có 1 event công khai; nội dung event và chương giữ <strong>text</strong>, không chứa script/onerror/javascript:.",
+      "evidence": "artifacts/test-report/evidence/backend-security.log",
+      "durationMs": 76.7343,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Bảo mật production",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-012",
+      "suite": "security",
+      "module": "Bảo mật production",
+      "title": "OTP băm, giới hạn thử và chống sử dụng lại",
+      "testTitle": "stores hashed OTPs, applies cooldown and attempt limits, and prevents replay",
+      "source": "server/tests/security.test.ts",
+      "sourceLine": 99,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "otp-test@example.test; replay@example.test; mã sai 000000 thử 5 lần; SMTP không cấu hình.",
+      "steps": [
+        "Gửi OTP và đọc devOtp cùng bản ghi DB.",
+        "Gửi lại ngay; thử mã sai 5 lần rồi mã đúng.",
+        "Phát mã mới cho replay@example.test và xác minh consume hai lần.",
+        "Tắt DEV_OTP, gửi OTP không SMTP, rồi khôi phục cấu hình."
+      ],
+      "expected": "Gửi đầu 200 với mã 6 số; code_hash dài 64 và khác mã rõ; gửi lại 429; 5 lần sai và mã đúng sau khóa đều false; mã mới dùng lần đầu true/lần hai false; không SMTP trả 503 và không lộ devOtp.",
+      "evidence": "artifacts/test-report/evidence/backend-security.log",
+      "durationMs": 170.0925,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Bảo mật production",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-013",
+      "suite": "security",
+      "module": "Bảo mật production",
+      "title": "Upload an toàn, giới hạn payload và CORS",
+      "testTitle": "requires upload auth and rejects traversal, spoofed image bytes and oversized requests",
+      "source": "server/tests/security.test.ts",
+      "sourceLine": 118,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "PNG 1×1 hợp lệ; type=../../escape; bytes <script>bad</script> giả PNG; displayname dài 1.100.000 ký tự; Origin=https://untrusted.example.",
+      "steps": [
+        "Upload ảnh không token, type traversal, bytes giả.",
+        "Upload PNG hợp lệ với type=cover; kiểm tra thư mục upload.",
+        "Gửi profile quá lớn; gọi novels với Origin không tin cậy."
+      ],
+      "expected": "Ba upload đầu trả 401/400/400; PNG hợp lệ 200 với URL UUID .png và đúng 1 file; payload lớn 413; Origin lạ 403; response không có X-Powered-By.",
+      "evidence": "artifacts/test-report/evidence/backend-security.log",
+      "durationMs": 103.0558,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Bảo mật production",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-014",
+      "suite": "security",
+      "module": "Bảo mật production",
+      "title": "Tin nhắn yêu cầu kết bạn, phân trang và trạng thái tài khoản",
+      "testTitle": "enforces friendship for REST and socket messages and returns the newest chat page",
+      "source": "server/tests/security.test.ts",
+      "sourceLine": 130,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "User 2 gửi user 3; friendship accepted sau lần từ chối; 105 Message 0..104; page size=100.",
+      "steps": [
+        "Gửi tin REST và socket khi chưa kết bạn.",
+        "Thêm friendship accepted, gửi socket lần nữa.",
+        "Suspend người nhận, thử REST rồi phục hồi; chèn 105 tin.",
+        "Lấy trang mới nhất rồi trang before; suspend người gửi, emit kiểm tra online và chờ disconnect."
+      ],
+      "expected": "REST 403/socket success=false trước kết bạn; socket success=true sau kết bạn; người nhận suspended bị chặn 403; trang mới nhất 100 tin kết thúc Message 104, trang trước 6 tin có id nhỏ hơn; socket người gửi suspended ngắt trong 3 giây.",
+      "evidence": "artifacts/test-report/evidence/backend-security.log",
+      "durationMs": 1317.7282,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Bảo mật production",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-015",
+      "suite": "security",
+      "module": "Bảo mật production",
+      "title": "Từ chối JWT secret yếu ở production",
+      "testTitle": "rejects insecure production configuration before startup",
+      "source": "server/tests/security.test.ts",
+      "sourceLine": 155,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "NODE_ENV=production; JWT_SECRET=short; PUBLIC_URL/FRONTEND_URL=https://example.test.",
+      "steps": [
+        "Chạy Node child process import server/dist/config.js trong cấu hình production yếu.",
+        "Kiểm tra exit code và stderr."
+      ],
+      "expected": "Tiến trình thoát khác 0; stderr chứa strong JWT_SECRET, ngăn khởi động với secret yếu.",
+      "evidence": "artifacts/test-report/evidence/backend-security.log",
+      "durationMs": 221.2779,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Bảo mật production",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-016",
+      "suite": "security",
+      "module": "Bảo mật production",
+      "title": "Migration production và tài khoản DB chỉ có quyền DML",
+      "testTitle": "bootstraps production without seed data and starts using a DML-only DB account",
+      "source": "server/tests/security.test.ts",
+      "sourceLine": 160,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "DB/account có hậu tố hex ngẫu nhiên; JWT_SECRET 48 bytes; DB user chỉ SELECT, INSERT, UPDATE, DELETE; SMTP tắt.",
+      "steps": [
+        "Chạy migrateProduction trên DB tạm và đếm users DB mới/fixture.",
+        "Tạo tài khoản tạm, chỉ GRANT DML, chạy server production bằng tài khoản đó.",
+        "GET /healthz, kiểm tra CSP; gọi send-otp; thử CREATE TABLE bằng app DB user.",
+        "Dừng server và xóa account/DB tạm bằng tên đã kiểm tra."
+      ],
+      "expected": "Migration exit 0; DB production mới không seed users (0), fixture vẫn 3 users; runtime exit 0 và RESTRICTED_STARTUP_OK; /healthz 200, CSP script-src self; OTP 503 không devOtp; CREATE TABLE bị từ chối.",
+      "evidence": "artifacts/test-report/evidence/backend-security.log",
+      "durationMs": 9968.7181,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Bảo mật production",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-017",
+      "suite": "hardening",
+      "module": "Quyền riêng tư, phiên đăng nhập và chống lạm dụng",
+      "title": "Bảo mật đánh giá, bình luận và thông báo truyện riêng tư",
+      "testTitle": "hides private feedback and announcements from guests and other accounts",
+      "source": "server/tests/hardening.test.ts",
+      "sourceLine": 21,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "Review/comment/announcement legacy gắn novelId=2; stars=5; text=Forbidden.",
+      "steps": [
+        "Chèn dữ liệu legacy cho truyện riêng tư 2.",
+        "Guest/user 2/user 3 đọc reviews và comments của truyện 2.",
+        "Guest đọc global latest reviews/comments và announcements.",
+        "User 2 thử ghi review/comment cho truyện 2."
+      ],
+      "expected": "Guest/người khác đọc trả 404, chủ user 3 đọc 200; danh sách công khai không có novel 2; ghi review/comment trái quyền 404.",
+      "evidence": "artifacts/test-report/evidence/backend-hardening.log",
+      "durationMs": 466.0824,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Quyền riêng tư, phiên đăng nhập và chống lạm dụng",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-018",
+      "suite": "hardening",
+      "module": "Quyền riêng tư, phiên đăng nhập và chống lạm dụng",
+      "title": "Điều kiện đọc trước đánh giá và thưởng XP đồng thời duy nhất",
+      "testTitle": "enforces server-side reading requirements and rewards concurrent reviews only once",
+      "source": "server/tests/hardening.test.ts",
+      "sourceLine": 38,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "Truyện series 1 chưa đọc rồi đọc 2 chương; oneshot có 1 chương đã đọc; 4 review đồng thời stars=4.",
+      "steps": [
+        "User 2 review series khi chưa đọc, rồi sau khi ghi chapter_reads của 2 chương.",
+        "Tạo oneshot, chương published và chapter_reads tương ứng.",
+        "Gửi 4 review đồng thời; đếm XP và bản ghi; sửa review stars=5."
+      ],
+      "expected": "Series chưa đủ điều kiện đều trả 403; 4 review oneshot đều 200, XP chỉ tăng 50 và chỉ 1 review; sửa review 200 nhưng không thêm XP.",
+      "evidence": "artifacts/test-report/evidence/backend-hardening.log",
+      "durationMs": 266.0538,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Quyền riêng tư, phiên đăng nhập và chống lạm dụng",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-019",
+      "suite": "hardening",
+      "module": "Quyền riêng tư, phiên đăng nhập và chống lạm dụng",
+      "title": "Dữ liệu phản hồi sai, bình luận chéo truyện và giả người nhận",
+      "testTitle": "rejects malformed input and cross-novel comment threads without notifying unrelated users",
+      "source": "server/tests/hardening.test.ts",
+      "sourceLine": 54,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp.",
+        "Bản ghi comment private novel 2 do test trước tạo."
+      ],
+      "testData": "stars=6 hoặc 1.5; text={} hoặc khoảng trắng; comment dài 5001; parentId từ novel 2; replyToUserId=3 giả.",
+      "steps": [
+        "Thử 5 payload review sai và 4 payload comment sai.",
+        "Gửi comment novel 1 với parentId từ novel 2.",
+        "Tạo Public root; chụp số notification user 3 rồi reply giả replyToUserId=3.",
+        "Report không lý do; đọc comments/0; đọc danh sách novels."
+      ],
+      "expected": "Mọi payload sai, parent chéo truyện và người nhận giả trả 400; Public root trả 200; số notification user 3 không tăng; report rỗng/comments/0 trả 400; novels vẫn 200.",
+      "evidence": "artifacts/test-report/evidence/backend-hardening.log",
+      "durationMs": 161.9059,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Quyền riêng tư, phiên đăng nhập và chống lạm dụng",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-020",
+      "suite": "hardening",
+      "module": "Quyền riêng tư, phiên đăng nhập và chống lạm dụng",
+      "title": "Chống giả thông báo hệ thống và trả lời chéo bài diễn đàn",
+      "testTitle": "blocks announcement impersonation and cross-post replies in the forum",
+      "source": "server/tests/hardening.test.ts",
+      "sourceLine": 73,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "User 3 category=Thông báo; title={} sai kiểu; hai bài First/Second; category=announcement của admin.",
+      "steps": [
+        "User 3 tạo bài thuộc Thông báo; user 2 tạo bài title object.",
+        "Tạo hai bài general và comment Root của bài First.",
+        "Reply tại Second với parentId Root của First; reply giả người nhận user 3.",
+        "Admin tạo Real notice thuộc announcement."
+      ],
+      "expected": "Thông báo giả 403; title sai kiểu 400; Root 200; reply chéo bài và người nhận giả 400; thông báo admin hợp lệ 200.",
+      "evidence": "artifacts/test-report/evidence/backend-hardening.log",
+      "durationMs": 152.2334,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Quyền riêng tư, phiên đăng nhập và chống lạm dụng",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-021",
+      "suite": "hardening",
+      "module": "Quyền riêng tư, phiên đăng nhập và chống lạm dụng",
+      "title": "Quyền tác giả và không rò ảnh bìa truyện riêng tư",
+      "testTitle": "enforces author roles and prevents private covers leaking through public collections",
+      "source": "server/tests/hardening.test.ts",
+      "sourceLine": 85,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "User 3 chỉ reader; coverNovelId=2; legacy public shelf trỏ ảnh https://example.test/private-cover.png.",
+      "steps": [
+        "User 3 thử tạo truyện và chương mới.",
+        "User 2 tạo public collection với coverNovelId=2.",
+        "Chèn legacy public collection trỏ truyện 2 và mở shareId bằng guest."
+      ],
+      "expected": "Reader tạo truyện/chương trả 403; chọn bìa riêng tư trả 400; legacy share trả 200 nhưng cover=null, novels=[].",
+      "evidence": "artifacts/test-report/evidence/backend-hardening.log",
+      "durationMs": 131.8024,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Quyền riêng tư, phiên đăng nhập và chống lạm dụng",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-022",
+      "suite": "hardening",
+      "module": "Quyền riêng tư, phiên đăng nhập và chống lạm dụng",
+      "title": "Cookie an toàn, CSRF, logout thu hồi HTTP/socket và native token",
+      "testTitle": "uses HttpOnly cookies, blocks cookie CSRF and revokes both HTTP and live socket sessions on logout",
+      "source": "server/tests/hardening.test.ts",
+      "sourceLine": 98,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "username=upgrade_reader; password=SecurityTestPassword123! (bcrypt cost 4); Origin=https://evil.example; X-Mugen-Client=native.",
+      "steps": [
+        "Đặt hash mật khẩu test, đăng nhập web và đọc Set-Cookie/Cache-Control.",
+        "Refresh bằng cookie; logout không Origin và Origin lạ.",
+        "Kết nối socket bằng token; logout với Origin fixture; thử token/cookie cũ.",
+        "Đăng nhập lại, refresh token mới; đăng nhập/refresh native."
+      ],
+      "expected": "Login 200; cookie HttpOnly, SameSite=Strict; Cache-Control no-store; refresh cookie 200; CSRF 403/403; logout đúng Origin 200 và socket ngắt trong 3 giây; token/cookie cũ 401; token mới khác token cũ và refresh 200; native login/refresh 200 và không tạo Set-Cookie.",
+      "evidence": "artifacts/test-report/evidence/backend-hardening.log",
+      "durationMs": 344.8682,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Quyền riêng tư, phiên đăng nhập và chống lạm dụng",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-023",
+      "suite": "hardening",
+      "module": "Quyền riêng tư, phiên đăng nhập và chống lạm dụng",
+      "title": "Ẩn tiêu đề và lý do gỡ qua tombstone legacy",
+      "testTitle": "does not expose private titles and removal reasons through legacy tombstones",
+      "source": "server/tests/hardening.test.ts",
+      "sourceLine": 137,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "deleted_novels id=999999; title=Private unpublished title; reason=Private removal reason; DELETE reason={}.",
+      "steps": [
+        "Chèn tombstone với dữ liệu riêng tư.",
+        "Guest và admin đọc /novels/deleted/999999.",
+        "User 3 DELETE truyện 2 với reason object."
+      ],
+      "expected": "Guest nhận 200 nhưng title/reason khác dữ liệu riêng tư; admin đọc được title gốc; reason sai kiểu trả 400.",
+      "evidence": "artifacts/test-report/evidence/backend-hardening.log",
+      "durationMs": 79.1571,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Quyền riêng tư, phiên đăng nhập và chống lạm dụng",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-024",
+      "suite": "hardening",
+      "module": "Quyền riêng tư, phiên đăng nhập và chống lạm dụng",
+      "title": "Socket nhàn rỗi tự ngắt khi token hết hạn",
+      "testTitle": "disconnects idle sockets when their token expires",
+      "source": "server/tests/hardening.test.ts",
+      "sourceLine": 148,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "JWT user 2 expiresIn=2 giây, jwtid ngẫu nhiên.",
+      "steps": [
+        "Tạo token hạn 2 giây và kết nối socket websocket không tự reconnect.",
+        "Không gửi hoạt động, đợi disconnect với timeout 4 giây."
+      ],
+      "expected": "Kết nối thành công; nhận disconnect trước timeout 4 giây.",
+      "evidence": "artifacts/test-report/evidence/backend-hardening.log",
+      "durationMs": 1575.4743,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Quyền riêng tư, phiên đăng nhập và chống lạm dụng",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "BE-025",
+      "suite": "hardening",
+      "module": "Quyền riêng tư, phiên đăng nhập và chống lạm dụng",
+      "title": "Giới hạn ghi nội dung lặp theo tài khoản",
+      "testTitle": "limits repeated content writes per account",
+      "source": "server/tests/hardening.test.ts",
+      "sourceLine": 160,
+      "preconditions": [
+        "Fixture khởi tạo MySQL tạm, Express tại 127.0.0.1 với cổng ngẫu nhiên; không gọi SMTP.",
+        "user 2 = reader + author, user 3 = reader; user 1 = admin seed. Truyện 1 có chương 1, 2 đã xuất bản; truyện 2 của user 3 chỉ có chương 3 nháp."
+      ],
+      "testData": "User 3; text=Rate limit fixture 0..30; tối đa 31 lần POST /comments/1.",
+      "steps": [
+        "Gửi tuần tự tối đa 31 bình luận bằng user 3.",
+        "Dừng khi gặp 429; xác minh các lần trước đó đều 200."
+      ],
+      "expected": "Có ít nhất một phản hồi 429 trong chuỗi; các lần trước ngưỡng trả 200.",
+      "evidence": "artifacts/test-report/evidence/backend-hardening.log",
+      "durationMs": 4142.0073,
+      "status": "PASS",
+      "actual": "Các assertion của ca kiểm thử đều đạt trong lần chạy thực tế.",
+      "category": "Node · Backend",
+      "group": "Quyền riêng tư, phiên đăng nhập và chống lạm dụng",
+      "method": "Tự động · Node / MySQL fixture",
+      "priority": "Cao"
+    },
+    {
+      "id": "RP-01",
+      "group": "Tiến độ đọc trên web",
+      "title": "Chuyển cache cũ mà không tự đánh dấu đọc xong",
+      "precondition": "localStorage giả lập được xóa trước ca; truyện ID 1 có chương 10 và 20 đã xuất bản.",
+      "steps": [
+        "Ghi cache mugen_readprogress_reader_1 với chapterIndex=1 và readChaptersList=[0,1].",
+        "Gọi getReadingProgress('reader', novel).",
+        "Đổi trạng thái truyện sang completed và gọi getShelfStatus."
+      ],
+      "testData": "Tài khoản reader; truyện 1; chapterIndex=1.",
+      "expected": "chapterId=20; completedChapterIds=[]; tủ sách vẫn ở trạng thái reading.",
+      "actual": "Các giá trị trả về đúng 20, [] và reading; toàn bộ assertion đạt.",
+      "status": "PASS",
+      "source": "tests/readingProgress.test.ts",
+      "testTitle": "migrates the last opened chapter without falsely marking it completed",
+      "durationMs": 2.4788,
+      "evidence": "artifacts/test-report/evidence/frontend-mobile-unit.log",
+      "category": "Node · Web/Mobile",
+      "preconditions": "localStorage giả lập được xóa trước ca; truyện ID 1 có chương 10 và 20 đã xuất bản.",
+      "method": "Tự động · Node",
+      "priority": "Cao"
+    },
+    {
+      "id": "RP-02",
+      "group": "Tiến độ đọc trên web",
+      "title": "Giữ vị trí đọc theo ID khi đổi thứ tự chương",
+      "precondition": "localStorage trống; truyện 1 có chương 10 và 20.",
+      "steps": [
+        "Lưu cache v2 cho chapterId=20, chapterIndex=1, completedChapterIds=[10,20], paragraphIndex=8.",
+        "Đảo danh sách chương thành [20,10].",
+        "Đọc tiến độ và tính trạng thái tủ sách cho truyện ongoing và completed."
+      ],
+      "testData": "scrollRatio=0.4; paragraphOffset=0.2.",
+      "expected": "chapterIndex=0; paragraphIndex=8; trạng thái caught-up cho ongoing và completed cho truyện hoàn thành.",
+      "actual": "Vị trí được ánh xạ sang index 0, giữ đoạn 8; hai trạng thái tủ sách đúng như mong đợi.",
+      "status": "PASS",
+      "source": "tests/readingProgress.test.ts",
+      "testTitle": "uses chapter IDs when chapters are inserted or reordered",
+      "durationMs": 0.668,
+      "evidence": "artifacts/test-report/evidence/frontend-mobile-unit.log",
+      "category": "Node · Web/Mobile",
+      "preconditions": "localStorage trống; truyện 1 có chương 10 và 20.",
+      "method": "Tự động · Node",
+      "priority": "Cao"
+    },
+    {
+      "id": "RP-03",
+      "group": "Tiến độ đọc trên web",
+      "title": "Loại bỏ mốc đọc của chương đã bị xóa",
+      "precondition": "Truyện 1 chỉ có chương ID 10 và 20.",
+      "steps": [
+        "Lưu cache tham chiếu chapterId=99, chapterIndex=99, completedChapterIds=[99], scrollRatio=0.9, paragraphIndex=50.",
+        "Gọi getReadingProgress('reader', novel)."
+      ],
+      "testData": "ID chương không còn tồn tại: 99.",
+      "expected": "Index được chặn về 1; scrollRatio=0; paragraphIndex=0; completedChapterIds rỗng.",
+      "actual": "Không tái sử dụng mốc chương 99; index=1, tỷ lệ=0, đoạn=0 và danh sách hoàn thành=[].",
+      "status": "PASS",
+      "source": "tests/readingProgress.test.ts",
+      "testTitle": "does not reuse a deleted chapter anchor or count deleted chapters as finished",
+      "durationMs": 0.3747,
+      "evidence": "artifacts/test-report/evidence/frontend-mobile-unit.log",
+      "category": "Node · Web/Mobile",
+      "preconditions": "Truyện 1 chỉ có chương ID 10 và 20.",
+      "method": "Tự động · Node",
+      "priority": "Cao"
+    },
+    {
+      "id": "RP-04",
+      "group": "Tiến độ đọc trên web",
+      "title": "Tách tiến độ của khách và tài khoản, cập nhật lịch sử",
+      "precondition": "localStorage trống; truyện 1 và chương 10.",
+      "steps": [
+        "Gọi storeReadingProgress(undefined, novel, progress) để lưu vị trí khách tại đoạn 3.",
+        "Đọc lại tiến độ của khách và của tài khoản reader.",
+        "Đọc mugen_reading_history_guest."
+      ],
+      "testData": "chapterId=10; scrollRatio=0.5; paragraphIndex=3; paragraphOffset=0.1; updatedAt=100.",
+      "expected": "Khách nhận paragraphIndex=3; tài khoản reader nhận null; mục lịch sử đầu tiên có chapterId=10.",
+      "actual": "Dữ liệu khách và tài khoản tách biệt; lịch sử khách ghi đúng chương 10.",
+      "status": "PASS",
+      "source": "tests/readingProgress.test.ts",
+      "testTitle": "isolates guest and account positions and maintains recent history",
+      "durationMs": 1.885,
+      "evidence": "artifacts/test-report/evidence/frontend-mobile-unit.log",
+      "category": "Node · Web/Mobile",
+      "preconditions": "localStorage trống; truyện 1 và chương 10.",
+      "method": "Tự động · Node",
+      "priority": "Cao"
+    },
+    {
+      "id": "RP-05",
+      "group": "Tiến độ đọc trên web",
+      "title": "Khôi phục cache sai cấu trúc và loại bỏ ID hoàn thành không hợp lệ",
+      "precondition": "localStorage giả lập; truyện 1 có chương 10 và 20.",
+      "steps": [
+        "Ghi chuỗi 'null' vào cache tiến độ và gọi getReadingProgress.",
+        "Ghi '{}' vào cache lịch sử của reader.",
+        "Lưu tiến độ với completedChapterIds=[10,10,99] rồi đọc lại."
+      ],
+      "testData": "mugen_readprogress_reader_1='null'; mugen_reading_history_reader='{}'.",
+      "expected": "Cache null cho kết quả null; danh sách hoàn thành chỉ còn [10]; lịch sử có một mục.",
+      "actual": "Cache sai không gây lỗi; ID trùng/đã xóa bị loại bỏ; lịch sử phục hồi thành danh sách một mục.",
+      "status": "PASS",
+      "source": "tests/readingProgress.test.ts",
+      "testTitle": "recovers from malformed caches without corrupting progress counts",
+      "durationMs": 3.1174,
+      "evidence": "artifacts/test-report/evidence/frontend-mobile-unit.log",
+      "category": "Node · Web/Mobile",
+      "preconditions": "localStorage giả lập; truyện 1 có chương 10 và 20.",
+      "method": "Tự động · Node",
+      "priority": "Cao"
+    },
+    {
+      "id": "MC-01",
+      "group": "Xử lý nội dung mobile",
+      "title": "Giữ văn bản hai phía của ảnh đính kèm diễn đàn",
+      "precondition": "Nạp contentBlocks từ mobile/src/utils/content.ts trong Node.",
+      "steps": [
+        "Gọi contentBlocks với văn bản, figure chứa ảnh và chú thích cuối.",
+        "Kiểm tra lần lượt ba khối đầu ra."
+      ],
+      "testData": "Nội dung bài viết<figure><img src=\"/uploads/cover.jpg\" /></figure>Chú thích cuối",
+      "expected": "Khối 0 là 'Nội dung bài viết'; khối 1 chứa img; khối 2 là 'Chú thích cuối'.",
+      "actual": "Văn bản và khối ảnh được giữ nguyên theo thứ tự; ba assertion đạt.",
+      "status": "PASS",
+      "source": "tests/mobile-content.test.ts",
+      "testTitle": "a forum attachment retains the plain text before and after it",
+      "durationMs": 3.3393,
+      "evidence": "artifacts/test-report/evidence/frontend-mobile-unit.log",
+      "category": "Node · Web/Mobile",
+      "preconditions": "Nạp contentBlocks từ mobile/src/utils/content.ts trong Node.",
+      "method": "Tự động · Node",
+      "priority": "Cao"
+    },
+    {
+      "id": "MC-02",
+      "group": "Xử lý nội dung mobile",
+      "title": "Giữ thứ tự tiêu đề, đoạn văn, ghi chú và ảnh trong chương",
+      "precondition": "Nạp contentBlocks và plainText.",
+      "steps": [
+        "Tách HTML chứa div, h2, p, văn bản rời và img bằng contentBlocks.",
+        "Chuyển từng khối sang plainText và so sánh mảng kết quả."
+      ],
+      "testData": "<div><h2>Chương 1</h2><p>Đoạn đầu</p>Ghi chú<img src=\"/a.png\"><p>Đoạn cuối</p></div>",
+      "expected": "Mảng ['Chương 1\\n\\n','Đoạn đầu\\n\\n','Ghi chú','','Đoạn cuối\\n\\n'].",
+      "actual": "Năm khối đúng thứ tự và nội dung, gồm vị trí ảnh với plainText rỗng.",
+      "status": "PASS",
+      "source": "tests/mobile-content.test.ts",
+      "testTitle": "chapter blocks preserve headings, paragraphs, images and loose text in order",
+      "durationMs": 4.3822,
+      "evidence": "artifacts/test-report/evidence/frontend-mobile-unit.log",
+      "category": "Node · Web/Mobile",
+      "preconditions": "Nạp contentBlocks và plainText.",
+      "method": "Tự động · Node",
+      "priority": "Cao"
+    },
+    {
+      "id": "MC-03",
+      "group": "Xử lý nội dung mobile",
+      "title": "Mã hóa văn bản thuần an toàn khi chuyển sang HTML",
+      "precondition": "Nạp textHtml và plainText.",
+      "steps": [
+        "Gọi textHtml với biểu thức có ký tự <, >, &, xuống dòng và chuỗi script.",
+        "Xác nhận HTML không chứa thẻ <script> thực.",
+        "Chuyển lại plainText và kiểm tra biểu thức cùng dòng kế tiếp."
+      ],
+      "testData": "2 < 3 & 5 > 4\\nDòng tiếp\\n\\n<script>alert(1)</script>",
+      "expected": "Không diễn giải chuỗi script thành thẻ; văn bản biểu thức và xuống dòng được bảo toàn.",
+      "actual": "Không có thẻ script trong HTML; plainText khớp nội dung biểu thức và dòng tiếp.",
+      "status": "PASS",
+      "source": "tests/mobile-content.test.ts",
+      "testTitle": "plain text becomes safe HTML without interpreting user markup",
+      "durationMs": 0.5604,
+      "evidence": "artifacts/test-report/evidence/frontend-mobile-unit.log",
+      "category": "Node · Web/Mobile",
+      "preconditions": "Nạp textHtml và plainText.",
+      "method": "Tự động · Node",
+      "priority": "Cao"
+    },
+    {
+      "id": "MD-01",
+      "group": "Phụ thuộc mobile",
+      "title": "Tương thích query-string CommonJS và bộ giải mã URI đã vá",
+      "precondition": "mobile/node_modules/query-string có sẵn và require được.",
+      "steps": [
+        "require query-string bằng CommonJS.",
+        "parse title tiếng Việt được percent-encode và tag lặp.",
+        "stringify tiêu đề 'Mùa xuân'."
+      ],
+      "testData": "title=M%C3%B9a%20xu%C3%A2n&tag=one&tag=two",
+      "expected": "title='Mùa xuân'; tag=['one','two']; stringify trả title=M%C3%B9a%20xu%C3%A2n.",
+      "actual": "API CommonJS hoạt động; giải mã tiếng Việt, mảng tag và mã hóa ngược đúng.",
+      "status": "PASS",
+      "source": "tests/mobile-dependencies.test.mjs",
+      "testTitle": "Expo query-string keeps its CommonJS API with the patched ESM URI decoder",
+      "durationMs": 195.9969,
+      "evidence": "artifacts/test-report/evidence/frontend-mobile-unit.log",
+      "category": "Node · Web/Mobile",
+      "preconditions": "mobile/node_modules/query-string có sẵn và require được.",
+      "method": "Tự động · Node",
+      "priority": "Cao"
+    },
+    {
+      "id": "MD-02",
+      "group": "Phụ thuộc mobile",
+      "title": "Không treo khi giải mã query percent-encode sai",
+      "precondition": "query-string nạp được; Node tạo tiến trình con ẩn với timeout 3 giây.",
+      "steps": [
+        "Tạo tiến trình Node con nạp query-string.",
+        "parse lần lượt chuỗi %E0%A4 lặp 2.000 lần, %C0%AF lặp 2.000 lần và % lặp 10.000 lần.",
+        "Kiểm tra không có lỗi timeout và exit status=0."
+      ],
+      "testData": "Ba chuỗi percent-encode sai/thiếu byte; timeout=3.000 ms.",
+      "expected": "Cả ba lần parse kết thúc trong giới hạn; tiến trình con thoát mã 0.",
+      "actual": "Không có result.error; tiến trình con thoát 0. Tổng ca 148,66 ms.",
+      "status": "PASS",
+      "source": "tests/mobile-dependencies.test.mjs",
+      "testTitle": "malformed percent-encoded input cannot stall URL query decoding",
+      "durationMs": 148.6636,
+      "evidence": "artifacts/test-report/evidence/frontend-mobile-unit.log",
+      "category": "Node · Web/Mobile",
+      "preconditions": "query-string nạp được; Node tạo tiến trình con ẩn với timeout 3 giây.",
+      "method": "Tự động · Node",
+      "priority": "Cao"
+    },
+    {
+      "id": "MA-01",
+      "group": "API tích hợp cho mobile",
+      "title": "Luồng tổng hợp hồ sơ, cộng đồng, thư viện, Studio và phân quyền",
+      "precondition": "Backend đã build; MySQL localhost:3306 truy cập được. Fixture tạo DB riêng mugenbunko_test_23573eb8862b0c6e, user 2 reader/author, user 3 reader; SMTP bị tắt; API chỉ nghe 127.0.0.1.",
+      "steps": [
+        "POST /auth/update-profile để đổi displayname thành Mobile Reader.",
+        "POST bài Mobile discussion; like; thêm bình luận A mobile comment; GET chi tiết và danh sách posts.",
+        "Đổi truyện 1 thành oneshot và thêm lượt đọc thử; POST/GET review 4 sao; POST/GET bình luận Novel comment và reply A reply.",
+        "Bật/tắt bookmark truyện 1 rồi GET /auth/refresh/2 để xác nhận trạng thái server.",
+        "Tạo kệ Mobile shelf công khai; thêm truyện 1; GET kệ và public share; thử user 3 DELETE kệ của user 2.",
+        "PUT tiến độ đoạn 30 với updatedAt hiện tại rồi gửi bản cũ hơn 1 giây ở đoạn 1; GET lại tiến độ.",
+        "POST tác phẩm Mobile author story; tạo chương nháp; gửi trạng thái published và GET chương.",
+        "GET lịch sử phiên bản; restore phiên bản cũ với currentDraft chứa Unsaved mobile text.",
+        "Tạo chương scheduled sau 48 giờ và kiểm tra pending cùng scheduled_release.",
+        "GET /mod/dashboard bằng reader; thêm role admin thử nghiệm, gửi lại pending, duyệt chương và kiểm tra published.",
+        "Report bình luận; vào dashboard; dismiss report; POST quy định Mobile policy và sự kiện Mobile event; GET danh sách xác nhận.",
+        "Thử gửi tin cho user 3 khi chưa là bạn; gửi lời mời, user 3 chấp nhận, gửi Hello from mobile và GET lịch sử chat."
+      ],
+      "testData": "Bearer token thử của user 2/3; truyện/chương fixture 1; stars=4; progress paragraphIndex=30; updatedAt bản cũ = now-1000; kệ công khai có truyện 1.",
+      "expected": "Mọi request nghiệp vụ hợp lệ thành công; dữ liệu hồ sơ/forum/review/comment/reply/bookmark/kệ được đọc lại đúng; xóa kệ người khác trả 404; tiến độ cũ không ghi đè đoạn 30; published/scheduled của tác giả chuyển pending; có >=2 phiên bản và restore về draft nội dung First draft; reader vào mod trả 403; admin duyệt thành published; chat trước kết bạn trả 403 và sau chấp nhận lưu được tin.",
+      "actual": "Toàn bộ assertion trong test tổng hợp đạt: phản hồi/dữ liệu và ranh giới tài khoản đúng; tiến độ giữ đoạn 30; Studio duyệt và phục hồi phiên bản đúng; phân quyền 404/403 đúng; tin nhắn sau kết bạn đọc lại được. Fixture đóng sau ca.",
+      "status": "PASS",
+      "source": "tests/mobile-api.test.mjs",
+      "testTitle": "mobile payloads support profiles, forum discussions and novel feedback",
+      "durationMs": 23840.9658,
+      "evidence": "artifacts/test-report/evidence/frontend-mobile-api.log",
+      "category": "Node · Web/Mobile",
+      "preconditions": "Backend đã build; MySQL localhost:3306 truy cập được. Fixture tạo DB riêng mugenbunko_test_23573eb8862b0c6e, user 2 reader/author, user 3 reader; SMTP bị tắt; API chỉ nghe 127.0.0.1.",
+      "method": "Tự động · Node",
+      "priority": "Cao"
+    },
+    {
+      "id": "WEB-01",
+      "group": "Kiểm thử giao diện web",
+      "title": "Khách tiếp tục chương cuối đang đọc",
+      "preconditions": "Edge headless; fixture MySQL riêng; frontend đã build. Guest; truyện 1, chương 2; cache v2 tại đoạn 15, scrollRatio=0.4 và completedChapterIds=[].",
+      "testData": "Guest; truyện 1, chương 2; cache v2 tại đoạn 15, scrollRatio=0.4 và completedChapterIds=[].",
+      "steps": [
+        "Mở chi tiết truyện 1 và nạp cache vị trí chương 2.",
+        "Tải lại trang, chọn tiếp tục đọc."
+      ],
+      "expected": "Reader mở đúng “Chương 2: Khu vườn sau thư viện”; URL #/novel/1/reader/1, dù chưa đánh dấu chương hoàn tất.",
+      "actual": "PASS; các assertion tương ứng đạt trong lần chạy trình duyệt. Reader mở đúng “Chương 2: Khu vườn sau thư viện”; URL #/novel/1/reader/1, dù chưa đánh dấu chương hoàn tất.",
+      "status": "PASS",
+      "source": "tests/browser-upgrades.mjs",
+      "sourceLine": 96,
+      "evidence": "artifacts/test-report/evidence/web-browser.log",
+      "method": "Tự động · Edge headless / CDP",
+      "category": "UI · Web",
+      "priority": "Cao"
+    },
+    {
+      "id": "WEB-02",
+      "group": "Kiểm thử giao diện web",
+      "title": "Đồng bộ đoạn đọc và phục hồi sau khi mất mạng",
+      "preconditions": "Edge headless; fixture MySQL riêng; frontend đã build. Tài khoản upgrade_reader; hai browser context độc lập; truyện 1 có 60 đoạn/chương.",
+      "testData": "Tài khoản upgrade_reader; hai browser context độc lập; truyện 1 có 60 đoạn/chương.",
+      "steps": [
+        "Cuộn đến đoạn 23, chuyển sang Tủ sách và chờ dữ liệu MySQL.",
+        "Mở Reader trong context thứ hai; so sánh đoạn khôi phục.",
+        "Giả lập offline, cuộn tới đoạn 36; kiểm tra pending; bật mạng lại."
+      ],
+      "expected": "Sai lệch đoạn giữa hai context không quá 1; cuộn được khôi phục; offline lưu pending và online đồng bộ paragraph_index >= 33.",
+      "actual": "PASS; các assertion tương ứng đạt trong lần chạy trình duyệt. Sai lệch đoạn giữa hai context không quá 1; cuộn được khôi phục; offline lưu pending và online đồng bộ paragraph_index >= 33.",
+      "status": "PASS",
+      "source": "tests/browser-upgrades.mjs",
+      "sourceLine": 109,
+      "evidence": "artifacts/test-report/evidence/web-browser.log",
+      "method": "Tự động · Edge headless / CDP",
+      "category": "UI · Web",
+      "priority": "Cao"
+    },
+    {
+      "id": "WEB-03",
+      "group": "Kiểm thử giao diện web",
+      "title": "Tạo kệ, chia sẻ công khai và thu hồi quyền xem",
+      "preconditions": "Edge headless; fixture MySQL riêng; frontend đã build. Tài khoản upgrade_reader; truyện 1; tên kệ “Để dành cuối tuần”.",
+      "testData": "Tài khoản upgrade_reader; truyện 1; tên kệ “Để dành cuối tuần”.",
+      "steps": [
+        "Tạo kệ công khai, thêm truyện 1.",
+        "Dùng context khách mở liên kết chia sẻ.",
+        "Chuyển kệ sang riêng tư và tải lại liên kết khách."
+      ],
+      "expected": "Kệ và truyện hiển thị cho khách khi công khai; is_public=0 sau khi đổi riêng tư; khách nhận giao diện lỗi truy cập.",
+      "actual": "PASS; các assertion tương ứng đạt trong lần chạy trình duyệt. Kệ và truyện hiển thị cho khách khi công khai; is_public=0 sau khi đổi riêng tư; khách nhận giao diện lỗi truy cập.",
+      "status": "PASS",
+      "source": "tests/browser-upgrades.mjs",
+      "sourceLine": 140,
+      "evidence": "artifacts/test-report/evidence/web-browser.log",
+      "method": "Tự động · Edge headless / CDP",
+      "category": "UI · Web",
+      "priority": "Cao"
+    },
+    {
+      "id": "WEB-04",
+      "group": "Kiểm thử giao diện web",
+      "title": "Khôi phục phiên bản chương và giữ nội dung chưa lưu",
+      "preconditions": "Edge headless; fixture MySQL riêng; frontend đã build. Tác giả sở hữu truyện 1; chương 2 có lịch sử và một bản chỉnh sửa mới.",
+      "testData": "Tác giả sở hữu truyện 1; chương 2 có lịch sử và một bản chỉnh sửa mới.",
+      "steps": [
+        "Mở chương 2 trong Studio; nhập “Đoạn đang viết chưa lưu.”.",
+        "Mở Lịch sử phiên bản, xem bản “Khu vườn sau thư viện”.",
+        "Khôi phục thành bản nháp; kiểm tra editor và bảng chapter_versions."
+      ],
+      "expected": "Editor nhận nội dung cũ chứa “Đoạn 1.”; phần đang viết chưa lưu vẫn được lưu trong lịch sử phiên bản.",
+      "actual": "PASS; các assertion tương ứng đạt trong lần chạy trình duyệt. Editor nhận nội dung cũ chứa “Đoạn 1.”; phần đang viết chưa lưu vẫn được lưu trong lịch sử phiên bản.",
+      "status": "PASS",
+      "source": "tests/browser-upgrades.mjs",
+      "sourceLine": 159,
+      "evidence": "artifacts/test-report/evidence/web-browser.log",
+      "method": "Tự động · Edge headless / CDP",
+      "category": "UI · Web",
+      "priority": "Cao"
+    },
+    {
+      "id": "WEB-05",
+      "group": "Kiểm thử giao diện web",
+      "title": "Diễn đàn báo lỗi mạng và tải lại thành công",
+      "preconditions": "Edge headless; fixture MySQL riêng; frontend đã build. Có bài “Kiểm tra phục hồi diễn đàn”; khách truy cập #/explore.",
+      "testData": "Có bài “Kiểm tra phục hồi diễn đàn”; khách truy cập #/explore.",
+      "steps": [
+        "Chặn /api/forum/posts* rồi tải trang.",
+        "Kiểm tra thông báo lỗi, bỏ chặn và chọn thử lại.",
+        "Kiểm tra banner với washi, sepia, charcoal."
+      ],
+      "expected": "Lỗi mạng có thông báo riêng, không bị hiểu là feed rỗng; thử lại phục hồi danh sách; banner có ảnh nền trong cả ba theme.",
+      "actual": "PASS; các assertion tương ứng đạt trong lần chạy trình duyệt. Lỗi mạng có thông báo riêng, không bị hiểu là feed rỗng; thử lại phục hồi danh sách; banner có ảnh nền trong cả ba theme.",
+      "status": "PASS",
+      "source": "tests/browser-upgrades.mjs",
+      "sourceLine": 177,
+      "evidence": "artifacts/test-report/evidence/web-browser.log",
+      "method": "Tự động · Edge headless / CDP",
+      "category": "UI · Web",
+      "priority": "Cao"
+    },
+    {
+      "id": "WEB-06",
+      "group": "Kiểm thử giao diện web",
+      "title": "Header thích ứng và truy cập web trên màn hình nhỏ",
+      "preconditions": "Edge headless; fixture MySQL riêng; frontend đã build. Hai trạng thái khách/đăng nhập; viewport rộng 320, 390, 768, 992, 1200, 1440 px.",
+      "testData": "Hai trạng thái khách/đăng nhập; viewport rộng 320, 390, 768, 992, 1200, 1440 px.",
+      "steps": [
+        "Duyệt các kích thước, đo các nút/link và vùng header.",
+        "Ở 390 px mở mobile gate và chọn liên kết tiếp tục web."
+      ],
+      "expected": "Không có nút/link bị cắt hoặc các nhóm header chồng nhau; liên kết bỏ qua mobile gate vẫn mở ứng dụng web.",
+      "actual": "PASS; các assertion tương ứng đạt trong lần chạy trình duyệt. Không có nút/link bị cắt hoặc các nhóm header chồng nhau; liên kết bỏ qua mobile gate vẫn mở ứng dụng web.",
+      "status": "PASS",
+      "source": "tests/browser-upgrades.mjs",
+      "sourceLine": 198,
+      "evidence": "artifacts/test-report/evidence/web-browser.log",
+      "method": "Tự động · Edge headless / CDP",
+      "category": "UI · Web",
+      "priority": "Cao"
+    },
+    {
+      "id": "WEB-07",
+      "group": "Kiểm thử giao diện web",
+      "title": "Mở liên kết trực tiếp và điều hướng bằng bàn phím",
+      "preconditions": "Edge headless; fixture MySQL riêng; frontend đã build. Khách mở #/about; tài khoản đã đăng nhập mở #/explore.",
+      "testData": "Khách mở #/about; tài khoản đã đăng nhập mở #/explore.",
+      "steps": [
+        "Mở trực tiếp trang Giới thiệu.",
+        "Focus huy hiệu hồ sơ, nhấn Enter rồi dùng browser Back."
+      ],
+      "expected": "Trang Giới thiệu tải được; Enter mở hồ sơ; Back đưa về giao diện Khám phá.",
+      "actual": "PASS; các assertion tương ứng đạt trong lần chạy trình duyệt. Trang Giới thiệu tải được; Enter mở hồ sơ; Back đưa về giao diện Khám phá.",
+      "status": "PASS",
+      "source": "tests/browser-upgrades.mjs",
+      "sourceLine": 216,
+      "evidence": "artifacts/test-report/evidence/web-browser.log",
+      "method": "Tự động · Edge headless / CDP",
+      "category": "UI · Web",
+      "priority": "Cao"
+    },
+    {
+      "id": "WEB-08",
+      "group": "Kiểm thử giao diện web",
+      "title": "Không gian kiểm duyệt, phân quyền và giao diện thích ứng",
+      "preconditions": "Edge headless; fixture MySQL riêng; frontend đã build. Tài khoản chỉ có quyền moderator; 13 chương pending và 12 báo cáo; theme washi/sepia/charcoal.",
+      "testData": "Tài khoản chỉ có quyền moderator; 13 chương pending và 12 báo cáo; theme washi/sepia/charcoal.",
+      "steps": [
+        "Duyệt sidebar, tab bằng bàn phím và phân trang.",
+        "Mô phỏng lỗi xem trước rồi thử lại; duyệt/từ chối/ẩn chương; xử lý báo cáo có bộ lọc.",
+        "Kiểm tra quyền thao tác tài khoản và kích thước 1440, 992, 768, 390, 320 px."
+      ],
+      "expected": "Các thao tác được kiểm tra cập nhật đúng dữ liệu; không có điều hướng admin hay nút khóa tài khoản cho moderator; các nút trong workspace không bị cắt ở ba theme.",
+      "actual": "PASS; các assertion tương ứng đạt trong lần chạy trình duyệt. Các thao tác được kiểm tra cập nhật đúng dữ liệu; không có điều hướng admin hay nút khóa tài khoản cho moderator; các nút trong workspace không bị cắt ở ba theme.",
+      "status": "PASS",
+      "source": "tests/browser-upgrades.mjs",
+      "sourceLine": 237,
+      "evidence": "artifacts/test-report/evidence/web-browser.log",
+      "method": "Tự động · Edge headless / CDP",
+      "category": "UI · Web",
+      "priority": "Cao"
+    },
+    {
+      "id": "WEB-09",
+      "group": "Kiểm thử giao diện web",
+      "title": "Quản trị tài khoản, sự kiện và phục hồi lỗi mạng",
+      "preconditions": "Edge headless; fixture MySQL riêng; frontend đã build. Tài khoản admin; dữ liệu người dùng và đơn tác giả trong DB tạm.",
+      "testData": "Tài khoản admin; dữ liệu người dùng và đơn tác giả trong DB tạm.",
+      "steps": [
+        "Duyệt tab bằng bàn phím, tìm kiếm/lọc/phân trang và duyệt tác giả.",
+        "Nhập sự kiện, đổi tab; chặn lưu để kiểm tra giữ bản nháp; bỏ chặn và lưu/phát hành/dừng.",
+        "Thêm thể loại, chọn truyện nổi bật; chặn dashboard rồi thử lại; kiểm tra theme/kích thước và URL trực tiếp."
+      ],
+      "expected": "Tab/bộ lọc và bản nháp được giữ; chu trình sự kiện ghi DB đúng; thể loại và truyện nổi bật được cập nhật; lỗi mạng có thử lại; không cắt điều khiển ở các cấu hình được kiểm tra.",
+      "actual": "PASS; các assertion tương ứng đạt trong lần chạy trình duyệt. Tab/bộ lọc và bản nháp được giữ; chu trình sự kiện ghi DB đúng; thể loại và truyện nổi bật được cập nhật; lỗi mạng có thử lại; không cắt điều khiển ở các cấu hình được kiểm tra.",
+      "status": "PASS",
+      "source": "tests/browser-upgrades.mjs",
+      "sourceLine": 357,
+      "evidence": "artifacts/test-report/evidence/web-browser.log",
+      "method": "Tự động · Edge headless / CDP",
+      "category": "UI · Web",
+      "priority": "Cao"
+    },
+    {
+      "id": "WEB-10",
+      "group": "Kiểm thử giao diện web",
+      "title": "Đăng ký bằng OTP và đăng nhập tự động trên web",
+      "preconditions": "Edge headless; fixture MySQL riêng; frontend đã build. Guest; email browser-signup@example.test; username browser_verified_reader; OTP ở chế độ DEV, SMTP tắt.",
+      "testData": "Guest; email browser-signup@example.test; username browser_verified_reader; OTP ở chế độ DEV, SMTP tắt.",
+      "steps": [
+        "Mở Đăng ký, nhập tên tài khoản, tên hiển thị, mật khẩu hợp lệ và email thử nghiệm.",
+        "Gửi mã xác thực, dùng OTP dev rồi hoàn tất đăng ký.",
+        "Đối chiếu phiên localStorage và bản ghi users."
+      ],
+      "expected": "Tự đăng nhập đúng tài khoản; email được lưu; mật khẩu lưu khác mật khẩu nhập. Chưa xác minh việc nhận email thật.",
+      "actual": "PASS; các assertion tương ứng đạt trong lần chạy trình duyệt. Tự đăng nhập đúng tài khoản; email được lưu; mật khẩu lưu khác mật khẩu nhập. Chưa xác minh việc nhận email thật.",
+      "status": "PASS",
+      "source": "tests/browser-upgrades.mjs",
+      "sourceLine": 475,
+      "evidence": "artifacts/test-report/evidence/web-browser.log",
+      "method": "Tự động · Edge headless / CDP",
+      "category": "UI · Web",
+      "priority": "Cao"
+    },
+    {
+      "id": "WEB-11",
+      "group": "Kiểm thử giao diện web",
+      "title": "Cookie HttpOnly và thu hồi phiên khi đăng xuất web",
+      "preconditions": "Edge headless; fixture MySQL riêng; frontend đã build. Tài khoản vừa đăng ký; cùng phiên cookie trên trình duyệt.",
+      "testData": "Tài khoản vừa đăng ký; cùng phiên cookie trên trình duyệt.",
+      "steps": [
+        "Kiểm tra mugen_token và document.cookie.",
+        "Gọi refresh trước logout; đăng xuất rồi gọi lại refresh."
+      ],
+      "expected": "Không có token lưu ở localStorage; JS không đọc được mugen_auth; refresh trả 200 trước logout và 401 sau logout; localStorage phiên được xóa.",
+      "actual": "PASS; các assertion tương ứng đạt trong lần chạy trình duyệt. Không có token lưu ở localStorage; JS không đọc được mugen_auth; refresh trả 200 trước logout và 401 sau logout; localStorage phiên được xóa.",
+      "status": "PASS",
+      "source": "tests/browser-upgrades.mjs",
+      "sourceLine": 488,
+      "evidence": "artifacts/test-report/evidence/web-browser.log",
+      "method": "Tự động · Edge headless / CDP",
+      "category": "UI · Web",
+      "priority": "Cao"
+    },
+    {
+      "id": "MOBILE-E2E",
+      "group": "Trình duyệt mobile (Expo web)",
+      "title": "Luồng mobile trên trình duyệt: phiên đăng nhập, thư viện, Studio, cộng đồng và đồng bộ đọc",
+      "precondition": "Backend đã build; MySQL chạy; fixture tạo DB ngẫu nhiên và tắt SMTP; Expo export web gắn API URL fixture; Edge headless chạy bằng profile tạm; user 2 có quyền admin thử nghiệm. Đây là mobile web giả lập viewport, không phải thiết bị Android/iOS thật.",
+      "steps": [
+        "Xuất Expo web với EXPO_PUBLIC_API_URL trỏ tới API fixture và kiểm tra bundle chứa đúng URL.",
+        "Mở /profile ở 390×844; kiểm tra token cũ bị xóa, cookie HttpOnly không xuất hiện qua document.cookie, refresh session trả 200 và không tràn ngang.",
+        "Mở /collections; tạo kệ Mobile UI shelf, xác nhận bản ghi trong DB.",
+        "Mở /studio; tạo Mobile UI novel, tạo Mobile UI chapter, nhập nội dung vào editor iframe và Lưu nháp; xác nhận DB.",
+        "Mở /community; tạo Mobile UI post với nội dung A post from a phone viewport.; xác nhận DB.",
+        "Tạo quan hệ bạn bè trong fixture; mở /chat/3; gửi Hello from mobile UI; xác nhận DB.",
+        "Mở /moderation; chọn Người dùng và chờ @upgrade_reader.",
+        "Mở /reader/1/0; chờ tiến độ khởi tạo; cuộn khoảng nửa chương; đợi paragraph_index trên server >10.",
+        "Đóng context thứ nhất; mở context mới ở cùng chương; kiểm tra tiến độ server khôi phục vào cache và lệch không quá một đoạn.",
+        "Mở /library, chọn tab Yêu thích và chờ truyện Những ngày dưới tán anh đào.",
+        "Mở /explore; kiểm tra chiều rộng tài liệu không quá 770px ở viewport 768px và 322px ở viewport 320px.",
+        "Đăng xuất qua /profile; kiểm tra mugen_session bị xóa, không còn mugen_mobile_token và refresh session trả 401.",
+        "Xác nhận không có Runtime.exceptionThrown; đóng browser và dọn profile/DB fixture."
+      ],
+      "testData": "User ID 2/3; truyện fixture 1, chương 1; viewport 390×844, 768×1024 và 320×720; các tiêu đề dữ liệu bắt đầu Mobile UI.",
+      "expected": "Expo export thành công; các thao tác UI lưu đúng dữ liệu; phiên cookie hoạt động và đăng xuất vô hiệu hóa server session; đồng bộ vị trí giữa context lệch tối đa một đoạn; không tràn ngang tại các điểm kiểm tra; không có runtime exception.",
+      "source": "tests/mobile-browser.mjs",
+      "testTitle": "mobile-browser.mjs (aggregate smoke flow)",
+      "evidence": "artifacts/test-report/evidence/frontend-mobile-browser.log",
+      "screenshots": [
+        "artifacts/mobile/profile.png",
+        "artifacts/mobile/collections.png",
+        "artifacts/mobile/studio-editor.png",
+        "artifacts/mobile/community.png",
+        "artifacts/mobile/chat.png",
+        "artifacts/mobile/moderation.png",
+        "artifacts/mobile/reader.png",
+        "artifacts/mobile/library.png",
+        "artifacts/mobile/explore-small.png"
+      ],
+      "status": "PASS",
+      "actual": "Tiến trình thoát 0. Expo export web hoàn thành (25 static routes; web bundle 1.306 modules/166.053 ms). Toàn bộ assertion UI/cookie/đăng xuất, ghi DB cho kệ/chương/bài/tin nhắn, đồng bộ đọc giữa hai context, giới hạn chiều rộng và danh sách runtime exception rỗng đều đạt. Chín ảnh dưới artifacts/mobile được ghi mới trong lần chạy ngày 22/10/2026. Đây là một ca E2E tổng hợp, không cộng mỗi thao tác thành một ca độc lập.",
+      "environment": {
+        "browser": "Microsoft Edge 155.0.4283.62 (headless)",
+        "database": "mugenbunko_test_0fd4d709dd777028",
+        "viewport": "390×844, 768×1024, 320×720",
+        "platform": "Expo web trên Windows; chưa kiểm thử native Android/iOS"
+      },
+      "category": "UI · Mobile web",
+      "preconditions": "Backend đã build; MySQL chạy; fixture tạo DB ngẫu nhiên và tắt SMTP; Expo export web gắn API URL fixture; Edge headless chạy bằng profile tạm; user 2 có quyền admin thử nghiệm. Đây là mobile web giả lập viewport, không phải thiết bị Android/iOS thật.",
+      "method": "Tự động · Expo web / Edge",
+      "priority": "Cao"
+    },
+    {
+      "id": "TC-MAN-001",
+      "group": "Tài khoản & xác thực",
+      "title": "Đăng ký và nhận OTP qua hộp thư thật",
+      "priority": "P0",
+      "preconditions": "Môi trường QA bật SMTP; DEV_OTP tắt; email và tên đăng nhập chưa tồn tại. Không dùng dữ liệu sản xuất.",
+      "data": "Tên đăng nhập qa_viet_<timestamp>; tên hiển thị Nguyễn Hoàng Việt; mật khẩu VietQA2026!; hộp thư QA có quyền truy cập.",
+      "steps": [
+        "Mở biểu mẫu đăng ký, nhập đầy đủ dữ liệu hợp lệ và gửi mã.",
+        "Kiểm tra thư đến/thư rác, thời điểm nhận và mã gồm 6 chữ số.",
+        "Nhập mã trong 5 phút, hoàn tất đăng ký và mở hồ sơ.",
+        "Đăng xuất rồi đăng nhập lại bằng tài khoản vừa tạo."
+      ],
+      "expected": "Thư thật được gửi tới đúng địa chỉ; không hiện OTP phát triển. Đăng ký thành công một tài khoản, tên tiếng Việt hiển thị đúng; đăng nhập lại được.",
+      "source": [
+        "src/components/RegisterModal.tsx",
+        "server/routes/auth.ts",
+        "server/utils/otp.ts"
+      ],
+      "method": "Thủ công trên web và hộp thư QA.",
+      "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp hộp thư SMTP và giao diện đăng ký.",
+      "status": "NOT_RUN",
+      "category": "Thủ công · Chưa chạy",
+      "testData": "Tên đăng nhập qa_viet_<timestamp>; tên hiển thị Nguyễn Hoàng Việt; mật khẩu VietQA2026!; hộp thư QA có quyền truy cập."
+    },
+    {
+      "id": "TC-MAN-002",
+      "group": "Tài khoản & xác thực",
+      "title": "Biên tên đăng nhập, tên hiển thị và mật khẩu đăng ký",
+      "priority": "P1",
+      "preconditions": "Có email QA và OTP còn hiệu lực; dùng tài khoản mới cho từng lần đăng ký hợp lệ.",
+      "data": "Username 2/3/50/51 ký tự, có dấu hoặc khoảng trắng; displayname chỉ khoảng trắng/100/101 ký tự; mật khẩu 7/8 ký tự, thiếu hoa/số/ký tự đặc biệt; chuỗi UTF-8 72/73 byte.",
+      "steps": [
+        "Lần lượt nhập username ngoài biên và tên hiển thị chỉ khoảng trắng.",
+        "Thử mật khẩu ngắn hoặc thiếu từng thành phần bắt buộc.",
+        "Thử mật khẩu đủ cấu trúc ở biên 72 byte, rồi vượt 72 byte bằng ký tự đa byte.",
+        "Thử bộ dữ liệu đúng ở các biên cho phép; quan sát thông báo và dữ liệu còn trên form."
+      ],
+      "expected": "Dữ liệu sai bị từ chối với thông báo dễ hiểu, không tạo tài khoản. Username hợp lệ dài 3–50 ký tự thuộc a-z, 0-9, _; displayname không rỗng và tối đa 100 ký tự; mật khẩu phải đủ cấu trúc, tối thiểu 8 ký tự và tối đa 72 byte UTF-8.",
+      "source": [
+        "src/components/RegisterModal.tsx",
+        "src/App.tsx",
+        "server/routes/auth.ts"
+      ],
+      "method": "Thủ công, kiểm tra số byte dữ liệu trước khi nhập.",
+      "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp biểu mẫu đăng ký và thông báo lỗi tại các biên.",
+      "status": "NOT_RUN",
+      "category": "Thủ công · Chưa chạy",
+      "testData": "Username 2/3/50/51 ký tự, có dấu hoặc khoảng trắng; displayname chỉ khoảng trắng/100/101 ký tự; mật khẩu 7/8 ký tự, thiếu hoa/số/ký tự đặc biệt; chuỗi UTF-8 72/73 byte."
+    },
+    {
+      "id": "TC-MAN-003",
+      "group": "Tài khoản & xác thực",
+      "title": "Đổi email sau khi gửi OTP, gửi lại và mã hết hạn trên giao diện",
+      "priority": "P1",
+      "preconditions": "Có hai email QA chưa đăng ký; SMTP hoạt động; đồng hồ QA chính xác.",
+      "data": "Email A/B; mã gửi cho A; mã mới gửi cho B; thời gian chờ 60 giây và trên 5 phút.",
+      "steps": [
+        "Gửi OTP cho A rồi đổi trường email thành B.",
+        "Kiểm tra mã cũ trên form đã được xóa; thử dùng mã A để đăng ký email B.",
+        "Gửi mã cho B rồi yêu cầu gửi lại trước 60 giây; chờ đủ thời gian và gửi lại.",
+        "Sau hơn 5 phút thử mã hết hạn, sau đó nhận mã mới và đăng ký."
+      ],
+      "expected": "Đổi email làm xóa mã đang nhập; mã không dùng được cho email khác. Gửi lại sớm có thông báo chờ; mã hết hạn bị từ chối; người dùng có thể lấy mã mới và tiếp tục mà không phải tải lại trang.",
+      "source": [
+        "src/components/RegisterModal.tsx",
+        "mobile/src/components/auth/AuthScreen.tsx",
+        "server/routes/auth.ts",
+        "server/utils/otp.ts"
+      ],
+      "method": "Thủ công trên web và ứng dụng mobile.",
+      "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp giao diện, thư thật và thời gian thực.",
+      "status": "NOT_RUN",
+      "category": "Thủ công · Chưa chạy",
+      "testData": "Email A/B; mã gửi cho A; mã mới gửi cho B; thời gian chờ 60 giây và trên 5 phút."
+    },
+    {
+      "id": "TC-MAN-004",
+      "group": "Tài khoản & xác thực",
+      "title": "Đăng nhập bằng bàn phím, sai mật khẩu và tài khoản bị khóa",
+      "priority": "P1",
+      "preconditions": "Có tài khoản QA active và suspended với thông tin đã biết; trình duyệt bật tự điền mật khẩu.",
+      "data": "Username hoặc email theo hỗ trợ giao diện; đúng mật khẩu/sai mật khẩu; ô trống và khoảng trắng.",
+      "steps": [
+        "Dùng Tab di chuyển qua các trường và nút, nhập sai mật khẩu rồi xác nhận.",
+        "Thử để trống trường; kiểm tra nội dung lỗi có thể đọc và thao tác lại.",
+        "Dùng tự điền để nhập tài khoản active rồi đăng nhập.",
+        "Đăng xuất và thử đăng nhập tài khoản suspended."
+      ],
+      "expected": "Trường và nút truy cập được bằng bàn phím, lỗi không tạo phiên đăng nhập. Tài khoản active vào đúng hồ sơ; tài khoản suspended bị từ chối với thông báo khóa tài khoản.",
+      "source": [
+        "src/components/LoginModal.tsx",
+        "src/App.tsx",
+        "mobile/src/components/auth/AuthScreen.tsx",
+        "server/routes/auth.ts"
+      ],
+      "method": "Thủ công trên trình duyệt.",
+      "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp biểu mẫu đăng nhập bằng bàn phím và tự điền thực tế.",
+      "status": "NOT_RUN",
+      "category": "Thủ công · Chưa chạy",
+      "testData": "Username hoặc email theo hỗ trợ giao diện; đúng mật khẩu/sai mật khẩu; ô trống và khoảng trắng."
+    },
+    {
+      "id": "TC-MAN-005",
+      "group": "Khám phá & tìm kiếm",
+      "title": "Tìm theo tên truyện, tác giả, thẻ; chữ hoa và khoảng trắng",
+      "priority": "P1",
+      "preconditions": "Danh mục QA có truyện công khai với tên, tác giả và tag phân biệt; có truyện chỉ gồm bản nháp để đối chiếu.",
+      "data": "Từ khóa có dấu lấy trực tiếp từ dữ liệu; cùng từ khóa viết hoa; từ khóa có khoảng trắng đầu/cuối; chuỗi không tồn tại.",
+      "steps": [
+        "Tìm lần lượt theo một phần tên truyện, tác giả và tag.",
+        "Lặp lại với chữ hoa và khoảng trắng đầu/cuối.",
+        "Tìm tên truyện chưa có chương công khai.",
+        "Nhập chuỗi không tồn tại rồi xóa tìm kiếm."
+      ],
+      "expected": "Tìm kiếm khớp tên/tác giả/tag theo chuỗi con không phân biệt hoa thường và bỏ khoảng trắng đầu/cuối. Truyện không có chương công khai không xuất hiện. Không có kết quả hiển thị trạng thái rỗng; xóa từ khóa khôi phục danh mục theo bộ lọc hiện tại.",
+      "source": [
+        "src/pages/Explore.tsx",
+        "mobile/app/(tabs)/explore.tsx"
+      ],
+      "method": "Thủ công, đối chiếu dữ liệu danh mục.",
+      "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp kết quả tìm kiếm trên danh mục QA có đối chứng.",
+      "status": "NOT_RUN",
+      "category": "Thủ công · Chưa chạy",
+      "testData": "Từ khóa có dấu lấy trực tiếp từ dữ liệu; cùng từ khóa viết hoa; từ khóa có khoảng trắng đầu/cuối; chuỗi không tồn tại."
+    },
+    {
+      "id": "TC-MAN-006",
+      "group": "Khám phá & tìm kiếm",
+      "title": "Kết hợp bộ lọc, sắp xếp và đặt lại phân trang",
+      "priority": "P1",
+      "preconditions": "Có đủ truyện công khai để tạo ít nhất hai trang; gồm series/oneshot, ongoing/completed và nhiều thể loại, lượt đọc, điểm đánh giá.",
+      "data": "Một tổ hợp có kết quả và một tổ hợp không có kết quả; thứ tự lượt đọc, điểm đánh giá, mới nhất.",
+      "steps": [
+        "Mở trang 2, thay đổi thể loại rồi kiểm tra trang đang chọn.",
+        "Kết hợp loại truyện, trạng thái và từ khóa; đối chiếu từng mục xuất hiện.",
+        "Đổi lần lượt các cách sắp xếp và kiểm tra thứ tự dữ liệu.",
+        "Chọn tổ hợp rỗng, sau đó bỏ bộ lọc."
+      ],
+      "expected": "Thay bộ lọc/sắp xếp đưa về trang 1. Các điều kiện kết hợp đúng; thứ tự giảm dần theo tiêu chí chọn. Phân trang không dẫn tới trang ngoài phạm vi; trạng thái rỗng rõ ràng và có thể quay lại danh sách.",
+      "source": [
+        "src/pages/Explore.tsx",
+        "mobile/app/(tabs)/explore.tsx"
+      ],
+      "method": "Thủ công trên web; đối chiếu riêng các bộ lọc mobile cung cấp.",
+      "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp bộ lọc và phân trang với bộ dữ liệu nhiều trang.",
+      "status": "NOT_RUN",
+      "category": "Thủ công · Chưa chạy",
+      "testData": "Một tổ hợp có kết quả và một tổ hợp không có kết quả; thứ tự lượt đọc, điểm đánh giá, mới nhất."
+    },
+    {
+      "id": "TC-MAN-007",
+      "group": "Trình đọc",
+      "title": "Tùy chỉnh nền, phông, giãn dòng và biên cỡ chữ",
+      "priority": "P1",
+      "preconditions": "Mở chương công khai có nội dung dài trên web; trình duyệt cho phép localStorage.",
+      "data": "Nền Washi/Sepia/Charcoal; Serif/Sans; giãn dòng compact/normal/relaxed; cỡ chữ 12–32 px.",
+      "steps": [
+        "Đổi qua từng nền, phông và giãn dòng; quan sát tiêu đề, nội dung, nút điều khiển.",
+        "Bấm giảm cỡ chữ liên tục đến giới hạn rồi tăng liên tục đến giới hạn.",
+        "Chọn một cấu hình, tải lại trang và chuyển sang chương kế tiếp.",
+        "Thu cửa sổ còn 320 px và kiểm tra các nút, nội dung dài."
+      ],
+      "expected": "Tùy chỉnh áp dụng rõ ràng, chữ và nút đủ đọc ở các nền. Cỡ chữ dừng ở 12 và 32 px. Phông/cỡ chữ/giãn dòng được giữ sau tải lại; nội dung không bị cắt hoặc tràn ngang ở cấu hình biên.",
+      "source": [
+        "src/pages/ChapterReader.tsx",
+        "src/App.tsx",
+        "src/index.css"
+      ],
+      "method": "Thủ công trên trình duyệt.",
+      "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp tùy chỉnh đọc và lưu cấu hình qua tải lại.",
+      "status": "NOT_RUN",
+      "category": "Thủ công · Chưa chạy",
+      "testData": "Nền Washi/Sepia/Charcoal; Serif/Sans; giãn dòng compact/normal/relaxed; cỡ chữ 12–32 px."
+    },
+    {
+      "id": "TC-MAN-008",
+      "group": "Trình đọc",
+      "title": "Mục lục và điều hướng tại chương đầu, chương cuối",
+      "priority": "P1",
+      "preconditions": "Truyện QA có ít nhất ba chương published và một chương draft/pending xen giữa.",
+      "data": "Chương đầu, giữa, cuối theo danh sách công khai; tiêu đề chương có ký tự tiếng Việt.",
+      "steps": [
+        "Mở chương đầu và kiểm tra thao tác chương trước.",
+        "Dùng mục lục chọn chương giữa; dùng nút tiếp để sang chương cuối.",
+        "Kiểm tra thao tác tiếp ở chương cuối.",
+        "Quay về chi tiết truyện và mở lại từng mục trong danh sách chương."
+      ],
+      "expected": "Điều hướng dùng đúng thứ tự chương công khai, bỏ qua draft/pending. Chương đầu/cuối không dẫn tới chỉ số không hợp lệ; tiêu đề, nội dung và mục đang chọn thống nhất; quay về chi tiết truyện được.",
+      "source": [
+        "src/pages/ChapterReader.tsx",
+        "src/pages/NovelDetail.tsx",
+        "mobile/app/reader/[novelId]/[chapterIndex].tsx"
+      ],
+      "method": "Thủ công trên web và mobile.",
+      "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp các điểm đầu/cuối và mục lục trình đọc.",
+      "status": "NOT_RUN",
+      "category": "Thủ công · Chưa chạy",
+      "testData": "Chương đầu, giữa, cuối theo danh sách công khai; tiêu đề chương có ký tự tiếng Việt."
+    },
+    {
+      "id": "TC-MAN-009",
+      "group": "Đánh giá",
+      "title": "Điều kiện đọc và độ dài đánh giá trên giao diện web",
+      "priority": "P1",
+      "preconditions": "Có tài khoản chưa đánh giá; series có ít nhất ba chương và oneshot có một chương; ghi nhận đọc bằng luồng đọc hợp lệ.",
+      "data": "Series đã đọc 0/2/3 chương; oneshot 0/1 chương; review 14/15 ký tự và chuỗi chỉ khoảng trắng.",
+      "steps": [
+        "Mở phần đánh giá series khi đã hoàn thành 0 rồi 2 chương; kiểm tra hướng dẫn đọc.",
+        "Hoàn thành chương thứ ba, quay lại chi tiết và thử review 14 ký tự, rồi chỉ khoảng trắng.",
+        "Gửi review 15 ký tự với số sao hợp lệ.",
+        "Lặp kiểm tra điều kiện trước/sau hoàn thành một chương đối với oneshot."
+      ],
+      "expected": "Web cho đánh giá series từ ba chương đã hoàn thành và oneshot từ một chương. Nội dung sau trim dưới 15 ký tự bị báo lỗi; nội dung hợp lệ được hiển thị đúng tên và sao; sau gửi có trạng thái đã đánh giá.",
+      "source": [
+        "src/pages/NovelDetail.tsx",
+        "src/App.tsx",
+        "server/routes/reviews.ts"
+      ],
+      "method": "Thủ công qua luồng đọc và biểu mẫu web.",
+      "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp điều kiện mở form và thông báo độ dài trên web.",
+      "status": "NOT_RUN",
+      "category": "Thủ công · Chưa chạy",
+      "testData": "Series đã đọc 0/2/3 chương; oneshot 0/1 chương; review 14/15 ký tự và chuỗi chỉ khoảng trắng."
+    },
+    {
+      "id": "TC-MAN-010",
+      "group": "Đánh giá",
+      "title": "Lưu lại đánh giá từ mobile và giới hạn trường nhập",
+      "priority": "P2",
+      "preconditions": "Tài khoản QA đã đủ chương đọc, đã có một review; ứng dụng mobile kết nối cùng backend với web.",
+      "data": "Đổi từ 5 sao sang 1 sao; nội dung tiếng Việt và emoji; chuỗi 5.000 rồi 5.001 ký tự.",
+      "steps": [
+        "Mở tab đánh giá trong chi tiết truyện mobile, nhập nội dung mới và chọn 1 sao.",
+        "Lưu rồi tải lại danh sách; đối chiếu review trên web.",
+        "Dán chuỗi 5.001 ký tự vào ô nội dung và kiểm tra giới hạn 5.000 ký tự.",
+        "Thử nội dung chỉ khoảng trắng và quan sát trạng thái nút lưu."
+      ],
+      "expected": "Lưu trên mobile cập nhật review của cùng tài khoản mà không tạo thêm bản ghi; nội dung và sao thống nhất sau tải lại/đổi thiết bị. Ô mobile giới hạn 5.000 ký tự; nội dung trắng không được gửi.",
+      "source": [
+        "mobile/src/components/novel/NovelDiscussion.tsx",
+        "server/routes/reviews.ts",
+        "src/pages/NovelDetail.tsx"
+      ],
+      "method": "Thủ công trên mobile và đối chiếu web.",
+      "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp giao diện cập nhật review và giới hạn nhập mobile.",
+      "status": "NOT_RUN",
+      "category": "Thủ công · Chưa chạy",
+      "testData": "Đổi từ 5 sao sang 1 sao; nội dung tiếng Việt và emoji; chuỗi 5.000 rồi 5.001 ký tự."
+    },
+    {
+      "id": "TC-MAN-011",
+      "group": "Diễn đàn",
+      "title": "Đăng bài có ảnh và kiểm tra biên tiêu đề/nội dung",
+      "priority": "P1",
+      "preconditions": "Tài khoản reader QA; ảnh hợp lệ đã chuẩn bị; môi trường upload QA hoạt động.",
+      "data": "Tiêu đề rỗng/chỉ khoảng trắng/255/256 ký tự; nội dung trắng hoặc hợp lệ; ảnh JPEG/PNG; chủ đề Thảo luận.",
+      "steps": [
+        "Mở soạn bài, chọn ảnh rồi hủy thao tác chọn ảnh khác; kiểm tra ảnh đang gắn.",
+        "Thử gửi tiêu đề hoặc nội dung chỉ khoảng trắng.",
+        "Thử tiêu đề tại biên 255/256 ký tự, ghi nhận chặn tại form hoặc thông báo máy chủ.",
+        "Đăng bài hợp lệ có ảnh rồi tải lại bài và danh sách diễn đàn."
+      ],
+      "expected": "Dữ liệu rỗng hoặc vượt giới hạn bị chặn; bài hợp lệ có đúng chủ đề, nội dung, tác giả và ảnh. Hủy chọn ảnh không tự thay ảnh hiện tại; tải lại không nhân đôi bài.",
+      "source": [
+        "src/pages/Forum.tsx",
+        "mobile/app/(tabs)/community.tsx",
+        "server/routes/forum.ts",
+        "server/routes/upload.ts"
+      ],
+      "method": "Thủ công trên web và mobile.",
+      "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp soạn bài có ảnh và các biên dữ liệu trên giao diện.",
+      "status": "NOT_RUN",
+      "category": "Thủ công · Chưa chạy",
+      "testData": "Tiêu đề rỗng/chỉ khoảng trắng/255/256 ký tự; nội dung trắng hoặc hợp lệ; ảnh JPEG/PNG; chủ đề Thảo luận."
+    },
+    {
+      "id": "TC-MAN-012",
+      "group": "Diễn đàn & điều hành",
+      "title": "Giới hạn bình luận bài diễn đàn theo vai trò trên giao diện",
+      "priority": "P1",
+      "preconditions": "Có admin, moderator và reader QA; bài thử nghiệm có thể bật/tắt giới hạn bình luận; chỉ thao tác dữ liệu QA.",
+      "data": "Một bài bình thường; cùng bài bật restrict-comments; bình luận riêng cho từng vai trò.",
+      "steps": [
+        "Admin bật giới hạn bình luận cho bài và tải lại.",
+        "Reader mở bài, kiểm tra trạng thái form và thử gửi nếu giao diện vẫn cho thao tác.",
+        "Moderator gửi bình luận và tải lại bài.",
+        "Admin tắt giới hạn; reader thử gửi lại."
+      ],
+      "expected": "Cài đặt được giữ sau tải lại. Khi giới hạn bật, reader không đăng được và nhận hướng dẫn rõ; moderator/admin bình luận được. Khi tắt, reader bình luận lại bình thường; không mất bình luận trước đó.",
+      "source": [
+        "src/pages/Forum.tsx",
+        "server/routes/forum.ts"
+      ],
+      "method": "Thủ công trong ba phiên trình duyệt tách biệt.",
+      "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp tác động thực tế của cài đặt lên ba vai trò.",
+      "status": "NOT_RUN",
+      "category": "Thủ công · Chưa chạy",
+      "testData": "Một bài bình thường; cùng bài bật restrict-comments; bình luận riêng cho từng vai trò."
+    },
+    {
+      "id": "TC-MAN-013",
+      "group": "Studio",
+      "title": "Thông tin tác phẩm: tên, thể loại, tag và ảnh bìa",
+      "priority": "P1",
+      "preconditions": "Tài khoản author QA; có một truyện thử nghiệm; ảnh bìa hợp lệ; chỉ dùng dữ liệu QA.",
+      "data": "Tên trắng/255/256 ký tự; tóm tắt có tiếng Việt và xuống dòng; các tag được giao diện cho phép; ảnh bìa mới.",
+      "steps": [
+        "Mở tạo/sửa tác phẩm, thử tên chỉ khoảng trắng rồi tên vượt 255 ký tự.",
+        "Nhập tên hợp lệ ở biên, chọn thể loại/loại truyện, thêm tag và tóm tắt.",
+        "Đổi ảnh bìa, lưu rồi mở lại màn hình sửa.",
+        "Kiểm tra chi tiết truyện với tài khoản chủ sở hữu và danh mục nếu truyện đã có chương công khai."
+      ],
+      "expected": "Không lưu tên rỗng hoặc vượt giới hạn. Dữ liệu hợp lệ, dấu tiếng Việt và ảnh bìa được giữ đúng sau tải lại; tag/thể loại khớp lựa chọn; danh mục chỉ hiển thị truyện đủ điều kiện công khai.",
+      "source": [
+        "src/pages/AuthorStudio.tsx",
+        "src/components/NewNovelModal.tsx",
+        "src/components/EditNovelModal.tsx",
+        "mobile/app/studio/index.tsx",
+        "mobile/app/studio/[id].tsx",
+        "server/routes/novels.ts"
+      ],
+      "method": "Thủ công trên biểu mẫu web/mobile; chỉ dùng trường mà giao diện cung cấp.",
+      "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp tạo/sửa metadata bằng biểu mẫu Studio.",
+      "status": "NOT_RUN",
+      "category": "Thủ công · Chưa chạy",
+      "testData": "Tên trắng/255/256 ký tự; tóm tắt có tiếng Việt và xuống dòng; các tag được giao diện cho phép; ảnh bìa mới."
+    },
+    {
+      "id": "TC-MAN-014",
+      "group": "Studio & điều hành",
+      "title": "Hẹn giờ sau duyệt và xuất bản theo đồng hồ thật",
+      "priority": "P0",
+      "preconditions": "Server QA chạy scheduler thật; đồng hồ thiết bị/backend/DB đã đối chiếu; author và moderator QA; hai chương mới, một chương sẽ duyệt và một chương giữ pending.",
+      "data": "Giờ máy Asia/Saigon; lịch T hiện tại + 3 phút; ngày không hợp lệ và thời điểm quá khứ trên mobile.",
+      "steps": [
+        "Trên mobile thử lịch sai định dạng/quá khứ; sau đó đặt T cho hai chương và gửi duyệt.",
+        "Moderator duyệt chương A trước T; giữ chương B chưa duyệt.",
+        "Dùng phiên khách kiểm tra trước T, tại T và sau tối thiểu một chu kỳ scheduler 30 giây.",
+        "Mở lại lịch trong Studio trên thiết bị khác và đối chiếu giờ hiển thị."
+      ],
+      "expected": "Mobile chặn lịch sai/quá khứ. Chương A đã duyệt ở trạng thái scheduled và chưa công khai trước T; sau đến hạn được xuất bản ở chu kỳ scheduler tiếp theo. Chương B còn pending không tự công khai; giờ hiển thị khớp hợp đồng giờ máy đã chọn.",
+      "source": [
+        "mobile/app/studio/chapter/[novelId].tsx",
+        "src/App.tsx",
+        "server/routes/chapters.ts",
+        "server/routes/mod.ts",
+        "server/server.ts"
+      ],
+      "method": "Thủ công với thời gian thực; ghi kèm timezone của thiết bị, server và DB.",
+      "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp scheduler thật, múi giờ và tài khoản khách/điều hành.",
+      "status": "NOT_RUN",
+      "category": "Thủ công · Chưa chạy",
+      "testData": "Giờ máy Asia/Saigon; lịch T hiện tại + 3 phút; ngày không hợp lệ và thời điểm quá khứ trên mobile."
+    },
+    {
+      "id": "TC-MAN-015",
+      "group": "Thông báo",
+      "title": "Nhận thông báo nghiệp vụ và đánh dấu tất cả đã đọc",
+      "priority": "P1",
+      "preconditions": "Author QA có chương pending; moderator QA có quyền duyệt; tài khoản QA khác làm đối chứng.",
+      "data": "Thông báo sinh ra khi duyệt/từ chối chương; ít nhất hai thông báo chưa đọc.",
+      "steps": [
+        "Moderator xử lý chương thử nghiệm để sinh thông báo cho author.",
+        "Author làm mới hồ sơ/thông báo, kiểm tra nội dung, thời gian và số chưa đọc.",
+        "Chọn Đọc tất cả trên web hoặc Đánh dấu tất cả đã đọc trên mobile.",
+        "Tải lại và đăng nhập cùng tài khoản ở thiết bị khác; kiểm tra tài khoản đối chứng."
+      ],
+      "expected": "Thông báo đến đúng tác giả, nội dung khớp chương và kết quả xử lý. Đọc tất cả xóa trạng thái chưa đọc, được giữ sau làm mới/đổi thiết bị; không thay đổi thông báo tài khoản đối chứng.",
+      "source": [
+        "server/routes/mod.ts",
+        "server/routes/auth.ts",
+        "src/components/Header.tsx",
+        "mobile/app/updates.tsx"
+      ],
+      "method": "Thủ công trên hai tài khoản và ít nhất hai thiết bị/phiên.",
+      "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp luồng thông báo liên tài khoản và trạng thái đã đọc.",
+      "status": "NOT_RUN",
+      "category": "Thủ công · Chưa chạy",
+      "testData": "Thông báo sinh ra khi duyệt/từ chối chương; ít nhất hai thông báo chưa đọc."
+    },
+    {
+      "id": "TC-MAN-016",
+      "group": "Tin nhắn",
+      "title": "Realtime, mất kết nối và giới hạn nội dung chat trên mobile",
+      "priority": "P1",
+      "preconditions": "Hai tài khoản QA đã là bạn; hai thiết bị; được phép tạm ngắt mạng của một thiết bị.",
+      "data": "Tin nhắn tiếng Việt/emoji; chuỗi trắng; 5.000/5.001 ký tự; tin nhắn gửi trong lúc thiết bị nhận mất mạng.",
+      "steps": [
+        "Mở cuộc trò chuyện ở hai thiết bị, gửi tin nhắn khi realtime kết nối.",
+        "Thử nội dung trắng và dán chuỗi vượt 5.000 ký tự.",
+        "Ngắt mạng thiết bị nhận, gửi một tin mới từ thiết bị còn lại rồi khôi phục mạng.",
+        "Chờ reconnect hoặc chu kỳ tải 15 giây, mở lại chat và kiểm tra thứ tự/số bản sao."
+      ],
+      "expected": "Tin realtime xuất hiện đúng người gửi/nhận; nội dung trắng bị chặn và trường mobile tối đa 5.000 ký tự. Sau khôi phục mạng, lịch sử nhận đủ tin đúng thứ tự; cùng message ID không hiển thị trùng; lỗi gửi được báo rõ và không xóa nội dung khi chưa xác nhận thành công.",
+      "source": [
+        "mobile/app/chat/[id].tsx",
+        "mobile/src/services/socket/socketClient.ts",
+        "server/utils/messages.ts",
+        "server/routes/social.ts"
+      ],
+      "method": "Thủ công trên hai thiết bị; đối chiếu ID khi cần.",
+      "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp hai thiết bị thật và thay đổi kết nối trong lúc chat.",
+      "status": "NOT_RUN",
+      "category": "Thủ công · Chưa chạy",
+      "testData": "Tin nhắn tiếng Việt/emoji; chuỗi trắng; 5.000/5.001 ký tự; tin nhắn gửi trong lúc thiết bị nhận mất mạng."
+    },
+    {
+      "id": "TC-MAN-017",
+      "group": "Bạn bè",
+      "title": "Từ chối lời mời, gửi trùng và gửi lại bằng giao diện",
+      "priority": "P2",
+      "preconditions": "Hai tài khoản QA chưa là bạn và không có lời mời tồn tại; mở hai phiên độc lập.",
+      "data": "Tài khoản A/B; một lần từ chối, một lần chấp nhận; lời mời gửi lặp khi đang pending.",
+      "steps": [
+        "A tìm B và gửi lời mời, sau đó thử gửi lại khi chưa được phản hồi.",
+        "B kiểm tra danh sách lời mời rồi từ chối.",
+        "A làm mới và gửi lại; B chấp nhận.",
+        "Cả hai làm mới danh sách bạn và kiểm tra khả năng mở chat."
+      ],
+      "expected": "Lời mời pending không tạo trùng; từ chối loại bỏ trạng thái chờ ở hai phía sau làm mới. Có thể gửi lại sau từ chối; chấp nhận đưa đúng người vào danh sách bạn và mở chat được.",
+      "source": [
+        "src/pages/Forum.tsx",
+        "mobile/app/social.tsx",
+        "server/routes/social.ts"
+      ],
+      "method": "Thủ công trên hai tài khoản.",
+      "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp trạng thái lời mời ở hai giao diện người dùng.",
+      "status": "NOT_RUN",
+      "category": "Thủ công · Chưa chạy",
+      "testData": "Tài khoản A/B; một lần từ chối, một lần chấp nhận; lời mời gửi lặp khi đang pending."
+    },
+    {
+      "id": "TC-MAN-018",
+      "group": "Native Android",
+      "title": "Chọn ảnh thật, hủy chọn và phục hồi khi upload lỗi",
+      "priority": "P1",
+      "preconditions": "Ứng dụng Android native trên thiết bị thật; có ảnh lớn hơn 1.600 px; API QA truy cập được từ điện thoại; quyền ảnh ở trạng thái chưa cấp hoặc bị từ chối.",
+      "data": "Ảnh JPEG/PNG lớn; thao tác hủy picker; mạng mất trong lúc upload; ảnh bìa cũ để đối chiếu.",
+      "steps": [
+        "Mở chọn ảnh trong Studio; xử lý hộp thoại quyền hệ thống nếu xuất hiện và thử hủy picker.",
+        "Chọn ảnh lớn, đợi xử lý rồi kiểm tra preview.",
+        "Ngắt mạng khi tải ảnh khác; quan sát lỗi và thử lại sau kết nối.",
+        "Lưu tác phẩm, mở lại ảnh trên điện thoại và thiết bị thứ hai."
+      ],
+      "expected": "Hủy/từ chối quyền không làm crash và không tự thay ảnh. Ảnh được xử lý, upload và hiển thị từ host backend điện thoại truy cập được; lỗi mạng có thông báo, nút thoát trạng thái bận và thử lại được.",
+      "source": [
+        "mobile/src/components/common/ImageUpload.tsx",
+        "mobile/src/services/api/client.ts",
+        "server/routes/upload.ts"
+      ],
+      "method": "Thủ công trên thiết bị Android thật; ghi model và phiên bản OS.",
+      "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp thiết bị Android native, picker hệ thống và upload thật.",
+      "status": "NOT_RUN",
+      "category": "Thủ công · Chưa chạy",
+      "testData": "Ảnh JPEG/PNG lớn; thao tác hủy picker; mạng mất trong lúc upload; ảnh bìa cũ để đối chiếu."
+    },
+    {
+      "id": "TC-MAN-019",
+      "group": "Native Android",
+      "title": "Soạn thảo tiếng Việt, bàn phím và khôi phục nháp cục bộ",
+      "priority": "P0",
+      "preconditions": "Ứng dụng Android native; tài khoản author; chương QA chưa xuất bản; bộ gõ tiếng Việt; mạng có thể tắt.",
+      "data": "Nội dung nhiều đoạn có đậm/nghiêng, emoji và ảnh; câu mới chưa lưu máy chủ; thời gian chờ tự lưu cục bộ trên 600 ms.",
+      "steps": [
+        "Mở chương, gõ tiếng Việt có dấu trong rich editor, định dạng và xem trước.",
+        "Để bàn phím mở, cuộn đến cuối và bấm các nút lưu/xem trước.",
+        "Sửa thêm nội dung, chờ hơn một giây, đưa app xuống nền rồi đóng/mở lại màn hình chương.",
+        "Chọn Khôi phục bản nháp, đối chiếu nội dung rồi lưu lên máy chủ và mở lại."
+      ],
+      "expected": "IME không mất dấu hoặc nhảy con trỏ bất thường; bàn phím không che thao tác chính. Nháp cục bộ được đề nghị khôi phục với đúng nội dung; lưu và mở lại giữ chữ, định dạng và ảnh. Nháp của tài khoản/chương khác không bị trộn.",
+      "source": [
+        "mobile/src/components/common/RichEditor.tsx",
+        "mobile/app/studio/chapter/[novelId].tsx",
+        "mobile/src/utils/editorDocument.ts"
+      ],
+      "method": "Thủ công trên Android thật; ghi phiên bản bàn phím.",
+      "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp rich editor native, bộ gõ và vòng đời ứng dụng Android.",
+      "status": "NOT_RUN",
+      "category": "Thủ công · Chưa chạy",
+      "testData": "Nội dung nhiều đoạn có đậm/nghiêng, emoji và ảnh; câu mới chưa lưu máy chủ; thời gian chờ tự lưu cục bộ trên 600 ms."
+    },
+    {
+      "id": "TC-MAN-020",
+      "group": "Native iOS",
+      "title": "Khởi động lại, lưu phiên an toàn và giao diện theo hệ thống",
+      "priority": "P0",
+      "preconditions": "Bản iOS native cài trên iPhone thật; tài khoản QA; có chế độ sáng/tối hệ thống; không dùng Safari/Expo web để thay thế.",
+      "data": "Đăng nhập hợp lệ; tùy chọn system/light/dark; khóa/mở máy; force-quit và mở lại app.",
+      "steps": [
+        "Đăng nhập và chọn giao diện theo hệ thống; đổi sáng/tối trong cài đặt iOS.",
+        "Khóa/mở máy, đưa app xuống nền, force-quit rồi mở lại.",
+        "Mở chat và Studio với bàn phím; kiểm tra phần tai thỏ/home indicator và khả năng quay lại.",
+        "Đăng xuất, force-quit/mở lại rồi truy cập màn hình cần đăng nhập."
+      ],
+      "expected": "Giao diện đổi theo hệ thống và tùy chọn được lưu. Phiên hợp lệ khôi phục sau mở lại; giao diện không bị che bởi safe area hoặc bàn phím. Sau đăng xuất không tự đăng nhập lại hoặc truy cập dữ liệu riêng bằng phiên cũ.",
+      "source": [
+        "mobile/src/services/storage/authToken.ts",
+        "mobile/src/context/AuthContext.tsx",
+        "mobile/src/context/PreferencesContext.tsx",
+        "mobile/app/chat/[id].tsx",
+        "mobile/app/_layout.tsx"
+      ],
+      "method": "Thủ công trên iPhone thật; ghi model, iOS và bản build.",
+      "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp iPhone native, SecureStore, safe area và vòng đời ứng dụng.",
+      "status": "NOT_RUN",
+      "category": "Thủ công · Chưa chạy",
+      "testData": "Đăng nhập hợp lệ; tùy chọn system/light/dark; khóa/mở máy; force-quit và mở lại app."
+    }
+  ]
+}

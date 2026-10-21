@@ -7,11 +7,14 @@ import {
 import { getTierName } from '../utils/levelHelper';
 import { User, Novel, SystemEvent } from '../types';
 import '../styles/admin.css';
+import Elections from './Elections';
 
 interface AdminEvent extends SystemEvent {
     desc?: string;
 }
 interface AdminDashboardProps {
+    API_BASE: string;
+    fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>;
     novels: Novel[];
     users: User[];
     events: AdminEvent[];
@@ -95,6 +98,7 @@ const tabs = [
         group: 'Cấu hình',
         description: 'Chọn tác phẩm tiêu điểm xuất hiện khi mở thư viện trên trình duyệt này.',
     },
+    { id: 'elections', label: 'Bầu chọn mod', icon: Icons.Users, group: 'Cộng đồng', description: 'Quản lý kỳ tuyển, đối soát hai luồng phiếu và quyết định bổ nhiệm.' },
 ] as const;
 type AdminTab = (typeof tabs)[number]['id'];
 const pageSize = 10;
@@ -361,6 +365,9 @@ export default function AdminDashboard(props: AdminDashboardProps) {
                     </p>
                 )}
                 <div className="admin-panels" aria-busy={loading}>
+                    <section {...panel('elections')}>
+                        {activeTab === 'elections' && <Elections currentUser={currentUser} API_BASE={props.API_BASE} fetchWithAuth={props.fetchWithAuth} embedded />}
+                    </section>
                     <section {...panel('overview')}>
                         <dl className="admin-metrics">
                             {[

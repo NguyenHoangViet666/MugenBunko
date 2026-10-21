@@ -1,0 +1,471 @@
+[
+  {
+    "id": "TC-MAN-001",
+    "group": "Tài khoản & xác thực",
+    "title": "Đăng ký và nhận OTP qua hộp thư thật",
+    "priority": "P0",
+    "preconditions": "Môi trường QA bật SMTP; DEV_OTP tắt; email và tên đăng nhập chưa tồn tại. Không dùng dữ liệu sản xuất.",
+    "data": "Tên đăng nhập qa_viet_<timestamp>; tên hiển thị Nguyễn Hoàng Việt; mật khẩu VietQA2026!; hộp thư QA có quyền truy cập.",
+    "steps": [
+      "Mở biểu mẫu đăng ký, nhập đầy đủ dữ liệu hợp lệ và gửi mã.",
+      "Kiểm tra thư đến/thư rác, thời điểm nhận và mã gồm 6 chữ số.",
+      "Nhập mã trong 5 phút, hoàn tất đăng ký và mở hồ sơ.",
+      "Đăng xuất rồi đăng nhập lại bằng tài khoản vừa tạo."
+    ],
+    "expected": "Thư thật được gửi tới đúng địa chỉ; không hiện OTP phát triển. Đăng ký thành công một tài khoản, tên tiếng Việt hiển thị đúng; đăng nhập lại được.",
+    "source": [
+      "src/components/RegisterModal.tsx",
+      "server/routes/auth.ts",
+      "server/utils/otp.ts"
+    ],
+    "method": "Thủ công trên web và hộp thư QA.",
+    "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp hộp thư SMTP và giao diện đăng ký.",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "TC-MAN-002",
+    "group": "Tài khoản & xác thực",
+    "title": "Biên tên đăng nhập, tên hiển thị và mật khẩu đăng ký",
+    "priority": "P1",
+    "preconditions": "Có email QA và OTP còn hiệu lực; dùng tài khoản mới cho từng lần đăng ký hợp lệ.",
+    "data": "Username 2/3/50/51 ký tự, có dấu hoặc khoảng trắng; displayname chỉ khoảng trắng/100/101 ký tự; mật khẩu 7/8 ký tự, thiếu hoa/số/ký tự đặc biệt; chuỗi UTF-8 72/73 byte.",
+    "steps": [
+      "Lần lượt nhập username ngoài biên và tên hiển thị chỉ khoảng trắng.",
+      "Thử mật khẩu ngắn hoặc thiếu từng thành phần bắt buộc.",
+      "Thử mật khẩu đủ cấu trúc ở biên 72 byte, rồi vượt 72 byte bằng ký tự đa byte.",
+      "Thử bộ dữ liệu đúng ở các biên cho phép; quan sát thông báo và dữ liệu còn trên form."
+    ],
+    "expected": "Dữ liệu sai bị từ chối với thông báo dễ hiểu, không tạo tài khoản. Username hợp lệ dài 3–50 ký tự thuộc a-z, 0-9, _; displayname không rỗng và tối đa 100 ký tự; mật khẩu phải đủ cấu trúc, tối thiểu 8 ký tự và tối đa 72 byte UTF-8.",
+    "source": [
+      "src/components/RegisterModal.tsx",
+      "src/App.tsx",
+      "server/routes/auth.ts"
+    ],
+    "method": "Thủ công, kiểm tra số byte dữ liệu trước khi nhập.",
+    "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp biểu mẫu đăng ký và thông báo lỗi tại các biên.",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "TC-MAN-003",
+    "group": "Tài khoản & xác thực",
+    "title": "Đổi email sau khi gửi OTP, gửi lại và mã hết hạn trên giao diện",
+    "priority": "P1",
+    "preconditions": "Có hai email QA chưa đăng ký; SMTP hoạt động; đồng hồ QA chính xác.",
+    "data": "Email A/B; mã gửi cho A; mã mới gửi cho B; thời gian chờ 60 giây và trên 5 phút.",
+    "steps": [
+      "Gửi OTP cho A rồi đổi trường email thành B.",
+      "Kiểm tra mã cũ trên form đã được xóa; thử dùng mã A để đăng ký email B.",
+      "Gửi mã cho B rồi yêu cầu gửi lại trước 60 giây; chờ đủ thời gian và gửi lại.",
+      "Sau hơn 5 phút thử mã hết hạn, sau đó nhận mã mới và đăng ký."
+    ],
+    "expected": "Đổi email làm xóa mã đang nhập; mã không dùng được cho email khác. Gửi lại sớm có thông báo chờ; mã hết hạn bị từ chối; người dùng có thể lấy mã mới và tiếp tục mà không phải tải lại trang.",
+    "source": [
+      "src/components/RegisterModal.tsx",
+      "mobile/src/components/auth/AuthScreen.tsx",
+      "server/routes/auth.ts",
+      "server/utils/otp.ts"
+    ],
+    "method": "Thủ công trên web và ứng dụng mobile.",
+    "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp giao diện, thư thật và thời gian thực.",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "TC-MAN-004",
+    "group": "Tài khoản & xác thực",
+    "title": "Đăng nhập bằng bàn phím, sai mật khẩu và tài khoản bị khóa",
+    "priority": "P1",
+    "preconditions": "Có tài khoản QA active và suspended với thông tin đã biết; trình duyệt bật tự điền mật khẩu.",
+    "data": "Username hoặc email theo hỗ trợ giao diện; đúng mật khẩu/sai mật khẩu; ô trống và khoảng trắng.",
+    "steps": [
+      "Dùng Tab di chuyển qua các trường và nút, nhập sai mật khẩu rồi xác nhận.",
+      "Thử để trống trường; kiểm tra nội dung lỗi có thể đọc và thao tác lại.",
+      "Dùng tự điền để nhập tài khoản active rồi đăng nhập.",
+      "Đăng xuất và thử đăng nhập tài khoản suspended."
+    ],
+    "expected": "Trường và nút truy cập được bằng bàn phím, lỗi không tạo phiên đăng nhập. Tài khoản active vào đúng hồ sơ; tài khoản suspended bị từ chối với thông báo khóa tài khoản.",
+    "source": [
+      "src/components/LoginModal.tsx",
+      "src/App.tsx",
+      "mobile/src/components/auth/AuthScreen.tsx",
+      "server/routes/auth.ts"
+    ],
+    "method": "Thủ công trên trình duyệt.",
+    "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp biểu mẫu đăng nhập bằng bàn phím và tự điền thực tế.",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "TC-MAN-005",
+    "group": "Khám phá & tìm kiếm",
+    "title": "Tìm theo tên truyện, tác giả, thẻ; chữ hoa và khoảng trắng",
+    "priority": "P1",
+    "preconditions": "Danh mục QA có truyện công khai với tên, tác giả và tag phân biệt; có truyện chỉ gồm bản nháp để đối chiếu.",
+    "data": "Từ khóa có dấu lấy trực tiếp từ dữ liệu; cùng từ khóa viết hoa; từ khóa có khoảng trắng đầu/cuối; chuỗi không tồn tại.",
+    "steps": [
+      "Tìm lần lượt theo một phần tên truyện, tác giả và tag.",
+      "Lặp lại với chữ hoa và khoảng trắng đầu/cuối.",
+      "Tìm tên truyện chưa có chương công khai.",
+      "Nhập chuỗi không tồn tại rồi xóa tìm kiếm."
+    ],
+    "expected": "Tìm kiếm khớp tên/tác giả/tag theo chuỗi con không phân biệt hoa thường và bỏ khoảng trắng đầu/cuối. Truyện không có chương công khai không xuất hiện. Không có kết quả hiển thị trạng thái rỗng; xóa từ khóa khôi phục danh mục theo bộ lọc hiện tại.",
+    "source": [
+      "src/pages/Explore.tsx",
+      "mobile/app/(tabs)/explore.tsx"
+    ],
+    "method": "Thủ công, đối chiếu dữ liệu danh mục.",
+    "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp kết quả tìm kiếm trên danh mục QA có đối chứng.",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "TC-MAN-006",
+    "group": "Khám phá & tìm kiếm",
+    "title": "Kết hợp bộ lọc, sắp xếp và đặt lại phân trang",
+    "priority": "P1",
+    "preconditions": "Có đủ truyện công khai để tạo ít nhất hai trang; gồm series/oneshot, ongoing/completed và nhiều thể loại, lượt đọc, điểm đánh giá.",
+    "data": "Một tổ hợp có kết quả và một tổ hợp không có kết quả; thứ tự lượt đọc, điểm đánh giá, mới nhất.",
+    "steps": [
+      "Mở trang 2, thay đổi thể loại rồi kiểm tra trang đang chọn.",
+      "Kết hợp loại truyện, trạng thái và từ khóa; đối chiếu từng mục xuất hiện.",
+      "Đổi lần lượt các cách sắp xếp và kiểm tra thứ tự dữ liệu.",
+      "Chọn tổ hợp rỗng, sau đó bỏ bộ lọc."
+    ],
+    "expected": "Thay bộ lọc/sắp xếp đưa về trang 1. Các điều kiện kết hợp đúng; thứ tự giảm dần theo tiêu chí chọn. Phân trang không dẫn tới trang ngoài phạm vi; trạng thái rỗng rõ ràng và có thể quay lại danh sách.",
+    "source": [
+      "src/pages/Explore.tsx",
+      "mobile/app/(tabs)/explore.tsx"
+    ],
+    "method": "Thủ công trên web; đối chiếu riêng các bộ lọc mobile cung cấp.",
+    "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp bộ lọc và phân trang với bộ dữ liệu nhiều trang.",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "TC-MAN-007",
+    "group": "Trình đọc",
+    "title": "Tùy chỉnh nền, phông, giãn dòng và biên cỡ chữ",
+    "priority": "P1",
+    "preconditions": "Mở chương công khai có nội dung dài trên web; trình duyệt cho phép localStorage.",
+    "data": "Nền Washi/Sepia/Charcoal; Serif/Sans; giãn dòng compact/normal/relaxed; cỡ chữ 12–32 px.",
+    "steps": [
+      "Đổi qua từng nền, phông và giãn dòng; quan sát tiêu đề, nội dung, nút điều khiển.",
+      "Bấm giảm cỡ chữ liên tục đến giới hạn rồi tăng liên tục đến giới hạn.",
+      "Chọn một cấu hình, tải lại trang và chuyển sang chương kế tiếp.",
+      "Thu cửa sổ còn 320 px và kiểm tra các nút, nội dung dài."
+    ],
+    "expected": "Tùy chỉnh áp dụng rõ ràng, chữ và nút đủ đọc ở các nền. Cỡ chữ dừng ở 12 và 32 px. Phông/cỡ chữ/giãn dòng được giữ sau tải lại; nội dung không bị cắt hoặc tràn ngang ở cấu hình biên.",
+    "source": [
+      "src/pages/ChapterReader.tsx",
+      "src/App.tsx",
+      "src/index.css"
+    ],
+    "method": "Thủ công trên trình duyệt.",
+    "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp tùy chỉnh đọc và lưu cấu hình qua tải lại.",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "TC-MAN-008",
+    "group": "Trình đọc",
+    "title": "Mục lục và điều hướng tại chương đầu, chương cuối",
+    "priority": "P1",
+    "preconditions": "Truyện QA có ít nhất ba chương published và một chương draft/pending xen giữa.",
+    "data": "Chương đầu, giữa, cuối theo danh sách công khai; tiêu đề chương có ký tự tiếng Việt.",
+    "steps": [
+      "Mở chương đầu và kiểm tra thao tác chương trước.",
+      "Dùng mục lục chọn chương giữa; dùng nút tiếp để sang chương cuối.",
+      "Kiểm tra thao tác tiếp ở chương cuối.",
+      "Quay về chi tiết truyện và mở lại từng mục trong danh sách chương."
+    ],
+    "expected": "Điều hướng dùng đúng thứ tự chương công khai, bỏ qua draft/pending. Chương đầu/cuối không dẫn tới chỉ số không hợp lệ; tiêu đề, nội dung và mục đang chọn thống nhất; quay về chi tiết truyện được.",
+    "source": [
+      "src/pages/ChapterReader.tsx",
+      "src/pages/NovelDetail.tsx",
+      "mobile/app/reader/[novelId]/[chapterIndex].tsx"
+    ],
+    "method": "Thủ công trên web và mobile.",
+    "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp các điểm đầu/cuối và mục lục trình đọc.",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "TC-MAN-009",
+    "group": "Đánh giá",
+    "title": "Điều kiện đọc và độ dài đánh giá trên giao diện web",
+    "priority": "P1",
+    "preconditions": "Có tài khoản chưa đánh giá; series có ít nhất ba chương và oneshot có một chương; ghi nhận đọc bằng luồng đọc hợp lệ.",
+    "data": "Series đã đọc 0/2/3 chương; oneshot 0/1 chương; review 14/15 ký tự và chuỗi chỉ khoảng trắng.",
+    "steps": [
+      "Mở phần đánh giá series khi đã hoàn thành 0 rồi 2 chương; kiểm tra hướng dẫn đọc.",
+      "Hoàn thành chương thứ ba, quay lại chi tiết và thử review 14 ký tự, rồi chỉ khoảng trắng.",
+      "Gửi review 15 ký tự với số sao hợp lệ.",
+      "Lặp kiểm tra điều kiện trước/sau hoàn thành một chương đối với oneshot."
+    ],
+    "expected": "Web cho đánh giá series từ ba chương đã hoàn thành và oneshot từ một chương. Nội dung sau trim dưới 15 ký tự bị báo lỗi; nội dung hợp lệ được hiển thị đúng tên và sao; sau gửi có trạng thái đã đánh giá.",
+    "source": [
+      "src/pages/NovelDetail.tsx",
+      "src/App.tsx",
+      "server/routes/reviews.ts"
+    ],
+    "method": "Thủ công qua luồng đọc và biểu mẫu web.",
+    "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp điều kiện mở form và thông báo độ dài trên web.",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "TC-MAN-010",
+    "group": "Đánh giá",
+    "title": "Lưu lại đánh giá từ mobile và giới hạn trường nhập",
+    "priority": "P2",
+    "preconditions": "Tài khoản QA đã đủ chương đọc, đã có một review; ứng dụng mobile kết nối cùng backend với web.",
+    "data": "Đổi từ 5 sao sang 1 sao; nội dung tiếng Việt và emoji; chuỗi 5.000 rồi 5.001 ký tự.",
+    "steps": [
+      "Mở tab đánh giá trong chi tiết truyện mobile, nhập nội dung mới và chọn 1 sao.",
+      "Lưu rồi tải lại danh sách; đối chiếu review trên web.",
+      "Dán chuỗi 5.001 ký tự vào ô nội dung và kiểm tra giới hạn 5.000 ký tự.",
+      "Thử nội dung chỉ khoảng trắng và quan sát trạng thái nút lưu."
+    ],
+    "expected": "Lưu trên mobile cập nhật review của cùng tài khoản mà không tạo thêm bản ghi; nội dung và sao thống nhất sau tải lại/đổi thiết bị. Ô mobile giới hạn 5.000 ký tự; nội dung trắng không được gửi.",
+    "source": [
+      "mobile/src/components/novel/NovelDiscussion.tsx",
+      "server/routes/reviews.ts",
+      "src/pages/NovelDetail.tsx"
+    ],
+    "method": "Thủ công trên mobile và đối chiếu web.",
+    "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp giao diện cập nhật review và giới hạn nhập mobile.",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "TC-MAN-011",
+    "group": "Diễn đàn",
+    "title": "Đăng bài có ảnh và kiểm tra biên tiêu đề/nội dung",
+    "priority": "P1",
+    "preconditions": "Tài khoản reader QA; ảnh hợp lệ đã chuẩn bị; môi trường upload QA hoạt động.",
+    "data": "Tiêu đề rỗng/chỉ khoảng trắng/255/256 ký tự; nội dung trắng hoặc hợp lệ; ảnh JPEG/PNG; chủ đề Thảo luận.",
+    "steps": [
+      "Mở soạn bài, chọn ảnh rồi hủy thao tác chọn ảnh khác; kiểm tra ảnh đang gắn.",
+      "Thử gửi tiêu đề hoặc nội dung chỉ khoảng trắng.",
+      "Thử tiêu đề tại biên 255/256 ký tự, ghi nhận chặn tại form hoặc thông báo máy chủ.",
+      "Đăng bài hợp lệ có ảnh rồi tải lại bài và danh sách diễn đàn."
+    ],
+    "expected": "Dữ liệu rỗng hoặc vượt giới hạn bị chặn; bài hợp lệ có đúng chủ đề, nội dung, tác giả và ảnh. Hủy chọn ảnh không tự thay ảnh hiện tại; tải lại không nhân đôi bài.",
+    "source": [
+      "src/pages/Forum.tsx",
+      "mobile/app/(tabs)/community.tsx",
+      "server/routes/forum.ts",
+      "server/routes/upload.ts"
+    ],
+    "method": "Thủ công trên web và mobile.",
+    "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp soạn bài có ảnh và các biên dữ liệu trên giao diện.",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "TC-MAN-012",
+    "group": "Diễn đàn & điều hành",
+    "title": "Giới hạn bình luận bài diễn đàn theo vai trò trên giao diện",
+    "priority": "P1",
+    "preconditions": "Có admin, moderator và reader QA; bài thử nghiệm có thể bật/tắt giới hạn bình luận; chỉ thao tác dữ liệu QA.",
+    "data": "Một bài bình thường; cùng bài bật restrict-comments; bình luận riêng cho từng vai trò.",
+    "steps": [
+      "Admin bật giới hạn bình luận cho bài và tải lại.",
+      "Reader mở bài, kiểm tra trạng thái form và thử gửi nếu giao diện vẫn cho thao tác.",
+      "Moderator gửi bình luận và tải lại bài.",
+      "Admin tắt giới hạn; reader thử gửi lại."
+    ],
+    "expected": "Cài đặt được giữ sau tải lại. Khi giới hạn bật, reader không đăng được và nhận hướng dẫn rõ; moderator/admin bình luận được. Khi tắt, reader bình luận lại bình thường; không mất bình luận trước đó.",
+    "source": [
+      "src/pages/Forum.tsx",
+      "server/routes/forum.ts"
+    ],
+    "method": "Thủ công trong ba phiên trình duyệt tách biệt.",
+    "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp tác động thực tế của cài đặt lên ba vai trò.",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "TC-MAN-013",
+    "group": "Studio",
+    "title": "Thông tin tác phẩm: tên, thể loại, tag và ảnh bìa",
+    "priority": "P1",
+    "preconditions": "Tài khoản author QA; có một truyện thử nghiệm; ảnh bìa hợp lệ; chỉ dùng dữ liệu QA.",
+    "data": "Tên trắng/255/256 ký tự; tóm tắt có tiếng Việt và xuống dòng; các tag được giao diện cho phép; ảnh bìa mới.",
+    "steps": [
+      "Mở tạo/sửa tác phẩm, thử tên chỉ khoảng trắng rồi tên vượt 255 ký tự.",
+      "Nhập tên hợp lệ ở biên, chọn thể loại/loại truyện, thêm tag và tóm tắt.",
+      "Đổi ảnh bìa, lưu rồi mở lại màn hình sửa.",
+      "Kiểm tra chi tiết truyện với tài khoản chủ sở hữu và danh mục nếu truyện đã có chương công khai."
+    ],
+    "expected": "Không lưu tên rỗng hoặc vượt giới hạn. Dữ liệu hợp lệ, dấu tiếng Việt và ảnh bìa được giữ đúng sau tải lại; tag/thể loại khớp lựa chọn; danh mục chỉ hiển thị truyện đủ điều kiện công khai.",
+    "source": [
+      "src/pages/AuthorStudio.tsx",
+      "src/components/NewNovelModal.tsx",
+      "src/components/EditNovelModal.tsx",
+      "mobile/app/studio/index.tsx",
+      "mobile/app/studio/[id].tsx",
+      "server/routes/novels.ts"
+    ],
+    "method": "Thủ công trên biểu mẫu web/mobile; chỉ dùng trường mà giao diện cung cấp.",
+    "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp tạo/sửa metadata bằng biểu mẫu Studio.",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "TC-MAN-014",
+    "group": "Studio & điều hành",
+    "title": "Hẹn giờ sau duyệt và xuất bản theo đồng hồ thật",
+    "priority": "P0",
+    "preconditions": "Server QA chạy scheduler thật; đồng hồ thiết bị/backend/DB đã đối chiếu; author và moderator QA; hai chương mới, một chương sẽ duyệt và một chương giữ pending.",
+    "data": "Giờ máy Asia/Saigon; lịch T hiện tại + 3 phút; ngày không hợp lệ và thời điểm quá khứ trên mobile.",
+    "steps": [
+      "Trên mobile thử lịch sai định dạng/quá khứ; sau đó đặt T cho hai chương và gửi duyệt.",
+      "Moderator duyệt chương A trước T; giữ chương B chưa duyệt.",
+      "Dùng phiên khách kiểm tra trước T, tại T và sau tối thiểu một chu kỳ scheduler 30 giây.",
+      "Mở lại lịch trong Studio trên thiết bị khác và đối chiếu giờ hiển thị."
+    ],
+    "expected": "Mobile chặn lịch sai/quá khứ. Chương A đã duyệt ở trạng thái scheduled và chưa công khai trước T; sau đến hạn được xuất bản ở chu kỳ scheduler tiếp theo. Chương B còn pending không tự công khai; giờ hiển thị khớp hợp đồng giờ máy đã chọn.",
+    "source": [
+      "mobile/app/studio/chapter/[novelId].tsx",
+      "src/App.tsx",
+      "server/routes/chapters.ts",
+      "server/routes/mod.ts",
+      "server/server.ts"
+    ],
+    "method": "Thủ công với thời gian thực; ghi kèm timezone của thiết bị, server và DB.",
+    "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp scheduler thật, múi giờ và tài khoản khách/điều hành.",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "TC-MAN-015",
+    "group": "Thông báo",
+    "title": "Nhận thông báo nghiệp vụ và đánh dấu tất cả đã đọc",
+    "priority": "P1",
+    "preconditions": "Author QA có chương pending; moderator QA có quyền duyệt; tài khoản QA khác làm đối chứng.",
+    "data": "Thông báo sinh ra khi duyệt/từ chối chương; ít nhất hai thông báo chưa đọc.",
+    "steps": [
+      "Moderator xử lý chương thử nghiệm để sinh thông báo cho author.",
+      "Author làm mới hồ sơ/thông báo, kiểm tra nội dung, thời gian và số chưa đọc.",
+      "Chọn Đọc tất cả trên web hoặc Đánh dấu tất cả đã đọc trên mobile.",
+      "Tải lại và đăng nhập cùng tài khoản ở thiết bị khác; kiểm tra tài khoản đối chứng."
+    ],
+    "expected": "Thông báo đến đúng tác giả, nội dung khớp chương và kết quả xử lý. Đọc tất cả xóa trạng thái chưa đọc, được giữ sau làm mới/đổi thiết bị; không thay đổi thông báo tài khoản đối chứng.",
+    "source": [
+      "server/routes/mod.ts",
+      "server/routes/auth.ts",
+      "src/components/Header.tsx",
+      "mobile/app/updates.tsx"
+    ],
+    "method": "Thủ công trên hai tài khoản và ít nhất hai thiết bị/phiên.",
+    "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp luồng thông báo liên tài khoản và trạng thái đã đọc.",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "TC-MAN-016",
+    "group": "Tin nhắn",
+    "title": "Realtime, mất kết nối và giới hạn nội dung chat trên mobile",
+    "priority": "P1",
+    "preconditions": "Hai tài khoản QA đã là bạn; hai thiết bị; được phép tạm ngắt mạng của một thiết bị.",
+    "data": "Tin nhắn tiếng Việt/emoji; chuỗi trắng; 5.000/5.001 ký tự; tin nhắn gửi trong lúc thiết bị nhận mất mạng.",
+    "steps": [
+      "Mở cuộc trò chuyện ở hai thiết bị, gửi tin nhắn khi realtime kết nối.",
+      "Thử nội dung trắng và dán chuỗi vượt 5.000 ký tự.",
+      "Ngắt mạng thiết bị nhận, gửi một tin mới từ thiết bị còn lại rồi khôi phục mạng.",
+      "Chờ reconnect hoặc chu kỳ tải 15 giây, mở lại chat và kiểm tra thứ tự/số bản sao."
+    ],
+    "expected": "Tin realtime xuất hiện đúng người gửi/nhận; nội dung trắng bị chặn và trường mobile tối đa 5.000 ký tự. Sau khôi phục mạng, lịch sử nhận đủ tin đúng thứ tự; cùng message ID không hiển thị trùng; lỗi gửi được báo rõ và không xóa nội dung khi chưa xác nhận thành công.",
+    "source": [
+      "mobile/app/chat/[id].tsx",
+      "mobile/src/services/socket/socketClient.ts",
+      "server/utils/messages.ts",
+      "server/routes/social.ts"
+    ],
+    "method": "Thủ công trên hai thiết bị; đối chiếu ID khi cần.",
+    "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp hai thiết bị thật và thay đổi kết nối trong lúc chat.",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "TC-MAN-017",
+    "group": "Bạn bè",
+    "title": "Từ chối lời mời, gửi trùng và gửi lại bằng giao diện",
+    "priority": "P2",
+    "preconditions": "Hai tài khoản QA chưa là bạn và không có lời mời tồn tại; mở hai phiên độc lập.",
+    "data": "Tài khoản A/B; một lần từ chối, một lần chấp nhận; lời mời gửi lặp khi đang pending.",
+    "steps": [
+      "A tìm B và gửi lời mời, sau đó thử gửi lại khi chưa được phản hồi.",
+      "B kiểm tra danh sách lời mời rồi từ chối.",
+      "A làm mới và gửi lại; B chấp nhận.",
+      "Cả hai làm mới danh sách bạn và kiểm tra khả năng mở chat."
+    ],
+    "expected": "Lời mời pending không tạo trùng; từ chối loại bỏ trạng thái chờ ở hai phía sau làm mới. Có thể gửi lại sau từ chối; chấp nhận đưa đúng người vào danh sách bạn và mở chat được.",
+    "source": [
+      "src/pages/Forum.tsx",
+      "mobile/app/social.tsx",
+      "server/routes/social.ts"
+    ],
+    "method": "Thủ công trên hai tài khoản.",
+    "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp trạng thái lời mời ở hai giao diện người dùng.",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "TC-MAN-018",
+    "group": "Native Android",
+    "title": "Chọn ảnh thật, hủy chọn và phục hồi khi upload lỗi",
+    "priority": "P1",
+    "preconditions": "Ứng dụng Android native trên thiết bị thật; có ảnh lớn hơn 1.600 px; API QA truy cập được từ điện thoại; quyền ảnh ở trạng thái chưa cấp hoặc bị từ chối.",
+    "data": "Ảnh JPEG/PNG lớn; thao tác hủy picker; mạng mất trong lúc upload; ảnh bìa cũ để đối chiếu.",
+    "steps": [
+      "Mở chọn ảnh trong Studio; xử lý hộp thoại quyền hệ thống nếu xuất hiện và thử hủy picker.",
+      "Chọn ảnh lớn, đợi xử lý rồi kiểm tra preview.",
+      "Ngắt mạng khi tải ảnh khác; quan sát lỗi và thử lại sau kết nối.",
+      "Lưu tác phẩm, mở lại ảnh trên điện thoại và thiết bị thứ hai."
+    ],
+    "expected": "Hủy/từ chối quyền không làm crash và không tự thay ảnh. Ảnh được xử lý, upload và hiển thị từ host backend điện thoại truy cập được; lỗi mạng có thông báo, nút thoát trạng thái bận và thử lại được.",
+    "source": [
+      "mobile/src/components/common/ImageUpload.tsx",
+      "mobile/src/services/api/client.ts",
+      "server/routes/upload.ts"
+    ],
+    "method": "Thủ công trên thiết bị Android thật; ghi model và phiên bản OS.",
+    "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp thiết bị Android native, picker hệ thống và upload thật.",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "TC-MAN-019",
+    "group": "Native Android",
+    "title": "Soạn thảo tiếng Việt, bàn phím và khôi phục nháp cục bộ",
+    "priority": "P0",
+    "preconditions": "Ứng dụng Android native; tài khoản author; chương QA chưa xuất bản; bộ gõ tiếng Việt; mạng có thể tắt.",
+    "data": "Nội dung nhiều đoạn có đậm/nghiêng, emoji và ảnh; câu mới chưa lưu máy chủ; thời gian chờ tự lưu cục bộ trên 600 ms.",
+    "steps": [
+      "Mở chương, gõ tiếng Việt có dấu trong rich editor, định dạng và xem trước.",
+      "Để bàn phím mở, cuộn đến cuối và bấm các nút lưu/xem trước.",
+      "Sửa thêm nội dung, chờ hơn một giây, đưa app xuống nền rồi đóng/mở lại màn hình chương.",
+      "Chọn Khôi phục bản nháp, đối chiếu nội dung rồi lưu lên máy chủ và mở lại."
+    ],
+    "expected": "IME không mất dấu hoặc nhảy con trỏ bất thường; bàn phím không che thao tác chính. Nháp cục bộ được đề nghị khôi phục với đúng nội dung; lưu và mở lại giữ chữ, định dạng và ảnh. Nháp của tài khoản/chương khác không bị trộn.",
+    "source": [
+      "mobile/src/components/common/RichEditor.tsx",
+      "mobile/app/studio/chapter/[novelId].tsx",
+      "mobile/src/utils/editorDocument.ts"
+    ],
+    "method": "Thủ công trên Android thật; ghi phiên bản bàn phím.",
+    "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp rich editor native, bộ gõ và vòng đời ứng dụng Android.",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "TC-MAN-020",
+    "group": "Native iOS",
+    "title": "Khởi động lại, lưu phiên an toàn và giao diện theo hệ thống",
+    "priority": "P0",
+    "preconditions": "Bản iOS native cài trên iPhone thật; tài khoản QA; có chế độ sáng/tối hệ thống; không dùng Safari/Expo web để thay thế.",
+    "data": "Đăng nhập hợp lệ; tùy chọn system/light/dark; khóa/mở máy; force-quit và mở lại app.",
+    "steps": [
+      "Đăng nhập và chọn giao diện theo hệ thống; đổi sáng/tối trong cài đặt iOS.",
+      "Khóa/mở máy, đưa app xuống nền, force-quit rồi mở lại.",
+      "Mở chat và Studio với bàn phím; kiểm tra phần tai thỏ/home indicator và khả năng quay lại.",
+      "Đăng xuất, force-quit/mở lại rồi truy cập màn hình cần đăng nhập."
+    ],
+    "expected": "Giao diện đổi theo hệ thống và tùy chọn được lưu. Phiên hợp lệ khôi phục sau mở lại; giao diện không bị che bởi safe area hoặc bàn phím. Sau đăng xuất không tự đăng nhập lại hoặc truy cập dữ liệu riêng bằng phiên cũ.",
+    "source": [
+      "mobile/src/services/storage/authToken.ts",
+      "mobile/src/context/AuthContext.tsx",
+      "mobile/src/context/PreferencesContext.tsx",
+      "mobile/app/chat/[id].tsx",
+      "mobile/app/_layout.tsx"
+    ],
+    "method": "Thủ công trên iPhone thật; ghi model, iOS và bản build.",
+    "actual": "Chưa thực thi trong đợt lập báo cáo; cần kiểm thử trực tiếp iPhone native, SecureStore, safe area và vòng đời ứng dụng.",
+    "status": "NOT_RUN"
+  }
+]

@@ -1,13 +1,16 @@
-/* A single work surface with persistent vertical navigation. */
+/* Open workspace: navigation and content share the page instead of an outer card. */
+.app-content-container.staff-content {
+    width: 100%;
+    max-width: none;
+    padding: 0 clamp(20px, 2.5vw, 48px) 64px;
+}
 .admin-workspace {
     --text-muted: color-mix(in srgb, var(--text-content) 78%, var(--bg-card));
     display: grid;
     grid-template-columns: 228px minmax(0, 1fr);
     align-items: start;
-    min-height: 720px;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    background: var(--bg-card);
+    min-height: max(720px, calc(100dvh - 160px));
+    background: transparent;
     color: var(--text-main);
 }
 .admin-sidebar {
@@ -173,7 +176,7 @@
 }
 .admin-main {
     min-width: 0;
-    min-height: 720px;
+    min-height: inherit;
     border-left: 1px solid var(--border-color);
     padding: 34px 38px 38px;
 }
@@ -912,14 +915,16 @@
     }
 }
 @media (max-width: 760px) {
+    .app-content-container.staff-content {
+        padding: 0 16px 40px;
+    }
     .admin-workspace {
         display: block;
         min-height: 0;
-        border-radius: 8px;
     }
     .admin-sidebar {
         position: static;
-        padding: 16px;
+        padding: 20px 0 16px;
     }
     .admin-brand {
         padding: 0 0 14px;
@@ -967,7 +972,7 @@
         border-left: 0;
         border-top: 1px solid var(--border-color);
         min-height: 520px;
-        padding: 24px 20px;
+        padding: 24px 0;
     }
     .admin-page-heading {
         gap: 12px;
@@ -1086,7 +1091,7 @@
 }
 @media (max-width: 380px) {
     .admin-main {
-        padding: 20px 14px;
+        padding: 20px 0;
     }
     .admin-page-heading {
         flex-wrap: wrap;

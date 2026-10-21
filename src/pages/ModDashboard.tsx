@@ -6,6 +6,7 @@ import { Chapter, Novel, User } from '../types';
 import { getTierName } from '../utils/levelHelper';
 import '../styles/admin.css';
 import '../styles/moderation.css';
+import Elections from './Elections';
 
 interface ModReport {
     id?: number;
@@ -28,6 +29,8 @@ interface PendingChapter {
     date: string;
 }
 interface ModDashboardProps {
+    API_BASE: string;
+    fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>;
     pendingChapters: PendingChapter[];
     reports: ModReport[];
     users: User[];
@@ -74,6 +77,7 @@ const tabs = [
         icon: Icons.Book,
         description: 'Tra cứu chương đã xuất bản và ẩn nội dung cần được chỉnh sửa.',
     },
+    { id: 'elections', label: 'Hội đồng bầu chọn', icon: Icons.Users, description: 'Đánh giá ứng viên mod theo tiêu chí và theo dõi các kỳ tuyển.' },
 ] as const;
 type ModTab = (typeof tabs)[number]['id'];
 const searchText = (text: string) =>
@@ -499,6 +503,9 @@ export default function ModDashboard(props: ModDashboardProps) {
                     </p>
                 )}
                 <div className="admin-panels" aria-busy={loading}>
+                    <section {...panel('elections')}>
+                        {activeTab === 'elections' && <Elections currentUser={currentUser} API_BASE={props.API_BASE} fetchWithAuth={props.fetchWithAuth} embedded />}
+                    </section>
                     <section {...panel('overview')}>
                         <dl className="admin-metrics">
                             {[

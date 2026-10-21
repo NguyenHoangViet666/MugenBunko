@@ -138,6 +138,7 @@ export default function Header({
                             </button>
                         )}
 
+                        <a className={`header-nav-btn ${currentView === 'elections' ? 'active' : ''}`} href="#/elections" title="Bầu chọn kiểm duyệt viên"><Icons.Users size={15} /><span>Bầu Mod</span></a>
                         <button
                             type="button"
                             className={`header-nav-btn ${currentView === 'about' ? 'active' : ''}`}
