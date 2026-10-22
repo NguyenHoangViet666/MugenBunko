@@ -5,14 +5,12 @@ interface FooterProps {
     currentUser: User | null;
     setCurrentView: (view: string) => void;
     setActiveNovelId: (id: number | null) => void;
-    setLoginModalOpen: (open: boolean) => void;
 }
 
 export default function Footer({
     currentUser,
     setCurrentView,
     setActiveNovelId,
-    setLoginModalOpen
 }: FooterProps) {
     return (
         <footer className="app-footer">
@@ -35,7 +33,7 @@ export default function Footer({
                         <li>{currentUser && currentUser.roles.includes('author') ? (
                             <span onClick={() => { setCurrentView('studio'); setActiveNovelId(null); }} style={{ cursor: 'pointer' }}>Bàn làm việc Studio</span>
                         ) : (
-                            <span onClick={() => setLoginModalOpen(true)} style={{ cursor: 'pointer' }}>Đăng ký viết truyện</span>
+                            <a href={currentUser ? '#/profile' : '#/login?returnTo=%23%2Fprofile'}>Đăng ký viết truyện</a>
                         )}</li>
                     </ul>
                 </div>

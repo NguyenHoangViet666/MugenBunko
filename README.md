@@ -131,6 +131,10 @@ Dự án ra đời nhằm giải quyết bài toán thiếu hụt các nền t�
 - 📝 **Soạn thảo & Tổ chức tác phẩm:** Phân chia truyện theo nhiều Quyển (Volume) và các Chương (Chapter).
 - ⏱️ **Lên lịch đăng tự động:** Hẹn giờ phát hành chương theo thời gian thực tế (`scheduled_release`).
 - 💾 **Bản nháp & Xuất bản:** Chế độ lưu nháp (`draft`) trước khi chính thức gửi kiểm duyệt hoặc xuất bản (`published`).
+- **Bảo toàn bản thảo:** phục hồi bản chưa lưu theo từng tài khoản/chương, lưu nhanh bằng Ctrl+S hoặc ⌘S, chặn ghi đè khi bản máy chủ đã thay đổi. Nháp tự lưu mỗi 30 giây; phần sửa chương đã đăng được giữ trên máy cho đến khi bấm “Cập nhật chương”.
+- **Xem trước & tập trung viết:** xem bản đang soạn với nền đọc, giữ nguyên editor khi đổi chế độ, xuất dự phòng TXT/MD và khôi phục lịch sử phiên bản.
+- **Quản lý mục lục:** tìm/lọc đủ bốn trạng thái, thu gọn tập, đổi tên tập, chuyển nhiều chương giữa các tập và lưu thứ tự chương bằng nút lên/xuống. Thứ tự mới được dùng cả ở Reader.
+- **Lịch đăng & kiểm duyệt:** tác giả gửi duyệt chương kèm lịch; lưu thay đổi giữ nguyên lịch đã duyệt. Rút chương về nháp hủy lịch đăng. Ngày giờ trong hộp thoại dùng múi giờ hiển thị bên cạnh ô nhập.
 - 📊 **Thống kê:** Theo dõi số từ, lượt đọc, số lượng bookmark và tương tác bạn đọc.
 
 ### 4.3. Diễn đàn & Mạng xã hội (Community & Social)
@@ -346,6 +350,8 @@ cd mobile && npm install && cd ..
 
 ## Kiểm tra các nâng cấp Reader, Tủ sách và Studio
 
+Đăng nhập và đăng ký web là hai trang riêng tại `#/login` và `#/register`. Các liên kết cần tài khoản giữ trang đích trong `returnTo`; đăng nhập/đăng ký thành công quay về trang đó. Biểu mẫu đăng ký giữ OTP email, kiểm tra mật khẩu nhập lại và thời gian chờ gửi lại mã; lỗi hiển thị ngay trong trang. Mật khẩu chỉ được giữ trong bộ nhớ của biểu mẫu.
+
 Kiểm tra tĩnh và build frontend trước khi bàn giao thay đổi:
 
 ```bash
@@ -360,6 +366,8 @@ Build web không thay thế bước kiểm tra TypeScript. Các trang Studio, di
 
 Backend development tự tạo các bảng tiến độ đọc, kệ sách và lịch sử bản thảo khi khởi động. Production chạy migration riêng trước khi khởi động ứng dụng theo hướng dẫn dưới đây.
 
+Studio bổ sung cột `chapters.sort_order`; migration trên dữ liệu cũ gán thứ tự ban đầu theo ID để giữ mục lục hiện có. Khởi động lại backend development để áp dụng; production chạy `npm --prefix server run build` và `npm --prefix server run migrate:production` trước khi chạy bản mới.
+
 - **Reader:** lưu đoạn đang đọc và đồng bộ theo tài khoản; vị trí khi mất mạng được gửi lại khi có kết nối. Khách chưa đăng nhập lưu trên thiết bị.
 - **Tủ sách:** tạo kệ, chọn bìa từ truyện, quản lý tác phẩm và chia sẻ kệ công khai. Đổi sang riêng tư sẽ chặn liên kết công khai.
 - **Studio:** nút “Lịch sử phiên bản” trong thanh công cụ cho xem và khôi phục 50 bản nội dung gần nhất. Khôi phục tạo bản nháp và giữ nội dung hiện tại trong lịch sử.
@@ -369,6 +377,10 @@ Chạy kiểm thử với Node.js 24 và cấu hình MySQL trong `server/.env`:
 ```bash
 npm run test:upgrades
 npm run test:upgrades:browser
+npm run test:studio
+npm run test:studio:browser
+npm run test:auth
+npm run test:auth:browser
 ```
 
 Bộ test dùng database riêng có tên `mugenbunko_test_*`, yêu cầu tài khoản MySQL có quyền tạo/xóa database và tự dọn sau khi chạy. Kiểm thử trình duyệt sử dụng Edge headless trên Windows; có thể đặt `UPGRADE_BROWSER_PATH` để chọn executable Chromium khác. Ảnh kiểm tra nằm trong `artifacts/upgrades/` và được Git bỏ qua.

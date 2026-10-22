@@ -90,12 +90,24 @@ router.post('/:id/versions/:versionId/restore', async (req: AuthenticatedRequest
 
 // Add or Edit Chapter
 router.post('/', checkRole('author'), async (req: AuthenticatedRequest, res: Response) => {
-    const { id, novelId, volumeName, title, status, scheduledRelease, source } = req.body;
+    const { id, novelId, volumeName, title, status, scheduledRelease, source, preserveStatus, baseDraft } = req.body;
     const content = typeof req.body.content === 'string' ? cleanHtml(req.body.content) : '';
     if (!Number.isInteger(novelId) || typeof volumeName !== 'string' || !volumeName.trim() || volumeName.length > 100 ||
-        typeof title !== 'string' || !title.trim() || title.length > 255 || typeof content !== 'string' || !content ||
+        typeof title !== 'string' || !title.trim() || title.length > 255 || typeof req.body.content !== 'string' ||
         !['draft', 'published', 'pending', 'scheduled'].includes(status)) {
         return res.status(400).json({ error: "Vui lòng nhập đầy đủ thông tin chương!" });
+    }
+    if (baseDraft !== undefined && (!baseDraft || typeof baseDraft.title !== 'string' ||
+        typeof baseDraft.volumeName !== 'string' || typeof baseDraft.content !== 'string')) {
+        return res.status(400).json({ error: 'Bản đối chiếu không hợp lệ.' });
+    }
+    if (status === 'scheduled' && !preserveStatus && (typeof scheduledRelease !== 'string' ||
+        !Number.isFinite(Date.parse(scheduledRelease)) || Date.parse(scheduledRelease) <= Date.now())) {
+        return res.status(400).json({ error: 'Hãy chọn thời gian đăng trong tương lai.' });
+    }
+    const hasContent = Boolean(content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() || /<img\b/i.test(content));
+    if (!preserveStatus && status !== 'draft' && !hasContent) {
+        return res.status(400).json({ error: 'Chương cần có nội dung trước khi gửi duyệt hoặc xuất bản.' });
     }
 
     try {
@@ -135,29 +147,43 @@ router.post('/', checkRole('author'), async (req: AuthenticatedRequest, res: Res
         const cleanText = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
         const wordCount = cleanText ? cleanText.split(/\s+/).length : 0;
 
+        // Store an instant consistently; old clients may still send a local SQL datetime.
+        const release = status === 'scheduled' && scheduledRelease ? new Date(scheduledRelease) : null;
         if (id) {
             const saved = await db.transaction(async connection => {
                 const [chapters] = await connection.execute<any[]>('SELECT * FROM chapters WHERE id = ? AND novel_id = ? FOR UPDATE', [id, novelId]);
                 if (!chapters.length) return false;
                 const current = chapters[0];
+                if (source === 'autosave' && current.status !== 'draft') return { conflict: true };
+                if (preserveStatus && status !== current.status) return { conflict: true };
+                if (baseDraft && (current.title !== baseDraft.title || current.volume_name !== baseDraft.volumeName ||
+                    cleanHtml(current.content) !== cleanHtml(baseDraft.content))) return { conflict: true };
                 const [versions] = await connection.execute<any[]>('SELECT id FROM chapter_versions WHERE chapter_id = ? LIMIT 1', [id]);
                 if (!versions.length) await snapshotChapter(connection, current, userId!, 'initial');
                 const changed = current.content !== content || current.title !== title.trim() || current.volume_name !== volumeName.trim();
                 // Re-evaluate publish permission after locking the current chapter.
                 if (!isAdmin && status === 'published') targetStatus = current.status === 'published' ? 'published' : 'pending';
+                if (preserveStatus) targetStatus = current.status;
+                if (targetStatus !== 'draft' && !hasContent) return { empty: true };
+                const nextRelease = preserveStatus ? current.scheduled_release :
+                    (status === 'scheduled' ? release : null);
                 await connection.execute(
                     'UPDATE chapters SET volume_name = ?, title = ?, content = ?, status = ?, scheduled_release = ?, word_count = ? WHERE id = ?',
-                    [volumeName.trim(), title.trim(), content, targetStatus, scheduledRelease || null, wordCount, id]);
+                    [volumeName.trim(), title.trim(), content, targetStatus, nextRelease, wordCount, id]);
                 if (changed) await snapshotChapter(connection, { id, volume_name: volumeName.trim(), title: title.trim(), content, word_count: wordCount }, userId!, source === 'autosave' ? 'autosave' : 'save');
-                return true;
+                return { ...current, volume_name: volumeName.trim(), title: title.trim(), content,
+                    status: targetStatus, scheduled_release: nextRelease, word_count: wordCount };
             });
             if (!saved) return res.status(404).json({ error: 'Chương không thuộc tác phẩm này.' });
-            res.json({ success: true, chapterId: id, status: targetStatus });
+            if ('conflict' in saved) return res.status(409).json({ error: 'Chương đã thay đổi ở nơi khác. Bản trên máy vẫn được giữ; hãy tải lại để đối chiếu trước khi lưu.' });
+            if ('empty' in saved) return res.status(400).json({ error: 'Chương đang chờ duyệt, có lịch đăng hoặc đã xuất bản cần có nội dung.' });
+            res.json({ success: true, chapterId: id, ...saved });
         } else {
             const chapterId = await db.transaction(async connection => {
                 const [result] = await connection.execute<any>(
                     'INSERT INTO chapters (novel_id, volume_name, title, content, status, scheduled_release, word_count) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                    [novelId, volumeName.trim(), title.trim(), content, targetStatus, scheduledRelease || null, wordCount]);
+                    [novelId, volumeName.trim(), title.trim(), content, targetStatus, release, wordCount]);
+                await connection.execute('UPDATE chapters SET sort_order = id WHERE id = ?', [result.insertId]);
                 await snapshotChapter(connection, { id: result.insertId, volume_name: volumeName.trim(), title: title.trim(), content, word_count: wordCount }, userId!, 'initial');
                 return result.insertId;
             });
@@ -167,6 +193,37 @@ router.post('/', checkRole('author'), async (req: AuthenticatedRequest, res: Res
         console.error("Save chapter error:", err);
         res.status(500).json({ error: "Lỗi soạn thảo chương." });
     }
+});
+
+// Persist the complete order atomically. A concurrent create/delete requires a refresh.
+router.post('/organize', checkRole('author'), async (req: AuthenticatedRequest, res: Response) => {
+    const { novelId, chapters } = req.body;
+    if (!Number.isInteger(novelId) || !Array.isArray(chapters) || !chapters.length || chapters.length > 5000 ||
+        chapters.some(c => !c || !Number.isInteger(c.id) || typeof c.volumeName !== 'string' || !c.volumeName.trim() || c.volumeName.length > 100) ||
+        new Set(chapters.map(c => c.id)).size !== chapters.length) {
+        return res.status(400).json({ error: 'Danh sách chương hoặc tên tập không hợp lệ.' });
+    }
+    try {
+        const result = await db.transaction(async connection => {
+            const [novels] = await connection.execute<any[]>('SELECT author_id FROM novels WHERE id = ? FOR UPDATE', [novelId]);
+            if (!novels.length || (novels[0].author_id !== req.user!.id && !req.user!.roles.includes('admin'))) return 404;
+            const [current] = await connection.execute<any[]>('SELECT * FROM chapters WHERE novel_id = ? FOR UPDATE', [novelId]);
+            const ids = new Set(current.map(c => c.id));
+            if (ids.size !== chapters.length || chapters.some(c => !ids.has(c.id))) return 409;
+            const byId = new Map(current.map(c => [c.id, c]));
+            for (let index = 0; index < chapters.length; index++) {
+                const item = chapters[index]; const previous = byId.get(item.id)!;
+                await connection.execute('UPDATE chapters SET volume_name = ?, sort_order = ? WHERE id = ?', [item.volumeName.trim(), index, item.id]);
+                if (previous.volume_name !== item.volumeName.trim()) {
+                    await snapshotChapter(connection, previous, req.user!.id, 'save');
+                    await snapshotChapter(connection, { ...previous, volume_name: item.volumeName.trim() }, req.user!.id, 'save');
+                }
+            }
+            return 200;
+        });
+        if (result !== 200) return res.status(result).json({ error: result === 404 ? 'Không tìm thấy tác phẩm bạn được quản lý.' : 'Danh sách chương đã thay đổi. Hãy tải lại trước khi sắp xếp.' });
+        res.json({ success: true });
+    } catch (error) { console.error(error); res.status(500).json({ error: 'Không thể sắp xếp chương.' }); }
 });
 
 // Delete all chapters in a specific volume of a novel

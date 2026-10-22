@@ -58,10 +58,10 @@ describe('Reader, collections and chapter version integration', () => {
         assert.equal((await request(`/library/collections/${id}`, 'DELETE')).status, 200);
     });
     it('preserves baseline versions, deduplicates autosaves and protects chapter ownership', async () => {
-        const body = { id: 1, novelId: 1, volumeName: 'Tập 01', title: 'Bản chỉnh sửa', content: '<p>Nội dung mới</p>', status: 'published', source: 'autosave' };
+        const body = { id: 1, novelId: 1, volumeName: 'Tập 01', title: 'Bản chỉnh sửa', content: '<p>Nội dung mới</p>', status: 'draft', source: 'save' };
         assert.equal((await request('/chapters', 'POST', body)).status, 200);
         const first = await request('/chapters/1/versions'); assert.equal(first.data.length, 2);
-        await request('/chapters', 'POST', body);
+        await request('/chapters', 'POST', { ...body, source: 'autosave' });
         assert.equal((await request('/chapters/1/versions')).data.length, 2);
         assert.equal((await request('/chapters/1/versions', 'GET', undefined, 3)).status, 404);
         assert.equal((await request('/chapters', 'POST', { ...body, id: 3 })).status, 404);

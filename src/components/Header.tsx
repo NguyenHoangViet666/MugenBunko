@@ -2,6 +2,7 @@ import React from 'react';
 import { calculateUserLevel } from '../utils/levelHelper';
 import { User } from '../types';
 import { Icons } from './Icons';
+import { authHref } from '../utils/authNavigation';
 
 interface HeaderProps {
     currentUser: User | null;
@@ -19,8 +20,6 @@ interface HeaderProps {
     updateUserInDatabase: (user: User) => void;
     DB_KEYS: { session: string; [key: string]: string };
     setCurrentUser: (user: User | null) => void;
-    setRegisterModalOpen: (open: boolean) => void;
-    setLoginModalOpen: (open: boolean) => void;
     setCategoryDrawerOpen: (open: boolean) => void;
     theme: string;
     handleThemeChange: (theme: string) => void;
@@ -40,8 +39,6 @@ export default function Header({
     updateUserInDatabase,
     DB_KEYS,
     setCurrentUser,
-    setRegisterModalOpen,
-    setLoginModalOpen,
     setCategoryDrawerOpen,
     theme,
     handleThemeChange
@@ -100,21 +97,14 @@ export default function Header({
                             <span>Khám Phá</span>
                         </button>
 
-                        <button
-                            type="button"
+                        <a
                             className={`header-nav-btn ${currentView === 'library' ? 'active' : ''}`}
-                            onClick={() => {
-                                if (currentUser) {
-                                    handleNav('library');
-                                } else {
-                                    setLoginModalOpen(true);
-                                }
-                            }}
+                            href="#/library"
                             title="Tủ sách cá nhân"
                         >
                             <Icons.Bookmark size={15} />
                             <span>Tủ Sách</span>
-                        </button>
+                        </a>
 
                         <button
                             type="button"
@@ -252,8 +242,8 @@ export default function Header({
                         </>
                     ) : (
                         <div className="guest-buttons-wrapper">
-                            <button className="text-link-btn" onClick={() => setRegisterModalOpen(true)}>Đăng ký</button>
-                            <button className="outline-btn small" onClick={() => setLoginModalOpen(true)}>Đăng nhập</button>
+                            <a className="text-link-btn" href={authHref('register', window.location.hash)}>Đăng ký</a>
+                            <a className="outline-btn small" href={authHref('login', window.location.hash)}>Đăng nhập</a>
                         </div>
                     )}
                 </div>

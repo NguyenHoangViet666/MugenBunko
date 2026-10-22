@@ -160,9 +160,9 @@ try {
     const response = await fetch(fixture.url + '/api/chapters', { method: 'POST', headers, body: JSON.stringify({ id: 2, novelId: 1, volumeName: 'Tập 01', title: 'Bản chỉnh sửa mới', content: '<p>Nội dung đã lưu mới.</p>', status: 'draft' }) });
     assert.equal(response.status, 200);
     await evaluate(reader, "sessionStorage.clear();window.location.hash='#/studio';true");
-    await send('Page.reload', {}, reader); await waitSelector(reader, '.studio-novel-item');
-    await evaluate(reader, "document.querySelector('.studio-novel-item').click();true"); await waitSelector(reader, '.studio-chapter-item');
-    await evaluate(reader, "[...document.querySelectorAll('.studio-chapter-item')].find(e=>e.textContent.includes('Bản chỉnh sửa mới')).click();true");
+    await send('Page.reload', {}, reader); await waitSelector(reader, '.studio-novel-select');
+    await evaluate(reader, "document.querySelector('.studio-novel-select').click();true"); await waitSelector(reader, '.studio-chapter-select');
+    await evaluate(reader, "[...document.querySelectorAll('.studio-chapter-select')].find(e=>e.textContent.includes('Bản chỉnh sửa mới')).click();true");
     await until(() => evaluate(reader, "document.querySelector('.editor-body-textarea')?.dataset.loadedChapterId==='2'"), 'Editor did not load');
     await evaluate(reader, "document.querySelector('.editor-body-textarea').innerHTML='<p>Đoạn đang viết chưa lưu.</p>';document.querySelector('.editor-body-textarea').dispatchEvent(new Event('input',{bubbles:true}));window.confirm=()=>true;true");
     await clickText(reader, 'Lịch sử phiên bản'); await waitSelector(reader, '.version-list-item');
@@ -474,14 +474,15 @@ try {
 
     const signup = await newPage('#/', false);
     await waitSelector(signup, '.app-header');
-    await clickText(signup, 'Đăng ký'); await waitSelector(signup, '#register-email');
-    await setValue(signup, '.modal-body input[type=text]', 'browser_verified_reader');
-    await setValue(signup, '.modal-body input[placeholder="Tên hiển thị..."]', 'Verified reader');
-    await setValue(signup, '.modal-body input[type=password]', 'SecurePassword123!');
+    await evaluate(signup, "document.querySelector('.header-actions a[href^=\"#/register\"]').click();true"); await waitSelector(signup, '#register-email');
+    await setValue(signup, '#register-username', 'browser_verified_reader');
+    await setValue(signup, '#register-displayname', 'Verified reader');
+    await setValue(signup, '#register-password', 'SecurePassword123!');
+    await setValue(signup, '#register-confirm-password', 'SecurePassword123!');
     await setValue(signup, '#register-email', 'browser-signup@example.test');
     await clickText(signup, 'Gửi mã xác thực');
     await until(() => evaluate(signup, "document.querySelector('#register-otp')?.value.length===6"), 'Development OTP did not reach the registration form');
-    await clickText(signup, 'Đăng Ký Tài Khoản');
+    await evaluate(signup, "document.querySelector('.auth-form').requestSubmit();true");
     await until(() => evaluate(signup, "JSON.parse(localStorage.getItem('mugen_session') || 'null')?.username==='browser_verified_reader'"), 'Verified registration did not sign in');
     const registered = await fixture.db.query('SELECT email, password FROM users WHERE username = ?', ['browser_verified_reader']);
     assert.equal(registered[0].email, 'browser-signup@example.test'); assert.notEqual(registered[0].password, 'SecurePassword123!');

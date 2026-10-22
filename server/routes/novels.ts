@@ -32,7 +32,7 @@ router.get('/', optionalAuthentication, async (req: AuthenticatedRequest, res: R
                 db.query<any[]>(`SELECT c.id, c.novel_id, c.volume_name, c.title, c.status, c.word_count,
                     DATE_FORMAT(c.created_at, '%d/%m/%Y %H:%i') AS date, c.scheduled_release
                     FROM chapters c JOIN novels n ON n.id = c.novel_id WHERE c.novel_id IN (${placeholders})
-                    AND (c.status = 'published' OR n.author_id = ? OR ? = 1) ORDER BY c.id`, [...ids, userId, staff]),
+                    AND (c.status = 'published' OR n.author_id = ? OR ? = 1) ORDER BY c.sort_order, c.id`, [...ids, userId, staff]),
             ]);
             const tagMap = new Map<number, string[]>(); const chapterMap = new Map<number, any[]>();
             for (const tag of tags) { const list = tagMap.get(tag.novel_id) || []; list.push(tag.tag); tagMap.set(tag.novel_id, list); }

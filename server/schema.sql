@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS `chapters` (
     `status` VARCHAR(20) DEFAULT 'draft', -- 'draft', 'published', 'scheduled'
     `scheduled_release` TIMESTAMP NULL,
     `word_count` INT NOT NULL DEFAULT 0,
+    `sort_order` INT NOT NULL DEFAULT 0,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`novel_id`) REFERENCES `novels` (`id`) ON DELETE CASCADE,
     INDEX `idx_chapters_novel_status` (`novel_id`, `status`),

@@ -1,704 +1,305 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { User, Novel, Chapter } from '../types';
+import { useEffect, useRef, useState } from 'react';
+import type { RefObject, FormEvent } from 'react';
+import DOMPurify from 'dompurify';
+import type { User, Novel, Chapter } from '../types';
 import { Icons } from '../components/Icons';
 import ChapterVersionHistory from '../components/ChapterVersionHistory';
+import ScheduleModal from '../components/ScheduleModal';
+import StudioDialog from '../components/StudioDialog';
+import { useStudioEditor } from '../hooks/useStudioEditor';
+import { htmlToText, toLocalDatetime } from '../utils/studioDraft';
+import '../styles/studio.css';
 
-interface AuthorStudioProps {
-    onChapterRestored: (chapter: Chapter) => void;
-    onHistoryBusyChange: (busy: boolean) => void;
-    currentUser: User;
-    novels: Novel[];
-    activeStudioNovelId: number | null;
-    setActiveStudioNovelId: (id: number | null) => void;
-    activeStudioChapterIndex: number | null;
-    setActiveStudioChapterIndex: (idx: number | null) => void;
-    setCurrentView: (view: string) => void;
-    setActiveNovelId: (id: number | null) => void;
-    setNewNovelModalOpen: (open: boolean) => void;
-    setScheduleModalOpen: (open: boolean) => void;
-    createNewChapter: (volumeName?: string) => void;
-    saveDraft: () => void;
-    publishChapter: () => void;
-    deleteActiveChapter: () => void;
-    deleteVolume: (volumeName: string) => void;
-    postAuthorAnnouncement: () => void;
-    autosaveText: string;
-    autosaveColor: string;
-    volNameRef: React.RefObject<HTMLInputElement | null>;
-    chapterTitleRef: React.RefObject<HTMLInputElement | null>;
-    contentAreaRef: React.RefObject<HTMLDivElement | null>;
-    formatDoc: (cmd: string, val?: string) => void;
-    insertStaticIllustration: () => void;
-    announcements: any[];
-    setAutosaveText: (text: string) => void;
-    setAutosaveColor: (color: string) => void;
-    handleDeleteNovel: (id: number) => void;
-    openEditNovelModal: (id: number) => void;
-    triggerConfirm: (msg: string, callback: () => void) => void;
-    API_BASE: string;
-    fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>;
+interface Props {
+    currentUser: User | null; novels: Novel[];
+    activeStudioNovelId: number | null; setActiveStudioNovelId: (id: number | null) => void;
+    activeStudioChapterId: number | null; setActiveStudioChapterId: (id: number | null) => void;
+    setCurrentView: (view: string) => void; setNewNovelModalOpen: (open: boolean) => void;
+    handleDeleteNovel: (id: number) => Promise<boolean>; openEditNovelModal: (id: number) => void;
+    API_BASE: string; fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>;
+    onRefresh: () => Promise<Novel[]>; onChapterUpdated: (chapter: Chapter) => void;
+    contentAreaRef: RefObject<HTMLDivElement | null>; insertStaticIllustration: () => void;
+    showToast: (message: string) => void;
+    onAnnouncementPosted: () => void;
 }
+const labels: Record<Chapter['status'], string> = { draft: 'Bản nháp', pending: 'Chờ duyệt', scheduled: 'Đã lên lịch', published: 'Đã đăng' };
+type VolumeDialog = { kind: 'add' | 'rename' | 'move'; oldName?: string } | null;
 
-export default function AuthorStudio({
-    onChapterRestored,
-    onHistoryBusyChange,
-    currentUser,
-    novels,
-    activeStudioNovelId,
-    setActiveStudioNovelId,
-    activeStudioChapterIndex,
-    setActiveStudioChapterIndex,
-    setCurrentView,
-    setNewNovelModalOpen,
-    setScheduleModalOpen,
-    createNewChapter,
-    saveDraft,
-    publishChapter,
-    deleteActiveChapter,
-    deleteVolume,
-    postAuthorAnnouncement,
-    autosaveText,
-    autosaveColor,
-    volNameRef,
-    chapterTitleRef,
-    contentAreaRef,
-    formatDoc,
-    insertStaticIllustration,
-    setAutosaveText,
-    setAutosaveColor,
-    handleDeleteNovel,
-    openEditNovelModal,
-    triggerConfirm,
-    API_BASE,
-    fetchWithAuth
-}: AuthorStudioProps) {
-    const loadedChapterIdRef = useRef<number | null>(null);
-    const [localVolumes, setLocalVolumes] = React.useState<string[]>([]);
-    const [selectedVolName, setSelectedVolName] = React.useState<string>("");
-    const [chapterTab, setChapterTab] = React.useState<'all' | 'published' | 'draft'>('all');
-    const [currentWordCount, setCurrentWordCount] = React.useState<number>(0);
-    
-    // Modal states for creating a new volume
-    const [volumeModalOpen, setVolumeModalOpen] = React.useState<boolean>(false);
-    const [newVolName, setNewVolName] = React.useState<string>("");
-    const [volumeModalError, setVolumeModalError] = React.useState<string>("");
+export default function AuthorStudio(props: Props) {
+    const { currentUser, novels, activeStudioNovelId, setActiveStudioNovelId, activeStudioChapterId,
+        setActiveStudioChapterId, setCurrentView, setNewNovelModalOpen, openEditNovelModal,
+        API_BASE, fetchWithAuth, contentAreaRef, onRefresh, onChapterUpdated, showToast } = props;
+    const novel = novels.find(n => n.id === activeStudioNovelId);
+    const chapters = novel?.chapters || [];
+    const chapter = chapters.find(c => c.id === activeStudioChapterId);
+    const myNovels = novels.filter(n => n.authorId === currentUser?.username);
+    const canWrite = currentUser?.roles.some(r => ['author', 'moderator', 'admin'].includes(r));
+    const isAdmin = currentUser?.roles.includes('admin');
+    const editor = useStudioEditor({ userId: currentUser?.id || 0, chapter, novelId: activeStudioNovelId,
+        contentRef: contentAreaRef, API_BASE, fetchWithAuth, onUpdated: onChapterUpdated, showToast });
+    const [search, setSearch] = useState('');
+    const [filter, setFilter] = useState<'all' | Chapter['status']>('all');
+    const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+    const [selected, setSelected] = useState<Set<number>>(new Set());
+    const [preview, setPreview] = useState(false);
+    const previewSelection = useRef<Range | null>(null);
+    const [focus, setFocus] = useState(false);
+    const [mutationBusy, setMutationBusy] = useState(false);
+    const mutationLock = useRef(false);
+    const [mutationError, setMutationError] = useState('');
+    const [dialog, setDialog] = useState<VolumeDialog>(null);
+    const [volumeInput, setVolumeInput] = useState('');
+    const [scheduleOpen, setScheduleOpen] = useState(false);
+    const [scheduleDate, setScheduleDate] = useState('');
+    const [scheduleError, setScheduleError] = useState('');
+    const [announcement, setAnnouncement] = useState('');
+    const [historyOpen, setHistoryOpen] = useState(false);
+    const busy = mutationBusy || editor.busy || historyOpen;
+    const volumes = [...new Set(chapters.map(c => c.volume_name || 'Tập 01'))];
+    const availableVolumes = [...new Set([...volumes, editor.draft.volumeName].filter(Boolean))];
+    const words = htmlToText(editor.draft.content).split(/\s+/).filter(Boolean).length;
+    const visibleChapters = chapters.filter(c => (filter === 'all' || c.status === filter) &&
+        `${c.title} ${c.volume_name}`.toLocaleLowerCase('vi').includes(search.toLocaleLowerCase('vi').trim()));
 
-    const exportChapterBackup = (format: 'txt' | 'md') => {
-        const title = chapterTitleRef.current?.value || "chuong";
-        const rawHtml = contentAreaRef.current?.innerHTML || "";
-        const text = rawHtml.replace(/<br\s*[\/]?>/gi, '\n').replace(/<\/p>/gi, '\n\n').replace(/<[^>]+>/g, '').trim();
-        const content = format === 'md' ? `# ${title}\n\n${text}` : `${title}\n\n${text}`;
-        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${title}.${format}`;
-        a.click();
-        URL.revokeObjectURL(url);
+    useEffect(() => { setSelected(new Set()); setSearch(''); setFilter('all'); setCollapsed(new Set()); }, [activeStudioNovelId]);
+
+    const leaveEditor = () => !editor.dirty || editor.persist() || window.confirm('Chưa lưu được bản dự phòng. Rời chương sẽ bỏ phần chưa lưu. Bạn vẫn muốn tiếp tục?');
+    const selectNovel = (id: number) => {
+        if (busy || !leaveEditor()) return;
+        setActiveStudioNovelId(id); setActiveStudioChapterId(null); setPreview(false);
     };
-
-    const countEditorWords = () => {
-        const text = contentAreaRef.current?.innerText || "";
-        const words = text.trim().split(/\s+/).filter(Boolean).length;
-        setCurrentWordCount(words);
+    const selectChapter = (id: number) => {
+        if (id === activeStudioChapterId || busy || !leaveEditor()) return;
+        setActiveStudioChapterId(id); setPreview(false);
+        try { localStorage.setItem(`mugen_studio_recent_${currentUser?.id}`, JSON.stringify({ novelId: activeStudioNovelId, chapterId: id })); } catch { /* Optional shortcut. */ }
     };
-
-    useEffect(() => {
-        if (activeStudioNovelId !== null) {
-            const novel = novels.find(n => n.id === activeStudioNovelId);
-            if (novel && novel.chapters) {
-                const uniqueVols = Array.from(new Set(novel.chapters.map(c => c.volume_name || "Tập 01")));
-                if (uniqueVols.length === 0) {
-                    uniqueVols.push("Tập 01");
-                }
-                setLocalVolumes(uniqueVols);
-            } else {
-                setLocalVolumes(["Tập 01"]);
+    const run = async (work: () => Promise<void>) => {
+        if (mutationLock.current || editor.busy || historyOpen) return;
+        mutationLock.current = true; editor.onStructureBusyChange(true); setMutationBusy(true); setMutationError('');
+        try { await work(); }
+        catch (error) { setMutationError(error instanceof Error ? error.message : 'Không thể thực hiện thao tác.'); }
+        finally { mutationLock.current = false; editor.onStructureBusyChange(false); setMutationBusy(false); }
+    };
+    const request = async (path: string, body?: unknown, method = 'POST') => {
+        const response = await fetchWithAuth(`${API_BASE}${path}`, { method, body: body === undefined ? undefined : JSON.stringify(body) });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Thao tác thất bại.');
+        return data;
+    };
+    const createChapter = (volumeName = editor.draft.volumeName || volumes[0] || 'Tập 01') => {
+        if (!novel || !leaveEditor()) return;
+        void run(async () => {
+            const data = await request('/chapters', { novelId: novel.id, volumeName,
+                title: `Chương ${chapters.length + 1}: Tiêu đề chương mới`, content: '', status: 'draft' });
+            await onRefresh(); setActiveStudioChapterId(data.chapterId); setPreview(false);
+            setDialog(null); showToast('Đã tạo chương nháp mới.');
+        });
+    };
+    const organize = async (items: { id: number; volumeName: string }[]) => {
+        if (!novel || (editor.dirty && !editor.persist())) throw new Error('Hãy lưu hoặc xuất file dự phòng trước khi sắp xếp chương.');
+        await request('/chapters/organize', { novelId: novel.id, chapters: items });
+        const current = items.find(c => c.id === activeStudioChapterId);
+        if (current) editor.organizationChanged(current.volumeName);
+        await onRefresh();
+    };
+    const reorder = (id: number, direction: -1 | 1) => void run(async () => {
+        const items = chapters.map(c => ({ id: c.id, volumeName: c.volume_name }));
+        const index = items.findIndex(c => c.id === id); const other = index + direction;
+        if (other < 0 || other >= items.length) return;
+        [items[index], items[other]] = [items[other], items[index]];
+        await organize(items); showToast('Đã lưu thứ tự chương.');
+    });
+    const submitVolume = (event: FormEvent) => {
+        event.preventDefault(); const name = volumeInput.trim();
+        if (!name) return;
+        if (dialog?.kind !== 'move' && volumes.includes(name)) { setMutationError('Tên tập này đã tồn tại.'); return; }
+        if (dialog?.kind === 'add') { createChapter(name); return; }
+        void run(async () => {
+            let items = chapters.map(c => ({ id: c.id, volumeName: dialog?.kind === 'rename' && c.volume_name === dialog.oldName ? name : c.volume_name }));
+            if (dialog?.kind === 'move') {
+                const moved = items.filter(c => selected.has(c.id)).map(c => ({ ...c, volumeName: name }));
+                items = items.filter(c => !selected.has(c.id));
+                let lastTarget = -1; items.forEach((item, index) => { if (item.volumeName === name) lastTarget = index; });
+                items.splice(lastTarget < 0 ? items.length : lastTarget + 1, 0, ...moved);
             }
-        } else {
-            setLocalVolumes([]);
-        }
-    }, [activeStudioNovelId, novels]);
-
-    const handleAddVolume = () => {
-        setVolumeModalOpen(true);
+            await organize(items); setDialog(null); setSelected(new Set()); showToast('Đã cập nhật cấu trúc tác phẩm.');
+        });
+    };
+    const openVolume = (value: NonNullable<VolumeDialog>) => { setMutationError(''); setVolumeInput(value.oldName || ''); setDialog(value); };
+    const deleteChapter = () => {
+        if (!chapter || !window.confirm(`Xóa vĩnh viễn chương “${chapter.title}” và lịch sử của chương?`)) return;
+        void run(async () => { await request(`/chapters/${chapter.id}`, undefined, 'DELETE'); editor.forget();
+            setActiveStudioChapterId(null); await onRefresh(); showToast('Đã xóa chương.'); });
+    };
+    const deleteVolume = (volumeName: string) => {
+        if (!window.confirm(`Xóa vĩnh viễn tập “${volumeName}” cùng tất cả chương trong tập?`)) return;
+        void run(async () => { await request('/chapters/delete-volume', { novelId: activeStudioNovelId, volumeName });
+            if (chapter?.volume_name === volumeName) { editor.forget(); setActiveStudioChapterId(null); }
+            await onRefresh(); showToast('Đã xóa tập.'); });
+    };
+    const format = (command: string) => { contentAreaRef.current?.focus(); document.execCommand(command, false);
+        editor.change({ content: contentAreaRef.current?.innerHTML || '' }); };
+    const togglePreview = () => {
+        if (!preview) {
+            const selection = window.getSelection();
+            previewSelection.current = selection?.rangeCount && contentAreaRef.current?.contains(selection.getRangeAt(0).commonAncestorContainer)
+                ? selection.getRangeAt(0).cloneRange() : null;
+        } else requestAnimationFrame(() => {
+            const range = previewSelection.current;
+            if (!range || !contentAreaRef.current?.contains(range.commonAncestorContainer)) return;
+            contentAreaRef.current.focus();
+            const selection = window.getSelection(); selection?.removeAllRanges(); selection?.addRange(range);
+        });
+        setPreview(value => !value);
+    };
+    const exportBackup = (format: 'txt' | 'md') => {
+        const title = editor.draft.title || 'chuong'; const text = htmlToText(editor.draft.content);
+        const url = URL.createObjectURL(new Blob([`${format === 'md' ? '# ' : ''}${title}\n\n${text}`], { type: 'text/plain;charset=utf-8' }));
+        const anchor = document.createElement('a'); anchor.href = url; anchor.download = `${title.replace(/[<>:"/\\|?*]/g, '_')}.${format}`; anchor.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
+    const schedule = async () => {
+        const date = new Date(scheduleDate);
+        if (!scheduleDate || !Number.isFinite(date.getTime()) || date.getTime() <= Date.now()) { setScheduleError('Hãy chọn thời gian trong tương lai.'); return; }
+        setScheduleError(''); if (await editor.save('schedule', date.toISOString())) setScheduleOpen(false);
     };
 
-    const handleConfirmAddVolume = (e: React.FormEvent) => {
-        e.preventDefault();
-        const trimmed = newVolName.trim();
-        if (!trimmed) {
-            setVolumeModalError("Tên tập không được để trống!");
-            return;
-        }
-        if (localVolumes.includes(trimmed)) {
-            setVolumeModalError("Tập này đã tồn tại!");
-            return;
-        }
-        setLocalVolumes([...localVolumes, trimmed]);
-        createNewChapter(trimmed);
-        setVolumeModalOpen(false);
-        setNewVolName("");
-        setVolumeModalError("");
-    };
+    if (!currentUser) return <div className="page-view active"><h2>Studio tác giả</h2><p>Đăng nhập để quản lý bản thảo.</p></div>;
 
-    useEffect(() => {
-        if (activeStudioNovelId !== null && activeStudioChapterIndex !== null) {
-            const novel = novels.find(n => n.id === activeStudioNovelId);
-            const ch = novel?.chapters?.[activeStudioChapterIndex];
-            if (ch && ch.id !== loadedChapterIdRef.current) {
-                loadedChapterIdRef.current = ch.id;
-                const activeVol = ch.volume_name || "Tập 01";
-                setSelectedVolName(activeVol);
-                if (volNameRef.current) volNameRef.current.value = activeVol;
-                if (chapterTitleRef.current) chapterTitleRef.current.value = ch.title || "";
-                
-                // Fetch chapter content dynamically in editor
-                if (contentAreaRef.current) {
-                    contentAreaRef.current.innerHTML = '<p>Đang tải nội dung chương truyện...</p>';
-                    contentAreaRef.current.contentEditable = 'false';
-                    delete contentAreaRef.current.dataset.loadedChapterId;
-                }
-                fetchWithAuth(`${API_BASE}/chapters/${ch.id}`)
-                    .then(async res => { if (!res.ok) throw new Error((await res.json()).error || 'Không thể tải bản thảo.'); return res.json(); })
-                    .then(data => {
-                        // Double check we are still editing the same chapter when the request returns
-                        if (loadedChapterIdRef.current === ch.id && contentAreaRef.current) {
-                            contentAreaRef.current.innerHTML = (data && data.content) || "";
-                            contentAreaRef.current.dataset.loadedChapterId = String(ch.id);
-                            contentAreaRef.current.contentEditable = 'true';
-                        }
-                    })
-                    .catch(err => {
-                        console.error("Error loading chapter in editor:", err);
-                        if (loadedChapterIdRef.current === ch.id && contentAreaRef.current) {
-                            contentAreaRef.current.innerHTML = "<p style='color:red;'>Lỗi tải nội dung chương truyện. Vui lòng chọn lại chương!</p>";
-                            contentAreaRef.current.contentEditable = 'false';
-                        }
-                    });
-            }
-        } else {
-            loadedChapterIdRef.current = null;
-        }
-    }, [activeStudioNovelId, activeStudioChapterIndex, novels, volNameRef, chapterTitleRef, contentAreaRef, API_BASE, fetchWithAuth]);
-
-    if (!currentUser) {
-        return (
-            <div className="page-view active">
-                <div className="studio-header">
-                    <div>
-                        <h2>Bàn Làm Việc Tác Giả</h2>
-                        <p className="subtitle">Vui lòng đăng nhập để sử dụng tính năng này.</p>
-                    </div>
-                    <button className="outline-btn small" onClick={() => setCurrentView('home')}>← Quay lại thư viện</button>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="page-view active">
-            <div className="studio-header">
-                <div>
-                    <h2>Bàn Làm Việc Tác Giả</h2>
-                    <p className="subtitle">Quản lý các tác phẩm sáng tác và biên soạn nội dung chương truyện.</p>
-                </div>
-                <button className="outline-btn small" onClick={() => setCurrentView('home')}>← Quay lại thư viện</button>
-            </div>
-
-            {!currentUser.roles.includes('author') && (
-                <div className="reader-studio-banner" style={{
-                    background: 'rgba(217, 119, 6, 0.15)',
-                    border: '1px solid rgba(217, 119, 6, 0.3)',
-                    color: '#d97706',
-                    padding: '12px 16px',
-                    borderRadius: '6px',
-                    marginBottom: '20px',
-                    fontSize: '0.85rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                }}>
-                    <Icons.Lightbulb size={16} />
-                    <span>Bạn đang soạn thảo dưới tư cách viết thử. Khi chương truyện đầu tiên của bạn được kiểm duyệt viên Duyệt, bạn sẽ được tự động nâng cấp lên Tác giả!</span>
-                </div>
-            )}
-
-            {/* Analytics Stats */}
-            {(() => {
-                const myNovels = novels.filter(n => n.authorId === currentUser.username);
-                const totalReads = myNovels.reduce((acc, n) => acc + (Number(n.reads) || 0), 0);
-                const totalSaved = myNovels.reduce((acc, n) => acc + (n.bookmarksCount || 0), 0);
-
-                return (
-                    <div className="admin-stats-row" style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'20px', marginBottom:'24px'}}>
-                        <div className="stat-card">
-                            <span className="stat-num">{totalReads.toLocaleString()}</span>
-                            <span className="stat-label">Tổng lượt đọc tác phẩm</span>
-                        </div>
-                        <div className="stat-card">
-                            <span className="stat-num">{totalSaved.toLocaleString()}</span>
-                            <span className="stat-label">Tổng số lượt lưu tủ</span>
-                        </div>
-                         <div className="stat-card">
-                             <span className="stat-num">{myNovels.length}</span>
-                             <span className="stat-label">Tổng số tác phẩm đã đăng</span>
-                         </div>
-                    </div>
-                );
-            })()}
-
-            <div className="studio-layout">
-                {/* Left Sidebar column: novels lists and volume tree */}
-                <div className="sidebar-column">
-                    <button className="primary-btn w-100" style={{marginBottom:'16px'}} onClick={() => setNewNovelModalOpen(true)}>+ Tạo tác phẩm mới</button>
-
-                    <div className="sidebar-card">
-                        <h3 className="card-title">Tác phẩm đang viết</h3>
-                        <div className="studio-novel-list" style={{display:'flex', flexDirection:'column', gap:'8px'}}>
-                            {novels.filter(n => n.authorId === currentUser.username).map(novel => (
-                                <div 
-                                    key={novel.id} 
-                                    className={`studio-novel-item ${novel.id === activeStudioNovelId ? 'active' : ''}`}
-                                    onClick={() => { setActiveStudioNovelId(novel.id); setActiveStudioChapterIndex(null); }}
-                                    style={{
-                                        display: 'flex', 
-                                        gap: '8px', 
-                                        alignItems: 'center', 
-                                        padding: '8px', 
-                                        borderRadius: '4px', 
-                                        cursor: 'pointer', 
-                                        border: '1px solid var(--border-color)', 
-                                        background: novel.id === activeStudioNovelId ? 'var(--sakura-pink-light)' : '',
-                                        justifyContent: 'space-between'
-                                    }}
-                                >
-                                    <div style={{display: 'flex', gap: '8px', alignItems: 'center', overflow: 'hidden', flexGrow: 1}}>
-                                        <img src={novel.cover} style={{width:'36px', height:'48px', objectFit:'cover', borderRadius:'2px', flexShrink: 0}} alt="Novel Cover" />
-                                        <span style={{fontSize:'0.82rem', fontWeight:600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{novel.title}</span>
-                                    </div>
-                                    <div style={{display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0}}>
-                                        <button 
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                openEditNovelModal(novel.id);
-                                            }}
-                                            style={{
-                                                background: 'none',
-                                                border: 'none',
-                                                color: 'var(--text-content)',
-                                                cursor: 'pointer',
-                                                padding: '4px 6px',
-                                                borderRadius: '4px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center'
-                                            }}
-                                            title="Sửa tác phẩm"
-                                        >
-                                            <Icons.PenTool size={13} />
-                                        </button>
-                                        <button 
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                triggerConfirm(`Bạn có chắc chắn muốn xóa tác phẩm '${novel.title}'? Hành động này không thể hoàn tác!`, () => {
-                                                    handleDeleteNovel(novel.id);
-                                                });
-                                            }}
-                                            style={{
-                                                background: 'none',
-                                                border: 'none',
-                                                color: '#dc3545',
-                                                cursor: 'pointer',
-                                                padding: '4px 6px',
-                                                borderRadius: '4px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center'
-                                            }}
-                                            title="Xóa tác phẩm"
-                                        >
-                                            <Icons.Trash size={13} />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                            {novels.filter(n => n.authorId === currentUser.username).length === 0 && (
-                                <div style={{fontSize:'0.75rem', color:'var(--text-muted)', padding:'10px 0'}}>Chưa tạo truyện nào</div>
-                            )}
-                        </div>
-                    </div>
-
-                    {activeStudioNovelId && (
-                        <>
-                            <div className="sidebar-card">
-                                <h3 className="card-title">Cấu trúc tác phẩm</h3>
-                                <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
-                                    <button className="outline-btn small" style={{ flexGrow: 1, padding: '6px 8px', fontSize: '0.78rem' }} onClick={handleAddVolume}>+ Thêm tập mới</button>
-                                    <button className="outline-btn small" style={{ flexGrow: 1, padding: '6px 8px', fontSize: '0.78rem' }} onClick={() => createNewChapter("Tập 01")}>+ Thêm chương</button>
-                                </div>
-
-                                {/* Chapter Status Filter Tabs (Phase 4) */}
-                                <div style={{ display: 'flex', gap: '4px', marginBottom: '10px' }}>
-                                    {[
-                                        { id: 'all', name: 'Tất cả' },
-                                        { id: 'published', name: 'Đã xuất bản' },
-                                        { id: 'draft', name: 'Bản nháp' }
-                                    ].map(t => (
-                                        <button
-                                            key={t.id}
-                                            type="button"
-                                            onClick={() => setChapterTab(t.id as any)}
-                                            style={{
-                                                fontSize: '0.68rem',
-                                                padding: '2px 8px',
-                                                borderRadius: '12px',
-                                                background: chapterTab === t.id ? 'var(--text-main)' : 'transparent',
-                                                color: chapterTab === t.id ? 'var(--bg-card)' : 'var(--text-main)',
-                                                border: '1px solid var(--border-color)',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            {t.name}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                <div className="studio-structure-tree" style={{maxHeight:'320px', overflowY:'auto', display:'flex', flexDirection:'column', gap:'10px'}}>
-                                    {(() => {
-                                        const novel = novels.find(n => n.id === activeStudioNovelId);
-                                        if (!novel) return null;
-                                        const allChapters = novel.chapters || [];
-                                        const filteredChapters = allChapters.filter(c => {
-                                            if (chapterTab === 'published') return c.status === 'published';
-                                            if (chapterTab === 'draft') return c.status !== 'published';
-                                            return true;
-                                        });
-                                        
-                                        // Group chapters by volume
-                                        const volsMap: { [volName: string]: { ch: any; idx: number }[] } = {};
-                                        
-                                        localVolumes.forEach(vol => {
-                                            volsMap[vol] = [];
-                                        });
-
-                                        allChapters.forEach((ch, idx) => {
-                                            if (chapterTab === 'published' && ch.status !== 'published') return;
-                                            if (chapterTab === 'draft' && ch.status === 'published') return;
-                                            const vol = ch.volume_name || "Tập 01";
-                                            if (!volsMap[vol]) volsMap[vol] = [];
-                                            volsMap[vol].push({ ch, idx });
-                                        });
-
-                                        const sortedVols = localVolumes.slice().sort((a, b) => {
-                                            const listA = volsMap[a] || [];
-                                            const listB = volsMap[b] || [];
-                                            if (listA.length === 0) return 1;
-                                            if (listB.length === 0) return -1;
-                                            const minIdA = Math.min(...listA.map(item => item.ch.id));
-                                            const minIdB = Math.min(...listB.map(item => item.ch.id));
-                                            return minIdA - minIdB;
-                                        });
-
-                                        if (filteredChapters.length === 0 && chapterTab !== 'all') {
-                                            return <div style={{fontSize:'0.75rem', color:'var(--text-muted)', textAlign:'center', padding:'10px 0'}}>Không có chương nào trong danh mục này</div>;
-                                        }
-
-                                        return sortedVols.map(volName => {
-                                            const list = volsMap[volName];
-                                            return (
-                                                <div key={volName} style={{ display: 'flex', flexDirection: 'column' }}>
-                                                    <div style={{
-                                                        display: 'flex',
-                                                        justifyContent: 'space-between',
-                                                        alignItems: 'center',
-                                                        background: 'var(--bg-base)',
-                                                        padding: '6px 10px',
-                                                        borderRadius: '4px',
-                                                        borderLeft: '3px solid var(--sakura-pink)',
-                                                        marginBottom: '6px'
-                                                    }}>
-                                                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '80%', display: 'inline-flex', alignItems: 'center', gap: '6px' }} title={volName}>
-                                                            <Icons.Folder size={13} /> {volName}
-                                                        </span>
-                                                        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                                                            <button 
-                                                                onClick={(e) => { e.stopPropagation(); createNewChapter(volName); }}
-                                                                style={{
-                                                                    background: 'none',
-                                                                    border: 'none',
-                                                                    color: 'var(--text-main)',
-                                                                    cursor: 'pointer',
-                                                                    padding: '0 4px',
-                                                                    display: 'flex',
-                                                                    alignItems: 'center'
-                                                                }}
-                                                                title="Thêm chương mới vào tập này"
-                                                            >
-                                                                <Icons.Plus size={13} />
-                                                            </button>
-                                                            <button 
-                                                                onClick={(e) => { e.stopPropagation(); deleteVolume(volName); }}
-                                                                style={{
-                                                                    background: 'none',
-                                                                    border: 'none',
-                                                                    color: '#dc3545',
-                                                                    cursor: 'pointer',
-                                                                    padding: '0 4px',
-                                                                    display: 'flex',
-                                                                    alignItems: 'center'
-                                                                }}
-                                                                title="Xóa tập này và tất cả chương thuộc tập"
-                                                            >
-                                                                <Icons.Trash size={13} />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                    <div style={{ paddingLeft: '8px', display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
-                                                        {list.map(item => (
-                                                            <div 
-                                                                key={item.idx} 
-                                                                className={`studio-chapter-item ${item.idx === activeStudioChapterIndex ? 'active' : ''}`}
-                                                                onClick={() => setActiveStudioChapterIndex(item.idx)}
-                                                                style={{
-                                                                    padding: '5px 8px',
-                                                                    borderRadius: '4px',
-                                                                    cursor: 'pointer',
-                                                                    border: '1px solid var(--border-color)',
-                                                                    display: 'flex',
-                                                                    justifyContent: 'space-between',
-                                                                    alignItems: 'center',
-                                                                    background: item.idx === activeStudioChapterIndex ? 'rgba(0,0,0,0.04)' : ''
-                                                                }}
-                                                            >
-                                                                <span style={{ fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '75%', display: 'inline-flex', alignItems: 'center', gap: '5px' }} title={item.ch.title}>
-                                                                    <Icons.FileText size={12} /> {item.ch.title}
-                                                                </span>
-                                                                <span style={{
-                                                                    fontSize: '0.62rem',
-                                                                    padding: '1px 5px',
-                                                                    borderRadius: '2px',
-                                                                    background: item.ch.status === 'published' ? '#279450' : (item.ch.status === 'pending' ? '#d97706' : '#737b82'),
-                                                                    color: 'white',
-                                                                }}>
-                                                                    {item.ch.status === 'published' ? 'Đã đăng' : (item.ch.status === 'pending' ? 'Chờ duyệt' : 'Bản nháp')}
-                                                                </span>
-                                                            </div>
-                                                        ))}
-                                                        {list.length === 0 && (
-                                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontStyle: 'italic', paddingLeft: '8px' }}>
-                                                                (Chưa có chương)
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            );
-                                        });
-                                    })()}
-                                </div>
-                            </div>
-
-                            <div className="sidebar-card">
-                                <h3 className="card-title">Đăng Thông Báo Bảng Tin</h3>
-                                <textarea 
-                                    placeholder="Nhập nội dung tin cập nhật..." 
-                                    id="studio-announcement-textarea" 
-                                    style={{width:'100%', minHeight:'80px', fontSize:'0.82rem', padding:'8px', borderRadius:'4px', border:'1.5px solid var(--border-color)', outline:'none', fontFamily:'inherit', resize:'vertical'}}
-                                />
-                                <button className="primary-btn small w-100" style={{marginTop:'8px'}} onClick={postAuthorAnnouncement}>Đăng Tin Lên Truyện</button>
-                            </div>
-                        </>
-                    )}
-                </div>
-
-                {/* Right Panel Editor */}
-                <div className="main-column">
-                    <div className="editor-container" style={{background:'var(--bg-card)', border:'1px solid var(--border-color)', borderRadius:'var(--border-radius-md)', padding:'24px', minHeight:'500px', display:'flex', flexDirection:'column'}}>
-                        {activeStudioNovelId !== null && activeStudioChapterIndex !== null ? (
-                            (() => {
-                                const novel = novels.find(n => n.id === activeStudioNovelId);
-                                const ch = novel?.chapters?.[activeStudioChapterIndex];
-                                if (!ch) return null;
-
-                                return (
-                                    <div className="editor-active-fields" style={{display:'flex', flexDirection:'column', gap:'16px', flexGrow:1}}>
-                                        <div className="editor-meta-fields" style={{display:'grid', gridTemplateColumns:'1fr 2fr', gap:'12px'}}>
-                                            <div className="input-field">
-                                                <label>Tập (Volume)</label>
-                                                <input type="hidden" ref={volNameRef} value={selectedVolName} readOnly />
-                                                <select
-                                                    value={selectedVolName}
-                                                    onChange={(e) => {
-                                                        const val = e.target.value;
-                                                        setSelectedVolName(val);
-                                                        if (volNameRef.current) volNameRef.current.value = val;
-                                                        setAutosaveText("Thay đổi chưa được lưu");
-                                                        setAutosaveColor("red");
-                                                    }}
-                                                    style={{
-                                                        width: '100%',
-                                                        padding: '8px',
-                                                        borderRadius: '4px',
-                                                        border: '1.5px solid var(--border-color)',
-                                                        background: 'var(--bg-base)',
-                                                        color: 'var(--text-main)',
-                                                        outline: 'none'
-                                                    }}
-                                                >
-                                                    {localVolumes.map(vol => (
-                                                        <option key={vol} value={vol}>{vol}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div className="input-field">
-                                                <label>Tiêu đề chương</label>
-                                                <input type="text" ref={chapterTitleRef} defaultValue={ch.title || ""} placeholder="Chương X: Tiêu đề..." />
-                                            </div>
-                                        </div>
-
-                                        <div className="editor-toolbar-actions" style={{display:'flex', alignItems:'center', gap:'8px', background:'var(--bg-base)', padding:'6px', borderRadius:'4px', border:'1px solid var(--border-color)'}}>
-                                            <button className="toolbar-icon-btn outline-btn small" style={{padding:'4px 8px'}} onClick={() => formatDoc('bold')} title="In đậm (Ctrl + B)"><strong>B</strong></button>
-                                            <button className="toolbar-icon-btn outline-btn small" style={{padding:'4px 8px'}} onClick={() => formatDoc('italic')} title="In nghiêng (Ctrl + I)"><em>I</em></button>
-                                            <button className="toolbar-icon-btn outline-btn small" style={{padding:'4px 8px'}} onClick={() => formatDoc('justifyLeft')}>L-Align</button>
-                                            <button className="toolbar-icon-btn outline-btn small" style={{padding:'4px 8px'}} onClick={() => formatDoc('justifyCenter')}>C-Align</button>
-                                            <button className="toolbar-icon-btn outline-btn small" style={{padding:'4px 8px'}} onClick={insertStaticIllustration}>Chèn Ảnh</button>
-                                            
-                                            {/* Backup export buttons */}
-                                            <ChapterVersionHistory chapter={ch} novelId={activeStudioNovelId!} API_BASE={API_BASE} fetchWithAuth={fetchWithAuth}
-                                                getCurrentDraft={() => contentAreaRef.current?.dataset.loadedChapterId === String(ch.id)
-                                                    ? { volumeName: volNameRef.current?.value || '', title: chapterTitleRef.current?.value || '', content: contentAreaRef.current?.innerHTML || '' } : null}
-                                                onRestored={restored => {
-                                                    setSelectedVolName(restored.volume_name);
-                                                    setLocalVolumes(prev => [...new Set([...prev, restored.volume_name])]);
-                                                    onChapterRestored(restored);
-                                                    countEditorWords();
-                                                }} onBusyChange={onHistoryBusyChange} />
-                                            <div style={{ display: 'flex', gap: '4px', borderLeft: '1px solid var(--border-color)', paddingLeft: '8px', marginLeft: '4px' }}>
-                                                <button className="toolbar-icon-btn outline-btn small" style={{padding:'3px 6px', fontSize:'0.72rem', display:'inline-flex', alignItems:'center', gap:'3px'}} onClick={() => exportChapterBackup('txt')} title="Lưu dự phòng file .txt">
-                                                    <Icons.Download size={11} /> TXT
-                                                </button>
-                                                <button className="toolbar-icon-btn outline-btn small" style={{padding:'3px 6px', fontSize:'0.72rem', display:'inline-flex', alignItems:'center', gap:'3px'}} onClick={() => exportChapterBackup('md')} title="Lưu dự phòng file .md">
-                                                    <Icons.Download size={11} /> MD
-                                                </button>
-                                            </div>
-
-                                            <div className="editor-autosave-status" style={{marginLeft:'auto', display:'flex', alignItems:'center', gap:'8px', fontSize:'0.72rem'}}>
-                                                <span style={{ color: 'var(--text-muted)' }}>{currentWordCount} từ</span>
-                                                <span className="status-dot" style={{width:'8px', height:'8px', borderRadius:'50%', background: autosaveColor === 'green' ? '#279450' : '#cc0000'}}></span>
-                                                <span>{autosaveText}</span>
-                                            </div>
-                                        </div>
-
-                                        <div 
-                                            contentEditable={true} 
-                                            ref={contentAreaRef}
-                                            className="editor-body-textarea font-serif" 
-                                            style={{flexGrow:1, minHeight:'300px', border:'1.5px solid var(--border-color)', borderRadius:'4px', padding:'16px', outline:'none', background:'var(--reader-bg)', overflowY:'auto'}}
-                                            onInput={() => { 
-                                                setAutosaveText("Thay đổi chưa được lưu"); 
-                                                setAutosaveColor("red"); 
-                                                countEditorWords();
-                                            }}
-                                            onKeyDown={(e) => {
-                                                if (e.ctrlKey && e.key === 'b') {
-                                                    e.preventDefault();
-                                                    formatDoc('bold');
-                                                } else if (e.ctrlKey && e.key === 'i') {
-                                                    e.preventDefault();
-                                                    formatDoc('italic');
-                                                }
-                                            }}
-                                        />
-
-                                         <div className="editor-footer-actions" style={{display:'flex', gap:'12px', justifyContent:'flex-end', marginTop:'16px'}}>
-                                             <button className="outline-btn" style={{color:'red', borderColor:'rgba(255,0,0,0.15)'}} onClick={deleteActiveChapter}>Xóa chương</button>
-                                             
-                                             {ch.status === 'published' ? (
-                                                 <>
-                                                     <button className="outline-btn" onClick={saveDraft}>Chuyển thành bản nháp</button>
-                                                     <button className="primary-btn" onClick={publishChapter}>Cập nhật chương</button>
-                                                 </>
-                                             ) : ch.status === 'pending' ? (
-                                                 <>
-                                                     <button className="outline-btn" onClick={saveDraft}>Chuyển thành bản nháp</button>
-                                                     <button className="primary-btn" onClick={publishChapter}>Cập nhật & Gửi duyệt</button>
-                                                 </>
-                                             ) : (
-                                                 <>
-                                                     <button className="outline-btn" onClick={saveDraft}>Lưu nháp</button>
-                                                     <button className="outline-btn" onClick={() => setScheduleModalOpen(true)}>Hẹn giờ đăng</button>
-                                                     <button className="primary-btn" onClick={publishChapter}>Xuất bản chương</button>
-                                                 </>
-                                             )}
-                                         </div>
-                                    </div>
-                                );
-                            })()
-                        ) : (
-                            <div className="editor-empty-state" style={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', flexGrow:1, color:'var(--text-muted)', textAlign:'center'}}>
-                                <span className="empty-icon" style={{display:'inline-flex', justifyContent:'center', alignItems:'center', marginBottom:'16px', opacity: 0.5}}>
-                                    <Icons.Edit size={44} />
-                                </span>
-                                <h4>Soạn Thảo Tác Phẩm</h4>
-                                <p>Chọn một truyện và nhấp vào một chương để bắt đầu viết nội dung, hoặc click thêm một chương mới ở cột bên trái.</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-            
-            {volumeModalOpen && (
-                <div className="modal-overlay" onClick={(e) => { if ((e.target as HTMLElement).className === 'modal-overlay') { setVolumeModalOpen(false); setNewVolName(""); setVolumeModalError(""); } }}>
-                    <div className="modal-content" style={{ maxWidth: '400px' }}>
-                        <div className="modal-header">
-                            <h3 style={{ margin: 0, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.05rem', fontWeight: 600 }}>
-                                <Icons.Folder size={18} /> Thêm tập mới
-                            </h3>
-                            <button className="close-btn" onClick={() => { setVolumeModalOpen(false); setNewVolName(""); setVolumeModalError(""); }} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}>&times;</button>
-                        </div>
-                        <form onSubmit={handleConfirmAddVolume}>
-                            <div className="modal-body">
-                                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '12px', lineHeight: 1.4 }}>
-                                    Nhập tên tập mới (Hệ thống sẽ tạo tự động một chương nháp trong tập này).
-                                </p>
-                                <div style={{ marginBottom: '16px' }}>
-                                    <input 
-                                        type="text" 
-                                        value={newVolName}
-                                        onChange={(e) => { setNewVolName(e.target.value); setVolumeModalError(""); }}
-                                        placeholder="Ví dụ: Tập 01: Khởi Đầu Mới"
-                                        className="form-input"
-                                        autoFocus
-                                        style={{ width: '100%', padding: '10px', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-base)', color: 'var(--text-main)', fontSize: '0.9rem' }}
-                                    />
-                                    {volumeModalError && (
-                                        <p style={{ color: '#dc3545', fontSize: '0.75rem', marginTop: '6px', margin: '6px 0 0 0', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <Icons.AlertCircle size={13} /> {volumeModalError}
-                                        </p>
-                                    )}
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                                    <button 
-                                        type="button"
-                                        className="outline-btn" 
-                                        onClick={() => { setVolumeModalOpen(false); setNewVolName(""); setVolumeModalError(""); }}
-                                        style={{ padding: '8px 16px', fontSize: '0.85rem' }}
-                                    >
-                                        Hủy bỏ
-                                    </button>
-                                    <button 
-                                        type="submit"
-                                        className="primary-btn" 
-                                        style={{ padding: '8px 16px', fontSize: '0.85rem' }}
-                                    >
-                                        Tạo tập
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+    return <div className={`page-view active author-studio${focus ? ' studio-focused' : ''}`}>
+        <div className="studio-header"><div><span className="eyebrow">MugenBunko · Studio</span><h2>Bàn làm việc tác giả</h2>
+            <p className="subtitle">Giữ những ý tưởng thành câu chuyện, từng chương một.</p></div>
+            <div className="studio-actions"><button className="outline-btn small" onClick={() => setFocus(v => !v)}>{focus ? 'Thoát tập trung' : 'Tập trung viết'}</button>
+                <button className="outline-btn small" onClick={() => { if (leaveEditor()) setCurrentView('home'); }}>Về thư viện</button></div></div>
+        {!canWrite && <div className="inline-notice" role="status">Bạn cần được cấp quyền tác giả để tạo truyện và viết chương.
+            <button className="text-action" onClick={() => setCurrentView('profile')}>Mở hồ sơ để đăng ký quyền tác giả</button></div>}
+        <div className="studio-stats">
+            <div><strong>{myNovels.length}</strong><span>Tác phẩm</span></div>
+            <div><strong>{myNovels.reduce((sum, n) => sum + Number(n.reads || 0), 0).toLocaleString('vi-VN')}</strong><span>Lượt đọc</span></div>
+            <div><strong>{myNovels.reduce((sum, n) => sum + Number(n.bookmarksCount || 0), 0).toLocaleString('vi-VN')}</strong><span>Lượt lưu tủ</span></div>
         </div>
-    );
+        {mutationError && !dialog && <div className="inline-notice studio-error" role="alert">{mutationError}</div>}
+        <div className="studio-workspace">
+            <aside className="studio-sidebar" aria-label="Quản lý tác phẩm">
+                <section className="studio-panel"><div className="studio-panel-heading"><h3>Tác phẩm của bạn</h3>
+                    <button className="primary-btn small" disabled={!canWrite || busy} onClick={() => { if (leaveEditor()) setNewNovelModalOpen(true); }}>+ Tạo truyện</button></div>
+                    <div className="studio-novels">{myNovels.map(item => <div className={`studio-novel-row${item.id === activeStudioNovelId ? ' selected' : ''}`} key={item.id}>
+                        <button className="studio-novel-select" disabled={busy} aria-pressed={item.id === activeStudioNovelId} onClick={() => selectNovel(item.id)}>
+                            <img src={item.cover} alt="" onError={event => { event.currentTarget.onerror = null; event.currentTarget.src = '/assets/default_novel_cover.png'; }} />
+                            <span>{item.title}<small>{item.chapters?.length || 0} chương</small></span></button>
+                        <button className="studio-icon-btn" title="Sửa thông tin truyện" aria-label={`Sửa thông tin ${item.title}`} disabled={busy} onClick={() => openEditNovelModal(item.id)}><Icons.Edit size={15} /></button>
+                        <button className="studio-icon-btn studio-danger" title="Xóa truyện" aria-label={`Xóa ${item.title}`} disabled={busy} onClick={() => {
+                            if (!window.confirm(`Xóa vĩnh viễn tác phẩm “${item.title}” cùng tất cả chương?`)) return;
+                            void run(async () => { if (await props.handleDeleteNovel(item.id)) { if (item.id === activeStudioNovelId) editor.forget(); } });
+                        }}><Icons.Trash size={15} /></button>
+                    </div>)}{!myNovels.length && <p className="muted">Chưa có tác phẩm. Tạo truyện đầu tiên để bắt đầu bản thảo của bạn.</p>}</div>
+                </section>
+                {novel && <section className="studio-panel"><div className="studio-panel-heading"><h3>Cấu trúc tác phẩm</h3>
+                    <button className="primary-btn small" disabled={busy || !canWrite} onClick={() => createChapter()}>+ Chương</button></div>
+                    <label className="studio-field">Tìm chương hoặc tập<input type="search" value={search} placeholder="Tên chương, tên tập…" onChange={event => setSearch(event.target.value)} /></label>
+                    <label className="studio-field">Trạng thái<select value={filter} onChange={event => setFilter(event.target.value as typeof filter)}>
+                        <option value="all">Tất cả ({chapters.length})</option>{Object.entries(labels).map(([status, label]) => <option key={status} value={status}>{label} ({chapters.filter(c => c.status === status).length})</option>)}</select></label>
+                    <div className="studio-actions"><button className="outline-btn small" disabled={busy || !canWrite} onClick={() => openVolume({ kind: 'add' })}>+ Tập mới</button>
+                        {selected.size > 0 && <><button className="outline-btn small" disabled={busy} onClick={() => openVolume({ kind: 'move' })}>Chuyển {selected.size} chương</button>
+                            <button className="text-action" onClick={() => setSelected(new Set())}>Bỏ chọn</button></>}</div>
+                    <div className="studio-tree">{volumes.map(volume => {
+                        const items = visibleChapters.filter(c => c.volume_name === volume); if (!items.length) return null;
+                        return <div key={volume} className="studio-volume"><div className="studio-volume-heading">
+                            <button className="studio-volume-toggle" aria-expanded={!collapsed.has(volume)} onClick={() => setCollapsed(previous => {
+                                const next = new Set(previous); if (next.has(volume)) next.delete(volume); else next.add(volume); return next;
+                            })}><span aria-hidden="true">{collapsed.has(volume) ? '▸' : '▾'}</span><span>{volume}</span><small>{items.length}</small></button>
+                            <button className="studio-icon-btn" aria-label={`Thêm chương vào ${volume}`} disabled={busy} onClick={() => createChapter(volume)}>+</button>
+                            <button className="studio-icon-btn" aria-label={`Đổi tên ${volume}`} disabled={busy} onClick={() => openVolume({ kind: 'rename', oldName: volume })}><Icons.Edit size={13} /></button>
+                            <button className="studio-icon-btn studio-danger" aria-label={`Xóa ${volume}`} disabled={busy} onClick={() => deleteVolume(volume)}><Icons.Trash size={13} /></button>
+                        </div>{!collapsed.has(volume) && <div>{items.map(item => <div key={item.id} className={`studio-chapter-row${item.id === activeStudioChapterId ? ' selected' : ''}`}>
+                            <input type="checkbox" aria-label={`Chọn ${item.title}`} checked={selected.has(item.id)} disabled={busy} onChange={event => setSelected(previous => {
+                                const next = new Set(previous); if (event.target.checked) next.add(item.id); else next.delete(item.id); return next;
+                            })} />
+                            <button className="studio-chapter-select" disabled={busy} aria-current={item.id === activeStudioChapterId ? 'true' : undefined} onClick={() => selectChapter(item.id)}>
+                                <span>{item.title}</span><small className={`studio-badge ${item.status}`}>{labels[item.status]}</small>
+                                {item.scheduled_release && <small>{new Date(item.scheduled_release).toLocaleString('vi-VN')}</small>}</button>
+                            <div className="studio-order-buttons"><button className="studio-icon-btn" aria-label={`Đưa ${item.title} lên`} disabled={busy || chapters[0]?.id === item.id} onClick={() => reorder(item.id, -1)}>↑</button>
+                                <button className="studio-icon-btn" aria-label={`Đưa ${item.title} xuống`} disabled={busy || chapters.at(-1)?.id === item.id} onClick={() => reorder(item.id, 1)}>↓</button></div>
+                        </div>)}</div>}</div>;
+                    })}{!visibleChapters.length && <div className="studio-tree-empty"><p>{chapters.length ? 'Không tìm thấy chương phù hợp.' : 'Tác phẩm chưa có chương nào.'}</p>
+                        {chapters.length > 0 && <button className="text-action" onClick={() => { setSearch(''); setFilter('all'); }}>Xóa bộ lọc</button>}</div>}</div>
+                </section>}
+                {novel && <section className="studio-panel"><h3>Thông báo cho độc giả</h3><label className="studio-field"><span>Nội dung thông báo</span>
+                    <textarea value={announcement} placeholder="Lịch ra chương, cập nhật tác phẩm…" onChange={event => setAnnouncement(event.target.value)} /></label>
+                    <button className="outline-btn small" disabled={busy || !announcement.trim()} onClick={() => void run(async () => {
+                        await request('/announcements', { novelId: novel.id, text: announcement.trim() }); setAnnouncement(''); props.onAnnouncementPosted(); showToast('Đã đăng thông báo.');
+                    })}>Đăng thông báo</button></section>}
+            </aside>
+            <main className="studio-editor-panel">
+                {chapter ? <>
+                    <div className="studio-editor-heading"><div><span className={`studio-badge ${chapter.status}`}>{labels[chapter.status]}</span>
+                        <span className="studio-editor-novel">{novel?.title}</span></div><button className="outline-btn small" disabled={editor.loading} onMouseDown={event => event.preventDefault()} onClick={togglePreview}><Icons.Eye size={14} /> {preview ? 'Tiếp tục viết' : 'Xem trước'}</button></div>
+                    {chapter.scheduled_release && <p className="studio-schedule-info"><Icons.Clock size={15} /> Lịch đăng: {new Date(chapter.scheduled_release).toLocaleString('vi-VN')}{chapter.status === 'pending' ? ' · Đang chờ duyệt' : ''}</p>}
+                    {editor.conflict && <div className="inline-notice studio-recovery" role="alert"><p>Bản trên máy chủ đã thay đổi kể từ lần viết trước. Bản đang mở là phần chưa lưu trên máy. Chọn bản muốn tiếp tục trước khi đồng bộ.</p>
+                        <div className="studio-actions"><button className="outline-btn small" onClick={() => editor.resolveConflict(true)}>Tiếp tục bản trên máy</button>
+                            <button className="outline-btn small" onClick={() => { if (window.confirm('Bỏ bản chưa lưu trên máy và dùng nội dung máy chủ?')) editor.resolveConflict(false); }}>Dùng bản máy chủ</button>
+                            <button className="text-action" onClick={() => exportBackup('txt')}>Xuất bản trên máy ra TXT</button></div></div>}
+                    {editor.error && <div className="inline-notice studio-error" role="alert">{editor.error}<button className="text-action" disabled={busy} onClick={editor.reload}>Tải lại để đối chiếu</button></div>}
+                    <div className="studio-editor-meta"><label className="studio-field">Tập<select disabled={!editor.ready || busy} value={editor.draft.volumeName} onChange={event => editor.change({ volumeName: event.target.value })}>
+                        {availableVolumes.map(volume => <option key={volume} value={volume}>{volume}</option>)}</select></label>
+                        <label className="studio-field">Tiêu đề chương<input maxLength={255} disabled={!editor.ready || mutationBusy || historyOpen} value={editor.draft.title} placeholder="Tên chương…" onChange={event => editor.change({ title: event.target.value })} /></label></div>
+                    <div className="studio-toolbar"><div className="studio-actions" hidden={preview}>
+                        <button className="outline-btn small" disabled={!editor.ready || busy} aria-label="In đậm" title="In đậm (Ctrl+B)" onMouseDown={event => event.preventDefault()} onClick={() => format('bold')}><strong>B</strong></button>
+                        <button className="outline-btn small" disabled={!editor.ready || busy} aria-label="In nghiêng" title="In nghiêng (Ctrl+I)" onMouseDown={event => event.preventDefault()} onClick={() => format('italic')}><em>I</em></button>
+                        <button className="outline-btn small" disabled={!editor.ready || busy} onMouseDown={event => event.preventDefault()} onClick={() => format('justifyLeft')}>Căn trái</button>
+                        <button className="outline-btn small" disabled={!editor.ready || busy} onMouseDown={event => event.preventDefault()} onClick={() => format('justifyCenter')}>Căn giữa</button>
+                        <button className="outline-btn small" disabled={!editor.ready || busy} onMouseDown={event => event.preventDefault()} onClick={props.insertStaticIllustration}>Chèn ảnh</button>
+                    </div><div className="studio-actions">
+                        <ChapterVersionHistory chapter={chapter} novelId={novel!.id} API_BASE={API_BASE} fetchWithAuth={fetchWithAuth}
+                            disabled={busy || !editor.ready || editor.conflict} getCurrentDraft={() => editor.ready ? editor.draft : null}
+                            onRestored={editor.restored} onBusyChange={value => { editor.onHistoryBusyChange(value); setHistoryOpen(value); }} />
+                        <button className="outline-btn small" disabled={!editor.ready} onClick={() => exportBackup('txt')}>TXT</button>
+                        <button className="outline-btn small" disabled={!editor.ready} onClick={() => exportBackup('md')}>MD</button></div></div>
+                    <div className="studio-save-status" role="status" aria-live="polite"><span>{words.toLocaleString('vi-VN')} từ · khoảng {Math.max(1, Math.ceil(words / 220))} phút đọc</span>
+                        <span className={editor.dirty ? 'studio-unsaved' : ''}>{editor.loading ? 'Đang tải chương…' : editor.status}</span></div>
+                    <div hidden={preview} className="studio-editor-surface"><div ref={contentAreaRef} className="editor-body-textarea studio-content font-serif"
+                        contentEditable={editor.ready && !mutationBusy && !historyOpen} suppressContentEditableWarning role="textbox" aria-label="Nội dung chương" aria-multiline="true" aria-busy={editor.loading}
+                        onInput={() => editor.change({ content: contentAreaRef.current?.innerHTML || '' })}
+                        onPaste={event => {
+                            event.preventDefault(); const html = event.clipboardData.getData('text/html');
+                            if (html) document.execCommand('insertHTML', false, DOMPurify.sanitize(html));
+                            else document.execCommand('insertText', false, event.clipboardData.getData('text/plain'));
+                            editor.change({ content: contentAreaRef.current?.innerHTML || '' });
+                        }} /></div>
+                    {preview && <article className="studio-reader-preview reader-content-body font-serif" aria-label="Xem trước chương">
+                        <div className="studio-preview-caption">Xem trước bản đang viết · chưa xuất bản</div><h1>{editor.draft.title}</h1>
+                        <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(editor.draft.content) }} /></article>}
+                    <div className="studio-publishing-note">{chapter.status === 'published' ? 'Bản sửa được giữ trên máy. Bấm “Cập nhật chương” để thay đổi nội dung độc giả đang đọc.' :
+                        chapter.status === 'scheduled' ? 'Bản sửa được giữ trên máy. “Lưu thay đổi” giữ lịch đăng hiện tại; đổi lịch sẽ gửi duyệt lại nếu bạn không phải quản trị viên.' :
+                        chapter.status === 'pending' ? 'Chương đang chờ duyệt. Bạn có thể lưu nội dung mới hoặc rút về bản nháp.' : 'Nháp tự lưu lên máy chủ mỗi 30 giây. Bạn cũng có thể lưu ngay bằng Ctrl+S / ⌘S.'}</div>
+                    <div className="studio-editor-footer"><button className="text-action studio-danger" disabled={busy || !editor.ready} onClick={deleteChapter}>Xóa chương</button>
+                        <div className="studio-actions"><button className="outline-btn" disabled={busy || !editor.ready || editor.conflict} onClick={() => void editor.save()}>{chapter.status === 'published' ? 'Giữ bản sửa trên máy' : chapter.status === 'draft' ? 'Lưu nháp' : 'Lưu thay đổi'}</button>
+                            {chapter.status !== 'draft' && <button className="outline-btn" disabled={busy || !editor.ready || editor.conflict} onClick={() => {
+                                if (window.confirm(chapter.status === 'published' ? 'Ẩn chương công khai và chuyển về bản nháp?' : 'Rút chương về bản nháp và hủy lịch đăng nếu có?')) void editor.save('withdraw');
+                            }}>{chapter.status === 'published' ? 'Ẩn về nháp' : 'Rút về nháp'}</button>}
+                            {chapter.status !== 'published' && <button className="outline-btn" disabled={busy || !editor.ready || editor.conflict} onClick={() => { setScheduleDate(toLocalDatetime(chapter.scheduled_release)); setScheduleError(''); setScheduleOpen(true); }}>{chapter.scheduled_release ? 'Đổi lịch đăng' : 'Hẹn giờ đăng'}</button>}
+                            {(chapter.status === 'draft' || chapter.status === 'published') && <button className="primary-btn" disabled={busy || !editor.ready || editor.conflict} onClick={() => void editor.save('publish')}>{editor.busy ? 'Đang lưu…' : chapter.status === 'published' ? 'Cập nhật chương' : isAdmin ? 'Xuất bản chương' : 'Gửi duyệt chương'}</button>}</div></div>
+                </> : <div className="studio-editor-empty"><Icons.Feather size={42} /><h3>{novel ? 'Bắt đầu chương tiếp theo' : 'Một câu chuyện đang chờ bạn'}</h3>
+                    <p>{novel ? 'Chọn chương trong mục lục hoặc tạo chương mới để viết.' : 'Chọn tác phẩm bên cạnh để tiếp tục viết bản thảo.'}</p>
+                    {novel ? <button className="primary-btn" disabled={!canWrite || busy} onClick={() => createChapter()}>+ Viết chương mới</button> : <button className="outline-btn" disabled={!canWrite && !myNovels.length} onClick={() => {
+                        try { const recent = JSON.parse(localStorage.getItem(`mugen_studio_recent_${currentUser.id}`) || 'null');
+                            if (recent && myNovels.some(n => n.id === recent.novelId && n.chapters?.some(c => c.id === recent.chapterId))) {
+                                setActiveStudioNovelId(recent.novelId); setActiveStudioChapterId(recent.chapterId); return;
+                            }
+                        } catch { /* Fall back to a real owned work. */ }
+                        if (myNovels[0]) selectNovel(myNovels[0].id); else if (canWrite) setNewNovelModalOpen(true);
+                    }}>{myNovels.length ? 'Tiếp tục bản thảo gần nhất' : 'Tạo tác phẩm đầu tiên'}</button>}</div>}
+            </main>
+        </div>
+        {dialog && <StudioDialog title={dialog.kind === 'add' ? 'Thêm tập mới' : dialog.kind === 'rename' ? 'Đổi tên tập' : `Chuyển ${selected.size} chương`} onClose={() => setDialog(null)} busy={busy}>
+            <form onSubmit={submitVolume}><label className="studio-field">{dialog.kind === 'move' ? 'Tập đích (chọn hoặc nhập tên mới)' : 'Tên tập'}
+                <input required maxLength={100} list={dialog.kind === 'move' ? 'studio-volume-options' : undefined} value={volumeInput} disabled={busy} onChange={event => setVolumeInput(event.target.value)} /></label>
+                <datalist id="studio-volume-options">{volumes.map(volume => <option value={volume} key={volume} />)}</datalist>
+                {dialog.kind === 'add' && <p className="muted">Một chương nháp trống sẽ được tạo trong tập mới.</p>}
+                {mutationError && <p className="studio-error" role="alert">{mutationError}</p>}
+                <div className="studio-dialog-actions"><button type="button" className="outline-btn" disabled={busy} onClick={() => setDialog(null)}>Hủy</button><button className="primary-btn" disabled={busy}>{busy ? 'Đang lưu…' : 'Lưu thay đổi'}</button></div></form>
+        </StudioDialog>}
+        <ScheduleModal scheduleModalOpen={scheduleOpen} setScheduleModalOpen={setScheduleOpen} scheduleDatetime={scheduleDate}
+            setScheduleDatetime={setScheduleDate} submitScheduleChapter={() => void schedule()} busy={editor.busy} error={scheduleError || editor.error} needsApproval={!isAdmin} />
+    </div>;
 }

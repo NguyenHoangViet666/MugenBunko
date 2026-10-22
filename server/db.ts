@@ -40,6 +40,7 @@ export async function initializeDbConnection(options: { migrate?: boolean } = {}
             if (!process.env.DB_USER || process.env.DB_USER === 'root') throw new Error('Production requires a restricted DB_USER.');
             pool = openPool();
             await pool.execute('SELECT id, email FROM users LIMIT 0');
+            await pool.execute('SELECT sort_order FROM chapters LIMIT 0');
             await pool.execute('SELECT email FROM email_otps LIMIT 0');
             await pool.execute('SELECT token_hash FROM revoked_tokens LIMIT 0');
             await pool.execute('SELECT id, result_snapshot FROM elections LIMIT 0');
@@ -370,6 +371,11 @@ export async function initializeDbConnection(options: { migrate?: boolean } = {}
         await ensureIndexExists('novels', 'idx_novels_reads', 'CREATE INDEX idx_novels_reads ON novels (`reads` DESC, id DESC)');
         console.log("Performance indexes verification completed.");
 
+        const [chapterOrderColumns] = await connectionWithDb.query<any[]>("SHOW COLUMNS FROM chapters LIKE 'sort_order'");
+        if (!chapterOrderColumns.length) {
+            await connectionWithDb.query('ALTER TABLE chapters ADD COLUMN sort_order INT NOT NULL DEFAULT 0');
+            await connectionWithDb.query('UPDATE chapters SET sort_order = id');
+        }
         await connectionWithDb.query(readerSchema);
         await connectionWithDb.query(electionSchema);
         await ensureIndexExists('election_candidates', 'idx_election_candidate_term', 'CREATE INDEX idx_election_candidate_term ON election_candidates (user_id, decision, ended_at, term_ends_at)');

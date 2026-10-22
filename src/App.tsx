@@ -2,11 +2,12 @@ import { fetchArrayPages } from './utils/pagedFetch';
 import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import Header from './components/Header';
 import Footer from './components/Footer';
-import LoginModal from './components/LoginModal';
-import RegisterModal from './components/RegisterModal';
+import AuthPage from './pages/AuthPage';
+import type { LoginFields, RegisterFields } from './pages/AuthPage';
+import { authHref, parseAuthHash, safeAuthReturn } from './utils/authNavigation';
+import type { AuthMode } from './utils/authNavigation';
 import NewNovelModal from './components/NewNovelModal';
 import EditNovelModal from './components/EditNovelModal';
-import ScheduleModal from './components/ScheduleModal';
 import ChatWidget from './components/ChatWidget';
 import MobileGateOverlay from './components/MobileGateOverlay';
 import { Icons } from './components/Icons';
@@ -94,6 +95,7 @@ const clearCache = (key: string): void => {
 };
 
 interface InitialRoute {
+    authReturnTo?: string;
     view: string;
     novelId: number | null;
     chapterIndex: number | null;
@@ -120,8 +122,11 @@ const getInitialRoute = (): InitialRoute => {
     } catch (e) {}
 
     if (isPrivate && !sessionUser) {
-        return { view: 'home', novelId: null, chapterIndex: null, triggerLogin: true, profileViewingUsername: null };
+        return { view: 'login', authReturnTo: hash, novelId: null, chapterIndex: null, triggerLogin: true, profileViewingUsername: null };
     }
+
+    const auth = parseAuthHash(hash);
+    if (auth) return { view: auth.mode, authReturnTo: auth.returnTo, novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
 
     if (sessionUser) {
         const rolesData = sessionUser.roles || [];
@@ -212,13 +217,9 @@ export default function App() {
         // 3. Hiển thị Toast thông báo nhẹ nhàng thay vì alert lặp vô hạn
         showToast(customMsg || "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
 
-        // 4. Nếu đang ở các view yêu cầu quyền, đưa về trang chủ
-        setCurrentView(prev => {
-            if (['studio', 'library', 'profile', 'mod-dashboard', 'admin-dashboard'].includes(prev)) {
-                return 'home';
-            }
-            return prev;
-        });
+        if (['studio', 'library', 'profile', 'mod-dashboard', 'admin-dashboard', 'manage-rules'].includes(currentView)) {
+            openAuth('login', window.location.hash, true);
+        }
 
         setTimeout(() => {
             isSessionExpiringRef.current = false;
@@ -320,8 +321,18 @@ export default function App() {
     // ----------------------------------------------------
     const [currentUser, setCurrentUser] = useState<User | null>(cachedSession);
     const [currentView, setCurrentView] = useState<string>(initialRoute.view);
+    const [authReturnTo, setAuthReturnTo] = useState(initialRoute.authReturnTo || '#/');
+    const openAuth = (mode: AuthMode, returnTo = window.location.hash, replace = false) => {
+        const existing = parseAuthHash(returnTo);
+        const target = existing?.returnTo || safeAuthReturn(returnTo);
+        setAuthReturnTo(target); setCurrentView(mode);
+        const href = authHref(mode, target);
+        if (replace) window.history.replaceState(null, '', href);
+        else if (window.location.hash !== href) window.location.hash = href;
+    };
+    // Keep callbacks consumed by existing reading/community screens while routing to full pages.
+    const setLoginModalOpen = (open: boolean) => { if (open) openAuth('login'); };
     const readingSync = useReadingSync(currentUser, novels, API_BASE, fetchWithAuth);
-    const studioHistoryBusy = useRef(false);
 
     // ----------------------------------------------------
     // Mobile Gate State (Standalone clean rendering)
@@ -348,16 +359,11 @@ export default function App() {
     
     // Author studio selections
     const [activeStudioNovelId, setActiveStudioNovelId] = useState<number | null>(null);
-    const [activeStudioChapterIndex, setActiveStudioChapterIndex] = useState<number | null>(null);
-    const [autosaveText, setAutosaveText] = useState<string>("Chưa lưu thay đổi");
-    const [autosaveColor, setAutosaveColor] = useState<string>("red");
+    const [activeStudioChapterId, setActiveStudioChapterId] = useState<number | null>(null);
 
     // UI overlays & Widgets states
-    const [loginModalOpen, setLoginModalOpen] = useState<boolean>(false);
-    const [registerModalOpen, setRegisterModalOpen] = useState<boolean>(false);
     const [newNovelModalOpen, setNewNovelModalOpen] = useState<boolean>(false);
     const [editNovelModalOpen, setEditNovelModalOpen] = useState<boolean>(false);
-    const [scheduleModalOpen, setScheduleModalOpen] = useState<boolean>(false);
     const [notifDropdownOpen, setNotifDropdownOpen] = useState<boolean>(false);
     const [filterDrawerOpen, setFilterDrawerOpen] = useState<boolean>(false);
     
@@ -426,18 +432,9 @@ export default function App() {
     const [detailSummaryExpanded, setDetailSummaryExpanded] = useState<boolean>(false);
 
     // Editor inputs (Refs to prevent lagging key renders)
-    const volNameRef = useRef<HTMLInputElement>(null);
-    const chapterTitleRef = useRef<HTMLInputElement>(null);
     const contentAreaRef = useRef<HTMLDivElement>(null);
 
     // Form inputs (Controlled/Uncontrolled states)
-    const [regUsername, setRegUsername] = useState<string>("");
-    const [regDisplayname, setRegDisplayname] = useState<string>("");
-    const [regPassword, setRegPassword] = useState<string>("");
-    const [regRole, setRegRole] = useState<UserRole>("reader");
-
-    const [loginUsername, setLoginUsername] = useState<string>("");
-    const [loginPassword, setLoginPassword] = useState<string>("");
 
     const [profileDisplayname, setProfileDisplayname] = useState<string>(cachedSession?.displayname || "");
     const [profileAvatarSeed, setProfileAvatarSeed] = useState<string>(cachedSession?.avatar_seed || "");
@@ -450,7 +447,6 @@ export default function App() {
 
     const [adminEventTitle, setAdminEventTitle] = useState<string>("");
     const [adminEventDesc, setAdminEventDesc] = useState<string>("");
-    const [scheduleDatetime, setScheduleDatetime] = useState<string>("");
 
     const [newNovelTitle, setNewNovelTitle] = useState<string>("");
     const [newNovelGenres, setNewNovelGenres] = useState<string[]>(["Isekai"]);
@@ -516,8 +512,7 @@ export default function App() {
         } catch (e) {}
 
         if (initialRoute.triggerLogin) {
-            setLoginModalOpen(true);
-            window.location.hash = '#/';
+            openAuth('login', initialRoute.authReturnTo, true);
         }
     }, []);
 
@@ -569,11 +564,18 @@ export default function App() {
         }
         
         if (isPrivate && !sessionUser) {
-            setCurrentView('home');
-            setActiveNovelId(null);
-            setActiveChapterIndex(null);
-            setLoginModalOpen(true);
-            window.location.hash = '#/';
+            openAuth('login', hash, true);
+            return;
+        }
+
+        const auth = parseAuthHash(hash);
+        if (auth) {
+            if (sessionUser) {
+                window.history.replaceState(null, '', auth.returnTo);
+                parseHashAndSetStates();
+            } else {
+                setAuthReturnTo(auth.returnTo); setCurrentView(auth.mode);
+            }
             return;
         }
 
@@ -729,7 +731,9 @@ export default function App() {
     useEffect(() => {
         let expectedHash = '#/';
 
-        if (currentView === 'library') {
+        if (currentView === 'login' || currentView === 'register') {
+            expectedHash = authHref(currentView, authReturnTo);
+        } else if (currentView === 'library') {
             expectedHash = '#/library';
         } else if (currentView === 'studio') {
             expectedHash = '#/studio';
@@ -766,7 +770,7 @@ export default function App() {
         if (window.location.hash !== expectedHash) {
             window.location.hash = expectedHash;
         }
-    }, [currentView, activeNovelId, activeChapterIndex, profileViewingUsername, activeForumPostId, activeCollectionShareId, activeEventId, currentUser]);
+    }, [currentView, authReturnTo, activeNovelId, activeChapterIndex, profileViewingUsername, activeForumPostId, activeCollectionShareId, activeEventId, currentUser]);
 
     // ----------------------------------------------------
     // FETCH HELPER METHOD INTEGRATIONS WITH REST API
@@ -1089,90 +1093,54 @@ export default function App() {
     // ----------------------------------------------------
     // AUTHENTICATION CONTROLLER FLOWS
     // ----------------------------------------------------
-    const handleLoginSubmit = async () => {
-        if (!loginUsername || !loginPassword) {
-            alert("Vui lòng điền đầy đủ tên đăng nhập và mật khẩu!");
-            return;
-        }
-
+    const finishAuthentication = (user: User) => {
+        localStorage.setItem(DB_KEYS.session, JSON.stringify(user));
+        localStorage.removeItem('mugen_token');
+        setCurrentUser(user);
+        setProfileDisplayname(user.displayname || '');
+        setProfileAvatarSeed(user.avatarSeed || '');
+        setProfileBio(user.bio || '');
+        setProfileRoles(user.roles || ['reader']);
+        window.history.replaceState(null, '', safeAuthReturn(authReturnTo));
+        parseHashAndSetStates();
+    };
+    const handleLoginSubmit = async (fields: LoginFields) => {
+        let response: Response;
         try {
-            const res = await fetchWithAuth(`${API_BASE}/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: loginUsername, password: loginPassword })
+            response = await fetchWithAuth(`${API_BASE}/auth/login`, {
+                method: 'POST', body: JSON.stringify({ username: fields.username.trim(), password: fields.password })
             });
-            const data = await res.json();
-            if (!res.ok) {
-                alert(data.error || "Sai tên đăng nhập hoặc mật khẩu!");
-                return;
-            }
-
-            setCurrentUser(data.user);
-            localStorage.setItem(DB_KEYS.session, JSON.stringify(data.user));
-            localStorage.removeItem('mugen_token');
-            
-            setProfileDisplayname(data.user.displayname || "");
-            setProfileAvatarSeed(data.user.avatar_seed || "");
-            setProfileBio(data.user.bio || "");
-            setProfileRoles(data.user.roles || ['reader']);
-
-            setLoginUsername("");
-            setLoginPassword("");
-            setLoginModalOpen(false);
-            if (currentView !== 'elections') setCurrentView('home');
-            showToast(`Đăng nhập thành công! Chào mừng trở lại, ${data.user.displayname}.`);
-        } catch (err) {
-            alert("Lỗi kết nối máy chủ API!");
-        }
+        } catch { throw new Error('Không thể kết nối máy chủ. Hãy kiểm tra mạng rồi thử lại.'); }
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Đăng nhập không thành công.');
+        finishAuthentication(data.user);
+        showToast(`Chào mừng trở lại, ${data.user.displayname}.`);
     };
 
     const sendRegistrationOtp = async (email: string): Promise<string | undefined> => {
-        const response = await fetchWithAuth(`${API_BASE}/auth/send-otp`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email })
-        });
+        let response: Response;
+        try {
+            response = await fetchWithAuth(`${API_BASE}/auth/send-otp`, {
+                method: 'POST', body: JSON.stringify({ email })
+            });
+        } catch { throw new Error('Không thể kết nối để gửi mã. Hãy kiểm tra mạng rồi thử lại.'); }
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Không thể gửi mã xác thực.');
         return data.devOtp;
     };
-    const handleRegisterSubmit = async (email: string, otp: string) => {
-        const nameClean = regUsername.trim().toLowerCase();
-        if (!nameClean || !regDisplayname.trim() || !regPassword) {
-            alert("Vui lòng nhập đầy đủ thông tin đăng ký!");
-            return;
-        }
-        const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
-        if (!passwordRegex.test(regPassword)) {
-            alert("Mật khẩu không hợp lệ! Yêu cầu tối thiểu 8 ký tự, bao gồm nhất 1 chữ cái viết hoa, 1 chữ số và 1 ký tự đặc biệt!");
-            return;
-        }
-
+    const handleRegisterSubmit = async (fields: RegisterFields) => {
+        let response: Response;
         try {
-            const res = await fetchWithAuth(`${API_BASE}/auth/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: nameClean, displayname: regDisplayname, password: regPassword, role: regRole, email, otp })
+            response = await fetchWithAuth(`${API_BASE}/auth/register`, {
+                method: 'POST', body: JSON.stringify({ ...fields, username: fields.username.trim().toLowerCase(),
+                    displayname: fields.displayname.trim(), email: fields.email.trim(), role: 'reader' })
             });
-            const data = await res.json();
-            if (!res.ok) {
-                alert(data.error || "Đăng ký không thành công!");
-                return;
-            }
-
-            setCurrentUser(data.user);
-            localStorage.setItem(DB_KEYS.session, JSON.stringify(data.user));
-            localStorage.removeItem('mugen_token');
-
-            setRegUsername("");
-            setRegDisplayname("");
-            setRegPassword("");
-            setRegRole("reader");
-            setRegisterModalOpen(false);
-            if (currentView !== 'elections') setCurrentView('home');
-            showToast("Đăng ký thành công! Chào mừng bạn đến với MugenBunko.");
-            fetchNovels(true);
-        } catch (err) {
-            alert("Lỗi kết nối máy chủ API!");
-        }
+        } catch { throw new Error('Không thể kết nối máy chủ. Hãy kiểm tra mạng rồi thử lại.'); }
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Đăng ký không thành công.');
+        finishAuthentication(data.user);
+        showToast('Chào mừng bạn đến với MugenBunko.');
+        void fetchNovels(true);
     };
 
     const logoutUser = async () => {
@@ -1537,7 +1505,7 @@ export default function App() {
                 setNewNovelModalOpen(false);
                 await fetchNovels(true);
                 setActiveStudioNovelId(data.novelId);
-                setActiveStudioChapterIndex(null);
+                setActiveStudioChapterId(null);
                 showToast(`Đã tạo tác phẩm '${title}' thành công! 📚`);
             } else {
                 alert(data.error || "Có lỗi xảy ra khi tạo tác phẩm.");
@@ -1598,286 +1566,6 @@ export default function App() {
         }
     };
 
-    const createNewChapter = async (volumeName?: string | React.MouseEvent) => {
-        if (activeStudioNovelId === null) return;
-        const novel = novels.find(n => n.id === activeStudioNovelId);
-        if (!novel) return;
-
-        const count = novel.chapters ? novel.chapters.length : 0;
-        const title = `Chương ${count + 1}: Tiêu đề chương mới`;
-        const content = `Nhập nội dung chương mới tại đây...`;
-        const vol = (volumeName && typeof volumeName === 'string') ? volumeName : "Tập 01";
-
-        try {
-            const res = await fetchWithAuth(`${API_BASE}/chapters`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    novelId: activeStudioNovelId,
-                    volumeName: vol,
-                    title,
-                    content,
-                    status: 'draft'
-                })
-            });
-            const data = await res.json();
-            if (res.ok) {
-                const refreshedNovels = await fetchNovels(true);
-                const updatedNovel = refreshedNovels.find(n => n.id === activeStudioNovelId);
-                const updatedChapters = updatedNovel ? (updatedNovel.chapters || []) : [];
-                const idx = updatedChapters.findIndex(c => c.id === data.chapterId);
-                setActiveStudioChapterIndex(idx > -1 ? idx : updatedChapters.length - 1);
-                showToast("Đã tạo chương mới thành công! ");
-            }
-        } catch (err) {
-            console.error("Create chapter error:", err);
-        }
-    };
-
-    const saveDraft = async () => {
-        if (activeStudioNovelId === null || activeStudioChapterIndex === null) return;
-        const selectedChapter = novels.find(n => n.id === activeStudioNovelId)?.chapters?.[activeStudioChapterIndex];
-        if (!selectedChapter || contentAreaRef.current?.dataset.loadedChapterId !== String(selectedChapter.id)) { showToast('Nội dung chương chưa tải xong. Vui lòng chọn lại chương nếu tải thất bại.'); return; }
-        const vol = volNameRef.current?.value.trim() || "";
-        const title = chapterTitleRef.current?.value.trim() || "";
-        const content = contentAreaRef.current?.innerHTML || "";
-
-        if (!title) {
-            alert("Vui lòng điền tiêu đề chương!");
-            return;
-        }
-
-        const novel = novels.find(n => n.id === activeStudioNovelId);
-        if (!novel || !novel.chapters) return;
-        const ch = novel.chapters[activeStudioChapterIndex];
-
-        try {
-            const res = await fetchWithAuth(`${API_BASE}/chapters`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    id: ch.id,
-                    novelId: activeStudioNovelId,
-                    volumeName: vol,
-                    title,
-                    content,
-                    status: 'draft'
-                })
-            });
-            if (res.ok) {
-                fetchNovels(true);
-                setAutosaveText("Đã lưu bản nháp");
-                setAutosaveColor("green");
-                showToast("Đã lưu bản nháp chương truyện thành công!");
-            }
-        } catch (err) {
-            console.error("Save draft error:", err);
-        }
-    };
-
-    const autoSaveDraftSilently = async () => {
-        if (studioHistoryBusy.current) return;
-        if (activeStudioNovelId === null || activeStudioChapterIndex === null) return;
-        const vol = volNameRef.current?.value.trim() || "";
-        const title = chapterTitleRef.current?.value.trim() || "";
-        const content = contentAreaRef.current?.innerHTML || "";
-
-        if (!title) return;
-
-        const novel = novels.find(n => n.id === activeStudioNovelId);
-        if (!novel || !novel.chapters) return;
-        const ch = novel.chapters[activeStudioChapterIndex];
-        if (contentAreaRef.current?.dataset.loadedChapterId !== String(ch.id)) return;
-        if (ch.status === 'published' || ch.status === 'pending') return;
-
-        try {
-            const res = await fetchWithAuth(`${API_BASE}/chapters`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    id: ch.id,
-                    novelId: activeStudioNovelId,
-                    volumeName: vol,
-                    title,
-                    content,
-                    status: 'draft',
-                    source: 'autosave'
-                })
-            });
-            if (res.ok) {
-                // Update local draft in memory instead of fetching all novels
-                setNovels(prev => prev.map(n => {
-                    if (n.id === activeStudioNovelId) {
-                        return {
-                            ...n,
-                            chapters: (n.chapters || []).map((chapter, i) => {
-                                if (i === activeStudioChapterIndex) {
-                                    return { ...chapter, volume_name: vol, title, content };
-                                }
-                                return chapter;
-                            })
-                        };
-                    }
-                    return n;
-                }));
-                clearCache(CACHE_KEYS.novels);
-                const timeStr = new Date().toLocaleTimeString('vi-VN');
-                setAutosaveText(`Tự động lưu nháp lúc ${timeStr}`);
-                setAutosaveColor("green");
-            }
-        } catch (err) {
-            console.error("Auto-save draft error:", err);
-        }
-    };
-
-    const autoSaveRef = useRef(autoSaveDraftSilently);
-    useEffect(() => { autoSaveRef.current = autoSaveDraftSilently; });
-    useEffect(() => {
-        let timer: any = null;
-        if (currentView === 'studio' && activeStudioNovelId !== null && activeStudioChapterIndex !== null) {
-            timer = setInterval(() => {
-                void autoSaveRef.current();
-            }, 30000); // 30s
-        }
-        return () => {
-            if (timer) clearInterval(timer);
-        };
-    }, [currentView, activeStudioNovelId, activeStudioChapterIndex]);
-
-    const publishChapter = async () => {
-        if (activeStudioNovelId === null || activeStudioChapterIndex === null) return;
-        const selectedChapter = novels.find(n => n.id === activeStudioNovelId)?.chapters?.[activeStudioChapterIndex];
-        if (!selectedChapter || contentAreaRef.current?.dataset.loadedChapterId !== String(selectedChapter.id)) { showToast('Nội dung chương chưa tải xong. Vui lòng chọn lại chương nếu tải thất bại.'); return; }
-        const vol = volNameRef.current?.value.trim() || "";
-        const title = chapterTitleRef.current?.value.trim() || "";
-        const content = contentAreaRef.current?.innerHTML || "";
-
-        if (!title || !content) {
-            alert("Vui lòng viết đủ tiêu đề và nội dung trước khi xuất bản!");
-            return;
-        }
-
-        const novel = novels.find(n => n.id === activeStudioNovelId);
-        if (!novel || !novel.chapters) return;
-        const ch = novel.chapters[activeStudioChapterIndex];
-
-        const isAdmin = currentUser && currentUser.roles.includes('admin');
-        const targetStatus = isAdmin ? 'published' : 'pending';
-
-        try {
-            const res = await fetchWithAuth(`${API_BASE}/chapters`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    id: ch.id,
-                    novelId: activeStudioNovelId,
-                    volumeName: vol,
-                    title,
-                    content,
-                    status: targetStatus
-                })
-            });
-            if (res.ok) {
-                await fetchNovels(true);
-                showToast(isAdmin ? "Chương truyện đã được xuất bản trực tiếp! 🚀" : "Chương truyện đã được gửi vào hàng chờ duyệt! ");
-            }
-        } catch (err) {
-            console.error("Publish chapter error:", err);
-        }
-    };
-
-    const submitScheduleChapter = async () => {
-        if (activeStudioNovelId === null || activeStudioChapterIndex === null) return;
-        const vol = volNameRef.current?.value.trim() || "";
-        const title = chapterTitleRef.current?.value.trim() || "";
-        const content = contentAreaRef.current?.innerHTML || "";
-
-        if (!title || !content || !scheduleDatetime) {
-            alert("Vui lòng điền tiêu đề, nội dung và chọn thời gian hẹn giờ!");
-            return;
-        }
-
-        const novel = novels.find(n => n.id === activeStudioNovelId);
-        if (!novel || !novel.chapters) return;
-        const ch = novel.chapters[activeStudioChapterIndex];
-        const isAdmin = currentUser && currentUser.roles.includes('admin');
-
-        try {
-            const res = await fetchWithAuth(`${API_BASE}/chapters`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    id: ch.id,
-                    novelId: activeStudioNovelId,
-                    volumeName: vol,
-                    title,
-                    content,
-                    status: 'scheduled',
-                    scheduledRelease: scheduleDatetime
-                })
-            });
-            if (res.ok) {
-                fetchNovels(true);
-                setScheduleModalOpen(false);
-                setScheduleDatetime("");
-                showToast(isAdmin ? "Đã hẹn giờ xuất bản chương truyện thành công! ⏰" : "Chương truyện hẹn giờ đã được gửi vào hàng chờ duyệt! ⏰");
-            }
-        } catch (err) {
-            console.error("Schedule chapter error:", err);
-        }
-    };
-
-    const deleteActiveChapter = async () => {
-        if (activeStudioNovelId === null || activeStudioChapterIndex === null) return;
-        const novel = novels.find(n => n.id === activeStudioNovelId);
-        if (!novel || !novel.chapters) return;
-        const ch = novel.chapters[activeStudioChapterIndex];
-        if (!ch) return;
-
-        if (!confirm("⚠️ Bạn có chắc chắn muốn XÓA VĨNH VIỄN chương này không? Thao tác không thể hoàn tác.")) return;
-
-        try {
-            const res = await fetchWithAuth(`${API_BASE}/chapters/${ch.id}`, { method: 'DELETE' });
-            if (res.ok) {
-                fetchNovels(true);
-                setActiveStudioChapterIndex(null);
-                showToast("Đã xóa chương truyện thành công.");
-            }
-        } catch (err) {
-            console.error("Delete chapter error:", err);
-        }
-    };
-
-    const deleteVolume = async (volumeName: string) => {
-        if (activeStudioNovelId === null) return;
-        const novel = novels.find(n => n.id === activeStudioNovelId);
-        if (!novel) return;
-
-        triggerConfirm(`⚠️ Cảnh báo: Hành động này sẽ xóa vĩnh viễn toàn bộ các chương thuộc tập '${volumeName}'. Bạn có chắc chắn muốn xóa tập này?`, async () => {
-            try {
-                const res = await fetchWithAuth(`${API_BASE}/chapters/delete-volume`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        novelId: activeStudioNovelId,
-                        volumeName
-                    })
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    showToast(`Đã xóa tập '${volumeName}' cùng toàn bộ chương truyện! 🗑️`);
-                    setActiveStudioChapterIndex(null);
-                    await fetchNovels(true);
-                } else {
-                    alert(data.error || "Lỗi xóa tập truyện.");
-                }
-            } catch (err) {
-                console.error("Delete volume error:", err);
-                alert("Lỗi kết nối máy chủ API!");
-            }
-        });
-    };
-
     const handleDeleteNovel = async (novelId: number, reason: string): Promise<boolean> => {
         if (!currentUser) return false;
         try {
@@ -1896,7 +1584,7 @@ export default function App() {
                 }
                 if (activeStudioNovelId === novelId) {
                     setActiveStudioNovelId(null);
-                    setActiveStudioChapterIndex(null);
+                    setActiveStudioChapterId(null);
                 }
                 return true;
             } else {
@@ -1910,27 +1598,6 @@ export default function App() {
         }
     };
 
-
-    const postAuthorAnnouncement = async () => {
-        const txtArea = document.getElementById("studio-announcement-textarea") as HTMLTextAreaElement;
-        const text = txtArea?.value.trim();
-        if (!text || activeStudioNovelId === null) return;
-
-        try {
-            const res = await fetchWithAuth(`${API_BASE}/announcements`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ novelId: activeStudioNovelId, text })
-            });
-            if (res.ok) {
-                if (txtArea) txtArea.value = "";
-                fetchAnnouncements(true);
-                showToast("Đã đăng tin cập nhật lên truyện!");
-            }
-        } catch (err) {
-            console.error("Post announcement error:", err);
-        }
-    };
 
     // ----------------------------------------------------
     // MODERATOR ACTIONS
@@ -2526,12 +2193,6 @@ export default function App() {
     // ----------------------------------------------------
     // FORMAT DOCUMENT WIDGET HELPERS
     // ----------------------------------------------------
-    const formatDoc = (cmd: string) => {
-        document.execCommand(cmd, false, undefined);
-        setAutosaveText("Thay đổi chưa được lưu");
-        setAutosaveColor("red");
-    };
-
     const insertStaticIllustration = () => {
         const selection = window.getSelection();
         if (selection && selection.rangeCount > 0) {
@@ -2572,21 +2233,26 @@ export default function App() {
     };
 
     const confirmInsertImage = (url: string) => {
-        if (!url) return;
+        if (!url || !contentAreaRef.current || currentView !== 'studio') return;
+        try {
+            if (!['http:', 'https:'].includes(new URL(url, window.location.href).protocol)) {
+                showToast('Hãy dùng liên kết ảnh HTTP hoặc HTTPS.'); return;
+            }
+        } catch { showToast('Liên kết ảnh không hợp lệ.'); return; }
 
         if (contentAreaRef.current) {
             contentAreaRef.current.focus();
             const sel = window.getSelection();
-            if (savedSelectionRangeRef.current && sel) {
+            if (savedSelectionRangeRef.current && sel && contentAreaRef.current.contains(savedSelectionRangeRef.current.commonAncestorContainer)) {
                 sel.removeAllRanges();
                 sel.addRange(savedSelectionRangeRef.current);
             }
         }
 
-        document.execCommand("insertHTML", false, `<div style="text-align: center; margin: 24px 0;"><img src="${url}" style="width: 85%; max-width: 750px; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);" alt="Minh họa" /></div><p><br></p>`);
+        const image = document.createElement('img'); image.src = url; image.alt = 'Minh họa';
+        document.execCommand('insertHTML', false, `<div style="text-align: center">${image.outerHTML}</div><p><br></p>`);
 
-        setAutosaveText("Thay đổi chưa được lưu");
-        setAutosaveColor("red");
+        contentAreaRef.current?.dispatchEvent(new Event('input', { bubbles: true }));
         setImageModalOpen(false);
     };
 
@@ -2675,6 +2341,12 @@ export default function App() {
                 setMobileBypassed(true);
             }} />
         );
+    }
+
+    if (currentView === 'login' || currentView === 'register') {
+        return <AuthPage mode={currentView} returnTo={authReturnTo} theme={theme}
+            onThemeChange={handleThemeChange} onLogin={handleLoginSubmit} onRegister={handleRegisterSubmit}
+            sendRegistrationOtp={sendRegistrationOtp} />;
     }
 
     return (
@@ -2824,8 +2496,6 @@ export default function App() {
                     updateUserInDatabase={updateUserInDatabase}
                     DB_KEYS={DB_KEYS}
                     setCurrentUser={setCurrentUser}
-                    setRegisterModalOpen={setRegisterModalOpen}
-                    setLoginModalOpen={setLoginModalOpen}
                     setCategoryDrawerOpen={setCategoryDrawerOpen}
                     theme={theme}
                     handleThemeChange={handleThemeChange}
@@ -3005,51 +2675,29 @@ export default function App() {
 
                 {currentView === 'studio' && (
                     <AuthorStudio
-                        onHistoryBusyChange={busy => { studioHistoryBusy.current = busy; }}
-                        onChapterRestored={chapter => {
-                            setNovels(prev => prev.map(n => n.id === chapter.novel_id ? { ...n, chapters: (n.chapters || []).map(c => c.id === chapter.id ? chapter : c) } : n));
-                            clearCache(CACHE_KEYS.novels);
-                            if (volNameRef.current) volNameRef.current.value = chapter.volume_name;
-                            if (chapterTitleRef.current) chapterTitleRef.current.value = chapter.title;
-                            if (contentAreaRef.current) {
-                                contentAreaRef.current.innerHTML = chapter.content || '';
-                                contentAreaRef.current.dataset.loadedChapterId = String(chapter.id);
-                                contentAreaRef.current.contentEditable = 'true';
-                            }
-                            setAutosaveText('Đã khôi phục thành bản nháp'); setAutosaveColor('green');
-                            showToast('Đã khôi phục bản thảo. Bản trước được giữ trong lịch sử.');
-                        }}
-                        currentUser={currentUser!}
+                        currentUser={currentUser}
                         novels={novels}
                         activeStudioNovelId={activeStudioNovelId}
                         setActiveStudioNovelId={setActiveStudioNovelId}
-                        activeStudioChapterIndex={activeStudioChapterIndex}
-                        setActiveStudioChapterIndex={setActiveStudioChapterIndex}
+                        activeStudioChapterId={activeStudioChapterId}
+                        setActiveStudioChapterId={setActiveStudioChapterId}
                         setCurrentView={setCurrentView}
-                        setActiveNovelId={setActiveNovelId}
                         setNewNovelModalOpen={setNewNovelModalOpen}
-                        setScheduleModalOpen={setScheduleModalOpen}
-                        createNewChapter={createNewChapter}
-                        saveDraft={saveDraft}
-                        publishChapter={publishChapter}
-                        deleteActiveChapter={deleteActiveChapter}
-                        deleteVolume={deleteVolume}
-                        postAuthorAnnouncement={postAuthorAnnouncement}
-                        autosaveText={autosaveText}
-                        autosaveColor={autosaveColor}
-                        setAutosaveText={setAutosaveText}
-                        setAutosaveColor={setAutosaveColor}
-                        volNameRef={volNameRef}
-                        chapterTitleRef={chapterTitleRef}
-                        contentAreaRef={contentAreaRef}
-                        formatDoc={formatDoc}
-                        insertStaticIllustration={insertStaticIllustration}
-                        announcements={announcements}
-                        handleDeleteNovel={(id) => handleDeleteNovel(id, "Tác giả tự xóa truyện")}
+                        handleDeleteNovel={id => handleDeleteNovel(id, "Tác giả tự xóa truyện")}
                         openEditNovelModal={openEditNovelModal}
-                        triggerConfirm={triggerConfirm}
                         API_BASE={API_BASE}
                         fetchWithAuth={fetchWithAuth}
+                        onRefresh={() => fetchNovels(true)}
+                        onChapterUpdated={chapter => {
+                            setNovels(prev => prev.map(n => n.id === chapter.novel_id ? {
+                                ...n, chapters: (n.chapters || []).map(c => c.id === chapter.id ? { ...c, ...chapter } : c)
+                            } : n));
+                            clearCache(CACHE_KEYS.novels);
+                        }}
+                        contentAreaRef={contentAreaRef}
+                        insertStaticIllustration={insertStaticIllustration}
+                        onAnnouncementPosted={() => { void fetchAnnouncements(true); }}
+                        showToast={showToast}
                     />
                 )}
 
@@ -3244,7 +2892,6 @@ export default function App() {
                     currentUser={currentUser}
                     setCurrentView={setCurrentView}
                     setActiveNovelId={setActiveNovelId}
-                    setLoginModalOpen={setLoginModalOpen}
                 />
             )}
 
@@ -3401,37 +3048,6 @@ export default function App() {
                     </div>
                 </div>
             )}
-            {loginModalOpen && (
-                <LoginModal
-                    loginModalOpen={loginModalOpen}
-                    setLoginModalOpen={setLoginModalOpen}
-                    setRegisterModalOpen={setRegisterModalOpen}
-                    loginUsername={loginUsername}
-                    setLoginUsername={setLoginUsername}
-                    loginPassword={loginPassword}
-                    setLoginPassword={setLoginPassword}
-                    handleLoginSubmit={handleLoginSubmit}
-                />
-            )}
-
-            {registerModalOpen && (
-                <RegisterModal
-                    registerModalOpen={registerModalOpen}
-                    setRegisterModalOpen={setRegisterModalOpen}
-                    setLoginModalOpen={setLoginModalOpen}
-                    regUsername={regUsername}
-                    setRegUsername={setRegUsername}
-                    regDisplayname={regDisplayname}
-                    setRegDisplayname={setRegDisplayname}
-                    regPassword={regPassword}
-                    setRegPassword={setRegPassword}
-                    regRole={regRole}
-                    setRegRole={setRegRole as any}
-                    handleRegisterSubmit={handleRegisterSubmit}
-                    sendRegistrationOtp={sendRegistrationOtp}
-                />
-            )}
-
             {newNovelModalOpen && (
                 <NewNovelModal
                     newNovelModalOpen={newNovelModalOpen}
@@ -3473,16 +3089,6 @@ export default function App() {
                     genres={genres}
                     submitEditNovel={submitEditNovel}
                     handleEditCoverUpload={handleEditCoverUpload as any}
-                />
-            )}
-
-            {scheduleModalOpen && (
-                <ScheduleModal
-                    scheduleModalOpen={scheduleModalOpen}
-                    setScheduleModalOpen={setScheduleModalOpen}
-                    scheduleDatetime={scheduleDatetime}
-                    setScheduleDatetime={setScheduleDatetime}
-                    submitScheduleChapter={submitScheduleChapter}
                 />
             )}
 
