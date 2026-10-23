@@ -1,382 +1,265 @@
 <p align="center">
-  <img src="public/assets/default_novel_cover.png" alt="MugenBunko Logo" width="160" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);" />
+  <img src="public/assets/default_novel_cover.png" alt="MugenBunko" width="160" />
 </p>
 
-<h1 align="center">📖 MUGENBUNKO (無限文庫)</h1>
+<h1 align="center">📖 MugenBunko — 無限文庫</h1>
 
 <p align="center">
-  <b>HỆ THỐNG ĐỌC, XUẤT BẢN VÀ MẠNG XÃ HỘI TIỂU THUYẾT ĐA NỀN TẢNG</b><br>
-  <i>Đề tài Đồ án Chuyên ngành 4 (Đồ án 4) - Ngành Công nghệ Thông tin / Kỹ thuật Phần mềm</i><br>
-  <b>Trường Đại học Công nghệ Kỹ thuật Hưng Yên (HYUTE - Hung Yen University of Technology and Engineering)</b>
+  <b>Hệ thống đọc, xuất bản và mạng xã hội tiểu thuyết đa nền tảng</b><br>
+  Đồ án chuyên ngành 4 — Trường Đại học Công nghệ Kỹ thuật Hưng Yên (HYUTE)
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/React-19.2-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React 19" />
-  <img src="https://img.shields.io/badge/Vite-8.0-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
-  <img src="https://img.shields.io/badge/TypeScript-5.3+-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/React_Native-Expo_57-000020?style=for-the-badge&logo=expo&logoColor=white" alt="Expo" />
-  <img src="https://img.shields.io/badge/Node.js-Express-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js" />
-  <img src="https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL" />
-  <img src="https://img.shields.io/badge/Socket.IO-4.8-010101?style=for-the-badge&logo=socket.io&logoColor=white" alt="Socket.IO" />
-  <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
+  <img src="https://img.shields.io/badge/React-19.2-61DAFB?logo=react&logoColor=black" alt="React 19.2" />
+  <img src="https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white" alt="Vite 8" />
+  <img src="https://img.shields.io/badge/TypeScript-6%20Web%20%2F%205%20Server-3178C6?logo=typescript&logoColor=white" alt="TypeScript 6 web / 5 server" />
+  <img src="https://img.shields.io/badge/Expo-SDK%2057-000020?logo=expo&logoColor=white" alt="Expo SDK 57" />
+  <img src="https://img.shields.io/badge/Node.js-24-339933?logo=node.js&logoColor=white" alt="Node.js 24" />
+  <img src="https://img.shields.io/badge/MySQL-8.x-4479A1?logo=mysql&logoColor=white" alt="MySQL 8.x" />
 </p>
 
----
+**Phiên bản bàn giao Đồ án 4.** Repository gồm web React, ứng dụng Expo, API Express, kiểm thử và tài liệu phục vụ báo cáo, trình diễn và bảo vệ đồ án.
 
-## 🎓 Thông Tin Đề Tài & Sinh Viên Thực Hiện
+| Thông tin | Nội dung |
+| --- | --- |
+| Đề tài | Hệ thống đọc, xuất bản và mạng xã hội tiểu thuyết đa nền tảng MugenBunko |
+| Học phần | Đồ án chuyên ngành 4 |
+| Cơ sở đào tạo | Trường Đại học Công nghệ Kỹ thuật Hưng Yên (HYUTE) |
+| Sinh viên | Nguyễn Hoàng Việt |
+| Mã số sinh viên | 10123357 |
+| Lớp | 12523W.1 |
+| Giảng viên hướng dẫn | TS. Hoàng Quốc Việt |
+| Mã nguồn | [NguyenHoangViet666/MugenBunko](https://github.com/NguyenHoangViet666/MugenBunko) |
 
-| Hạng mục | Chi tiết |
-| :--- | :--- |
-| **Đề tài** | **Hệ thống đọc, xuất bản và mạng xã hội tiểu thuyết đa nền tảng MugenBunko** |
-| **Học phần** | **Đồ án chuyên ngành 4 (Đồ án 4)** |
-| **Cơ sở đào tạo** | **Trường Đại học Công nghệ Kỹ thuật Hưng Yên (HYUTE - Hung Yen University of Technology and Engineering)** |
-| **Sinh viên thực hiện** | **Nguyễn Hoàng Việt** |
-| **Mã số sinh viên (MSV)** | **10123357** |
-| **Lớp chuyên ngành** | **12523W.1** |
-| **Giảng viên hướng dẫn (GVHD)** | **TS. Hoàng Quốc Việt** |
-| **Mã nguồn dự án** | [NguyenHoangViet666/MugenBunko](https://github.com/NguyenHoangViet666/MugenBunko.git) |
+## Mục lục
 
-> 🔑 **Tài khoản Quản trị viên mặc định (Seed Data):**
-> - **Username:** `MugenBunko`
-> - **Password:** `123456`
-> - **Quyền hạn:** `admin`, `reader`
+1. [Giới thiệu và tính năng](#1-giới-thiệu-và-tính-năng)
+2. [Kiến trúc và công nghệ](#2-kiến-trúc-và-công-nghệ)
+3. [Cài đặt và chạy local](#3-cài-đặt-và-chạy-local)
+4. [Email OTP và mật khẩu](#4-email-otp-và-mật-khẩu)
+5. [Quy định cộng đồng và bầu chọn mod](#5-quy-định-cộng-đồng-và-bầu-chọn-mod)
+6. [Dữ liệu và bảo mật](#6-dữ-liệu-và-bảo-mật)
+7. [Kiểm thử và build](#7-kiểm-thử-và-build)
+8. [Triển khai production bằng Docker](#8-triển-khai-production-bằng-docker)
+9. [Cấu trúc repository và tài liệu](#9-cấu-trúc-repository-và-tài-liệu)
+10. [Xử lý lỗi thường gặp và phạm vi hiện tại](#10-xử-lý-lỗi-thường-gặp-và-phạm-vi-hiện-tại)
 
----
+## 1. Giới thiệu và tính năng
 
-## 📌 Mục Lục
+**MugenBunko (無限文庫 — Vô Hạn Văn Khố)** là nền tảng đọc và xuất bản Light Novel/Web Novel, kết hợp thư viện cá nhân, công cụ sáng tác và cộng đồng. Web và mobile dùng chung API, tài khoản và dữ liệu. Phân quyền gồm `reader`, `author`, `moderator` và `admin`; một tài khoản có thể có nhiều vai trò.
 
-1. [Giới Thiệu Đề Tài](#1-giới-thiệu-đề-tài)
-2. [Mục Tiêu & Ý Nghĩa Thực Tiễn](#2-mục-tiêu--ý-nghĩa-thực-tiễn)
-3. [Kiến Trúc Tổng Thể Hệ Thống](#3-kiến-trúc-tổng-thể-hệ-thống)
-4. [Các Tính Năng Chính](#4-các-tính-năng-chính)
-   - [Dành cho Độc giả (Reader)](#41-dành-cho-độc-giả-reader)
-   - [Dành cho Tác giả (Author Studio)](#42-dành-cho-tác-giả-author-studio)
-   - [Diễn đàn & Mạng xã hội (Community & Social)](#43-diễn-đàn--mạng-xã-hội-community--social)
-   - [Kiểm duyệt & Quản trị (Mod & Admin Dashboard)](#44-kiểm-duyệt--quản-trị-mod--admin-dashboard)
-5. [Ngăn Xếp Công Nghệ (Tech Stack)](#5-ngăn-xếp-công-nghệ-tech-stack)
-6. [Mô Hình Dữ Liệu (Database Design)](#6-mô-hình-dữ-liệu-database-design)
-7. [Bảo Mật & Tối Ưu Hiệu Năng](#7-bảo-mật--tối-ưu-hiệu-năng)
-8. [Cấu Trúc Thư Mục Dự Án](#8-cấu-trúc-thư-mục-dự-án)
-9. [Hướng Dẫn Cài Đặt & Triển Khai](#9-hướng-dẫn-cài-đặt--triển-khai)
-   - [Yêu cầu tiên quyết](#91-yêu-cầu-tiên-quyết)
-   - [Cấu hình biến môi trường (.env)](#92-cấu-hình-biến-môi-trường-env)
-   - [Khởi chạy bằng Docker Compose (Khuyên dùng)](#93-khởi-chạy-bằng-docker-compose-khuyên-dùng)
-   - [Khởi chạy thủ công từng dịch vụ (Local Development)](#94-khởi-chạy-thủ-công-từng-dịch-vụ-local-development)
+### Tài khoản và độc giả
 
----
+- Đăng ký bằng email và OTP; đăng nhập bằng tên tài khoản hoặc email. Web có trang đăng nhập, đăng ký và quên mật khẩu riêng, giữ trang đích sau khi xác thực.
+- Khôi phục mật khẩu bằng OTP email; đổi mật khẩu chủ động trong hồ sơ. Đổi thành công yêu cầu đăng nhập lại trên các thiết bị.
+- Khám phá, tìm kiếm và lọc truyện; xem chi tiết, thể loại, thẻ, mục lục theo tập và đánh giá.
+- Reader tùy chỉnh nền, font, cỡ chữ và giãn dòng; chuyển chương, lưu vị trí theo đoạn và đồng bộ tiến độ theo tài khoản. Vị trí chưa gửi được sẽ thử đồng bộ khi có mạng.
+- Tủ sách, lịch sử đọc, bookmark và bộ sưu tập công khai/riêng tư có liên kết chia sẻ. Trang chủ có lối tiếp tục tác phẩm đang đọc.
+- Bình luận, trả lời, báo cáo và đánh giá sao. Điều kiện hoàn thành chương để đánh giá được kiểm tra ở server.
+- Web có ba theme Washi, Sepia, Charcoal và bố cục cho điện thoại, máy tính bảng, desktop; hiệu ứng trang chủ/giới thiệu hỗ trợ tùy chọn giảm chuyển động của thiết bị.
 
-## 1. Giới Thiệu Đề Tài
+### Author Studio
 
-**MugenBunko (無限文庫 - Vô Hạn Văn Khố)** là một nền tảng xuất bản và đọc tiểu thuyết số hiện đại (Light Novel & Web Novel) hỗ trợ đa nền tảng (**Web SPA** và **Mobile Application**). Dự án được thiết kế theo kiến trúc hướng dịch vụ với sự kết hợp giữa **RESTful API**, **Websocket Real-time** và cơ sở dữ liệu quan hệ **MySQL 8.0**.
+- Đăng ký quyền tác giả và chờ admin phê duyệt; tạo, sửa và quản lý tác phẩm theo tập/chương.
+- Soạn thảo, xem trước, chế độ tập trung, thống kê số từ và xuất bản dự phòng TXT/MD trên web.
+- Lưu nháp, gửi duyệt, hẹn giờ phát hành; rút chương về nháp sẽ hủy lịch đăng.
+- Bản đang soạn được lưu cục bộ theo tài khoản/chương; web tự lưu nháp mỗi 30 giây và hỗ trợ Ctrl+S/⌘S. Nội dung sửa chương đã đăng được giữ trên máy đến khi chủ động cập nhật.
+- Kiểm tra phiên bản để tránh ghi đè cập nhật đồng thời; xem và khôi phục tối đa 50 phiên bản nội dung gần nhất. Khôi phục tạo bản nháp và giữ nội dung hiện tại trong lịch sử.
+- Tìm/lọc chương, đổi tên tập, chuyển chương giữa các tập và sắp xếp mục lục; thứ tự được áp dụng cả ở Reader.
 
-Dự án ra đời nhằm giải quyết bài toán thiếu hụt các nền tảng đọc truyện mở, chuẩn hóa trải nghiệm người dùng, kết hợp mô hình sáng tác tự do có kiểm duyệt với mạng xã hội giao lưu trực tiếp giữa tác giả và độc giả.
+### Cộng đồng, kiểm duyệt và quản trị
 
----
+- Diễn đàn có chủ đề, ảnh, lượt thích và bình luận; hồ sơ, theo dõi tác giả, kết bạn, chat 1–1, trạng thái online và thông báo qua Socket.IO.
+- Cấp độ, XP, điểm tích lũy, sự kiện và thông báo tác giả.
+- Mod duyệt/trả chương về nháp, ẩn nội dung đã đăng và xử lý báo cáo bình luận. API kiểm tra quyền cho từng thao tác; khóa/mở tài khoản thuộc quyền admin.
+- Admin quản lý tài khoản, vai trò, yêu cầu tác giả, tác phẩm, thể loại, gộp thẻ, sự kiện và quy định cộng đồng. Dashboard có tìm kiếm, lọc và phân trang.
+- Bộ quy định mặc định gồm **25 điều**; trang đọc có mục lục, tìm kiếm không dấu và liên kết đến từng điều. Admin soạn nháp, xem trước và chủ động công bố.
+- Bầu chọn mod gồm ứng cử/đề cử có đồng ý, kiểm tra hồ sơ, phiếu cộng đồng, đánh giá hội đồng, chốt kết quả, khiếu nại và bổ nhiệm theo nhiệm kỳ.
 
-## 2. Mục Tiêu & Ý Nghĩa Thực Tiễn
+Ứng dụng mobile có Reader, tủ sách, bộ sưu tập, cộng đồng, Studio và các màn hình quản lý theo vai trò. Chi tiết cách chạy và phạm vi từng luồng ở [mobile/README.md](mobile/README.md). Các biểu mẫu quên/đổi mật khẩu mới được triển khai trên web; mobile dùng chung backend xác thực.
 
-* **Trải nghiệm đọc xuất sắc:** Cung cấp giao diện trình đọc (Reader) chuyên sâu với khả năng cá nhân hóa cao (kích thước font chữ, chế độ tương phản nền, khoảng cách dòng, chuyển chương linh hoạt).
-* **Không gian sáng tác chuyên nghiệp (Author Studio):** Hỗ trợ tác giả quản lý theo cấu trúc Quyển (Volume) - Chương (Chapter), lưu bản nháp, lên lịch phát hành tự động (Scheduled Release) và thống kê lượt đọc.
-* **Cộng đồng tương tác thời gian thực:** Tích hợp diễn đàn thảo luận, bình luận đa cấp độ lồng nhau (nested comments), đánh giá truyện (review/star rating) và chat trực tiếp (Direct Message) qua Socket.IO.
-* **Hỗ trợ đa nền tảng:** Đồng bộ hóa trải nghiệm giữa Web (React 19) và Mobile (React Native / Expo 57).
-* **Quản trị & Kiểm duyệt chặt chẽ (RBAC):** Hệ thống phân quyền 4 cấp độ (`reader`, `author`, `moderator`, `admin`) giúp bảo đảm nội dung luôn trong sạch, an toàn.
+## 2. Kiến trúc và công nghệ
 
----
-
-## 3. Kiến Trúc Tổng Thể Hệ Thống
-
-```
-                     ┌──────────────────────────────────────────────┐
-                     │                 CLIENT LAYER                 │
-                     │  ┌────────────────────┐ ┌──────────────────┐ │
-                     │  │   React 19 (Web)   │ │ React Native/Expo│ │
-                     │  │   Vite + TS + CSS  │ │   Mobile App     │ │
-                     │  └─────────┬──────────┘ └────────┬─────────┘ │
-                     └────────────┼─────────────────────┼───────────┘
-                                  │ HTTP/REST           │ WebSocket
-                                  ▼                     ▼
-                     ┌──────────────────────────────────────────────┐
-                     │              API & SERVER LAYER              │
-                     │  ┌────────────────────────────────────────┐  │
-                     │  │      Node.js + Express (TypeScript)    │  │
-                     │  │ ├─ JWT Auth & Role Middleware (RBAC)   │  │
-                     │  │ ├─ OTP Mailer Service (Nodemailer)     │  │
-                     │  │ ├─ Rate Limiting & Helmet Shield       │  │
-                     │  │ └─ Socket.IO Event Server              │  │
-                     │  └───────────────────┬────────────────────┘  │
-                     └──────────────────────┼───────────────────────┘
-                                            │
-                                            ▼
-                     ┌──────────────────────────────────────────────┐
-                     │              DATA & CLOUD LAYER              │
-                     │  ┌────────────────────┐ ┌──────────────────┐ │
-                     │  │    MySQL 8.0       │ │  Cloudinary CDN  │ │
-                     │  │  (Relational DB)   │ │  (Media Assets)  │ │
-                     │  └────────────────────┘ └──────────────────┘ │
-                     └──────────────────────────────────────────────┘
+```text
+React Web (Vite) ──┐
+                  ├── HTTP REST / Socket.IO ── Express API ── MySQL
+Expo Mobile ──────┘                                ├── SMTP / Nodemailer
+                                                  └── Cloudinary hoặc uploads
 ```
 
----
+Backend là một ứng dụng Express chia theo module nghiệp vụ. Khi build triển khai, Express phục vụ cả web tĩnh và API; môi trường development chạy Vite và backend riêng.
 
-## 4. Các Tính Năng Chính
+| Thành phần | Công nghệ trong repository |
+| --- | --- |
+| Web | React 19.2, Vite 8, TypeScript 6, CSS thuần |
+| Mobile | Expo SDK 57, React Native 0.86, Expo Router, TypeScript 6 |
+| Backend | Node.js 24, Express 4, TypeScript 5, `tsx` |
+| Cơ sở dữ liệu | MySQL 8.x, `mysql2/promise`, connection pool; Compose dùng MySQL 8.4 |
+| Xác thực | JWT, bcrypt, cookie HttpOnly trên web; SecureStore trên native |
+| Thời gian thực | Socket.IO 4.8 |
+| Email và ảnh | Nodemailer qua SMTP; Cloudinary hoặc thư mục upload cục bộ |
+| Đóng gói và kiểm thử | Docker Compose, Node test runner, kiểm thử trình duyệt qua Chromium/Edge headless |
 
-### 4.1. Dành cho Độc giả (Reader)
-- 🔍 **Khám phá thông minh:** Bộ lọc truyện đa tiêu chí theo thể loại (Genres), số chương, trạng thái xuất bản, lượt xem, điểm đánh giá.
-- 📖 **Trình đọc chuẩn mực (Chapter Reader):** Tùy chỉnh chế độ đọc (màu nền, cỡ chữ, font chữ, giãn dòng), tự động lưu lịch sử đọc và tiến độ từng chương.
-- 📚 **Tủ sách cá nhân (Library):** Đánh dấu truyện yêu thích (Bookmark), nhận thông báo ngay khi có chương mới phát hành.
-- ⭐ **Đánh giá & Bình luận:** Chấm điểm sao (1 - 5 sao), viết nhận xét chuyên sâu, bình luận lồng nhau và báo cáo nội dung tiêu cực.
-- 🛡️ **Cơ chế chống gian lận lượt xem:** Sử dụng IP Cooldown Rate-limiting để ngăn chặn việc spam tăng view ảo.
+Web điều hướng bằng URL hash trong `src/App.tsx` (ví dụ `#/login`), còn mobile dùng Expo Router. Phiên bản dependency cụ thể được khóa trong ba file `package-lock.json`.
 
-### 4.2. Dành cho Tác giả (Author Studio)
-- 📝 **Soạn thảo & Tổ chức tác phẩm:** Phân chia truyện theo nhiều Quyển (Volume) và các Chương (Chapter).
-- ⏱️ **Lên lịch đăng tự động:** Hẹn giờ phát hành chương theo thời gian thực tế (`scheduled_release`).
-- 💾 **Bản nháp & Xuất bản:** Chế độ lưu nháp (`draft`) trước khi chính thức gửi kiểm duyệt hoặc xuất bản (`published`).
-- **Bảo toàn bản thảo:** phục hồi bản chưa lưu theo từng tài khoản/chương, lưu nhanh bằng Ctrl+S hoặc ⌘S, chặn ghi đè khi bản máy chủ đã thay đổi. Nháp tự lưu mỗi 30 giây; phần sửa chương đã đăng được giữ trên máy cho đến khi bấm “Cập nhật chương”.
-- **Xem trước & tập trung viết:** xem bản đang soạn với nền đọc, giữ nguyên editor khi đổi chế độ, xuất dự phòng TXT/MD và khôi phục lịch sử phiên bản.
-- **Quản lý mục lục:** tìm/lọc đủ bốn trạng thái, thu gọn tập, đổi tên tập, chuyển nhiều chương giữa các tập và lưu thứ tự chương bằng nút lên/xuống. Thứ tự mới được dùng cả ở Reader.
-- **Lịch đăng & kiểm duyệt:** tác giả gửi duyệt chương kèm lịch; lưu thay đổi giữ nguyên lịch đã duyệt. Rút chương về nháp hủy lịch đăng. Ngày giờ trong hộp thoại dùng múi giờ hiển thị bên cạnh ô nhập.
-- 📊 **Thống kê:** Theo dõi số từ, lượt đọc, số lượng bookmark và tương tác bạn đọc.
+## 3. Cài đặt và chạy local
 
-### 4.3. Diễn đàn & Mạng xã hội (Community & Social)
-- 💬 **Diễn đàn (Forum):** Tạo chủ đề trao đổi theo danh mục, đính kèm hình ảnh, thả tim (Like) và thảo luận.
-- 🤝 **Hệ thống kết bạn (Social & Friends):** Gửi lời mời kết bạn, quản lý danh sách bạn bè, hiển thị trạng thái online/offline.
-- ⚡ **Chat trực tiếp (Direct Message - ChatWidget):** Trò chuyện 1-1 theo thời gian thực sử dụng Socket.IO.
-- 🔔 **Thông báo tức thời (Real-time Notifications):** Nhận thông báo khi có bình luận phản hồi, chương mới phát hành, hoặc tin nhắn mới.
-- 🎮 **Gamification:** Hệ thống cấp độ (`level`), kinh nghiệm (`xp`) và điểm tích lũy (`coins`) thưởng khi tham gia hoạt động.
+### Yêu cầu
 
-### 4.4. Kiểm duyệt & Quản trị (Mod & Admin Dashboard)
+- Node.js **24.x**, npm và MySQL **8.0 trở lên** đang chạy.
+- Tài khoản MySQL development có quyền tạo database/bảng và cập nhật schema. Các bộ kiểm thử API cần thêm quyền tạo/xóa database thử nghiệm.
+- Mobile: thiết bị hoặc emulator phù hợp; build native Android cần Android SDK, build iOS cần macOS/Xcode. Expo Go chỉ dùng khi tương thích SDK và các module của dự án.
 
-- 🛡️ **Mod Dashboard:**
-  - Sidebar dọc chia năm tab: Tổng quan, Chờ duyệt, Báo cáo, Tài khoản và Nội dung đã đăng; cùng hệ giao diện với Admin và menu thu gọn trên màn hình nhỏ.
-  - Tìm kiếm/phân trang hàng đợi, xem nội dung chương ngay trong trang, thử tải lại khi lỗi, duyệt xuất bản hoặc trả chương về nháp. Nội dung đã đăng có thể được ẩn để tác giả chỉnh sửa.
-  - Báo cáo hiển thị bình luận, người gửi và lý do; giữ hoặc xóa đúng bình luận kể cả khi đang lọc danh sách.
-  - Tab Tài khoản hỗ trợ tra cứu/lọc trạng thái. Chỉ Admin có thao tác khóa/mở khóa theo quyền API hiện có; Mod không được cấp thêm quyền quản trị.
-  - Giữ danh sách khi mất mạng, có thử lại và khóa nút trong lúc xử lý; hỗ trợ bàn phím và các theme Washi/Sepia/Charcoal.
-- 👑 **Admin Dashboard:**
-  - Sidebar dọc chia sáu tab: Tổng quan, Tài khoản, Tác phẩm, Danh mục, Sự kiện và Trang chủ. Trên màn hình nhỏ, menu dọc có thể thu gọn.
-  - Tổng quan hiển thị số tài khoản, tác phẩm, chương chờ duyệt và báo cáo; các hàng công việc mở đúng khu vực cần xử lý.
-  - Tìm kiếm, lọc và phân trang tài khoản/tác phẩm; phân quyền thành viên và phê duyệt đơn đăng ký tác giả (`author_request`). Khu vực kiểm duyệt vẫn phụ trách khóa/mở khóa tài khoản.
-  - Thêm/xóa thể loại, gộp thẻ, soạn nháp, xem trước, phát hành/dừng và xóa sự kiện. Nội dung đang soạn được giữ khi đổi tab hoặc lưu thất bại.
-  - Tab Trang chủ chọn banner tiêu điểm trên trình duyệt hiện tại. Đây là lựa chọn cục bộ, chưa phải cấu hình banner dùng chung cho mọi người.
-  - Hỗ trợ bàn phím trong sidebar, các theme Washi/Sepia/Charcoal, trạng thái đang xử lý và tải lỗi có thử lại. Xem trước sự kiện (`#/event/:id`) và quản lý quy định (`#/manage-rules`) hỗ trợ tải lại URL.
+### Cài web và backend
 
----
+Các lệnh bên dưới dùng PowerShell, chạy từ một bản clone mới:
 
-## 5. Ngăn Xếp Công Nghệ (Tech Stack)
-
-| Hạng mục | Công nghệ sử dụng | Mục đích / Vai trò |
-| :--- | :--- | :--- |
-| **Web Frontend** | **React 19**, TypeScript, Vite 8 | Xây dựng giao diện Web SPA tốc độ cao, type-safe |
-| **Web Styling** | Vanilla CSS, Glassmorphism, Micro-animations | Thiết kế giao diện Dark Cyber / Anime phong cách độc quyền |
-| **Mobile App** | **React Native**, **Expo SDK 57**, Expo Router | Ứng dụng di động iOS/Android mượt mà |
-| **Backend API** | **Node.js**, **Express 4**, TypeScript, tsx | RESTful API Server xử lý nghiệp vụ trung tâm |
-| **Real-time Engine**| **Socket.IO 4.8** | Xử lý tin nhắn tức thì, cập nhật thông báo và trạng thái người dùng |
-| **Database** | **MySQL 8.0** | Lưu trữ dữ liệu quan hệ với cấu trúc bảng chuẩn hóa |
-| **Authentication** | **JWT (JSON Web Token)**, **Bcrypt.js** | Xác thực phiên làm việc, mã hóa mật khẩu người dùng |
-| **Email Service** | **Nodemailer** | Gửi mã OTP xác thực đăng ký tài khoản qua Gmail |
-| **Cloud Media** | **Cloudinary** | Lưu trữ và phân phối tài nguyên ảnh (bìa truyện, avatar) |
-| **Bảo mật** | **Helmet**, **CORS**, **Express Rate Limit** | Phòng chống XSS, Clickjacking, Brute-force & DDoS |
-| **DevOps** | **Docker**, **Docker Compose** | Đóng gói môi trường đồng nhất giữa dev và production |
-
----
-
-## 6. Mô Hình Dữ Liệu (Database Design)
-
-Cơ sở dữ liệu bao gồm **22 bảng** quan hệ với tính toàn vẹn tham chiếu chặt chẽ:
-
-```
- users ◄───(1:N)─── user_roles
-   ▲
-   ├───────(1:N)─── novels ◄───(1:N)─── chapters
-   ├───────(1:N)─── bookmarks
-   ├───────(1:N)─── follows
-   ├───────(1:N)─── comments ◄───(1:N)─── reports
-   ├───────(1:N)─── reviews
-   ├───────(1:N)─── forum_posts ◄───(1:N)─── forum_comments
-   ├───────(1:N)─── forum_post_likes
-   ├───────(1:N)─── notifications
-   ├───────(M:N)─── friends
-   └───────(1:N)─── messages (sender_id, receiver_id)
+```powershell
+git clone https://github.com/NguyenHoangViet666/MugenBunko.git
+cd MugenBunko
+npm ci
+npm --prefix server ci
+Copy-Item server/.env.example server/.env
 ```
 
-### Các bảng dữ liệu cốt lõi:
-- `users`: Quản lý tài khoản, mật khẩu băm, email, level, xp, coins, trạng thái.
-- `user_roles`: Hỗ trợ mô hình một người dùng sở hữu nhiều vai trò (RBAC).
-- `novels`: Thông tin tác phẩm, tác giả (`author_id`), thể loại, điểm trung bình, số lượt xem.
-- `chapters`: Nội dung chương (`LONGTEXT`), trạng thái duyệt (`draft`, `published`, `scheduled`), lịch hẹn phát hành.
-- `comments`: Lưu trữ bình luận hỗ trợ 2 cấp (`parent_id`).
-- `forum_posts` & `forum_comments`: Cấu trúc diễn đàn giao lưu người dùng.
-- `messages`: Lưu trữ tin nhắn trực tiếp giữa 2 người dùng.
-- `read_cooldowns`: Ghi nhận IP đọc truyện để kiểm soát lượt view hợp lệ.
+Điền kết nối MySQL, `JWT_SECRET` và SMTP trong `server/.env`. Backend luôn đọc file này kể cả khi chạy lệnh từ thư mục gốc. Có thể sinh JWT secret riêng bằng:
 
----
-
-## 7. Bảo Mật & Tối Ưu Hiệu Năng
-
-1. **Bảo mật xác thực & Đăng ký tài khoản:**
-   - Đăng ký qua Email với cơ chế **OTP (One-Time Password)** giới hạn thời gian hết hạn qua Gmail.
-   - Mật khẩu yêu cầu độ phức tạp cao (chữ hoa, số, ký tự đặc biệt) và được băm bằng thuật toán **Bcrypt** (Salt rounds = 10).
-2. **Kiểm soát truy cập (RBAC Middleware):**
-   - Middleware kiểm tra chữ ký token JWT và vai trò người dùng trước khi cấp quyền vào các endpoint nhạy cảm (`auth`, `requireRole('author')`, `requireRole('admin')`, `requireRole('moderator')`).
-3. **Phòng chống tấn công mạng:**
-   - **Helmet**: Tự động thêm các HTTP security headers chống giả mạo clickjacking và XSS.
-   - **Express Rate Limit**: Giới hạn tần suất request theo IP (đặc biệt tại các cổng đăng nhập, đăng ký và tải ảnh lên).
-4. **Tối ưu trải nghiệm:**
-   - Tự động nén ảnh và phân giải qua Cloudinary CDN.
-   - Kết nối cơ sở dữ liệu qua **MySQL Connection Pool** (`mysql2/promise`) giải phóng kết nối tự động.
-
----
-
-## 8. Cấu Trúc Thư Mục Dự Án
-
-```
-mugenbunko-react/
-├── docker-compose.yml       # Cấu hình container Docker (App + MySQL 8.0)
-├── Dockerfile               # Multi-stage Docker build cho cả Frontend & Backend
-├── package.json             # Root scripts điều phối đồng thời các service
-│
-├── server/                  # BACKEND SERVER (Node.js + Express + TypeScript)
-│   ├── middleware/          # auth.ts (JWT), roles.ts (RBAC)
-│   ├── routes/              # admin.ts, auth.ts, novels.ts, chapters.ts,
-│   │                        # forum.ts, mod.ts, social.ts, reviews.ts, v.v.
-│   ├── schema.sql           # Kịch bản khởi tạo CSDL MySQL 22 bảng + Seed Data
-│   ├── server.ts            # Entrypoint Backend & Khởi tạo Socket.IO
-│   └── package.json
-│
-├── src/                     # WEB FRONTEND (React 19 + TypeScript + Vite)
-│   ├── components/          # Header, Footer, ChatWidget, Modals, Icons
-│   ├── pages/               # Home, Explore, NovelDetail, ChapterReader,
-│   │                        # AuthorStudio, AdminDashboard, ModDashboard, Forum, Library
-│   ├── App.tsx              # Điều hướng trang (React Router)
-│   └── index.css            # Toàn bộ Design System & Theme Styling
-│
-└── mobile/                  # MOBILE APP (React Native + Expo 57)
-    ├── app/                 # Expo Router file-based navigation ((tabs), reader, novel)
-    ├── src/                 # Services (API, Socket), Components, Context
-    ├── package.json
-    └── app.json             # Cấu hình Expo Application
+```powershell
+node -e "console.log(require('node:crypto').randomBytes(48).toString('hex'))"
 ```
 
----
+| Biến | Cách dùng local |
+| --- | --- |
+| `PORT` | Cổng backend, mặc định `5000` |
+| `NODE_ENV` | `development` |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Kết nối MySQL của máy chạy backend |
+| `DB_POOL_SIZE`, `DB_QUEUE_LIMIT` | Giới hạn pool và hàng đợi; mặc định `10` và `100` |
+| `JWT_SECRET` | Chuỗi ngẫu nhiên riêng, giữ ổn định giữa các lần khởi động |
+| `FRONTEND_URL` | Origin web, mặc định mẫu là `http://localhost:5173` |
+| `PUBLIC_URL` | URL backend dùng tạo liên kết ảnh, ví dụ `http://localhost:5000` |
+| `SMTP_*`, `DEV_OTP` | Cấu hình email ở mục 4 |
+| `CLOUDINARY_*` | Cấu hình Cloudinary nếu dùng; khi chưa cấu hình, ảnh được lưu cục bộ |
 
-## 9. Hướng Dẫn Cài Đặt & Triển Khai
+```powershell
+npm run dev
+```
 
-### 9.1. Yêu cầu tiên quyết
-- **Node.js** 24.x và **npm** >= 10.x
-- **MySQL** >= 8.0 (nếu chạy local không qua Docker)
-- **Docker** & **Docker Compose** (khuyên dùng để chạy tự động toàn bộ)
-- Thiết bị di động cài đặt app **Expo Go** (nếu muốn test Mobile App)
+- Web: `http://localhost:5173`.
+- API: `http://localhost:5000/api`.
+- Kiểm tra kết nối backend/database: `http://localhost:5000/healthz`.
 
-### 9.2. Cấu hình biến môi trường (.env)
-Chạy local: sao chép `server/.env.example` thành `server/.env` và điền cấu hình tại đó; backend đọc file này cả khi chạy từ thư mục gốc. Các biến dành cho frontend/Vite đặt ở `.env` tại thư mục gốc. Chạy Docker production dùng `.env.production` theo phần triển khai production bên dưới.
+Backend development tự tạo database/schema còn thiếu và chạy các migration bổ sung. **Không cần import `server/schema.sql` để khởi động một database mới.** File SQL có phần seed/reset dành cho development/test; import toàn bộ có thể xóa dữ liệu hiện có. Khởi tạo tự động không tạo tài khoản admin hay dữ liệu truyện mẫu.
+
+Web mặc định gọi `http://localhost:5000/api` khi development và `/api` khi build. Nếu đổi API, đặt `VITE_API_BASE` trong `.env` ở thư mục gốc rồi khởi động lại Vite/build lại web. Chỉ đưa cấu hình công khai vào biến `VITE_*`.
+
+### Tạo admin đầu tiên
+
+Sau khi cấu hình MySQL, chạy trong terminal PowerShell tại thư mục gốc:
+
+```powershell
+npm --prefix server run build
+$env:ADMIN_USERNAME = Read-Host 'Tên đăng nhập admin'
+$adminPassword = Read-Host 'Mật khẩu admin: ít nhất 16 ký tự, tối đa 72 byte' -AsSecureString
+$env:ADMIN_PASSWORD = [System.Net.NetworkCredential]::new('', $adminPassword).Password
+npm --prefix server run create:admin
+Remove-Item Env:ADMIN_PASSWORD, Env:ADMIN_USERNAME
+$adminPassword.Dispose()
+```
+
+Lệnh tạo tài khoản mới với quyền `reader` và `admin`; không ghi đè hoặc nâng quyền tài khoản đã tồn tại. **Bản khởi tạo hiện tại không có tài khoản/mật khẩu admin mặc định.** Tài khoản chưa gắn email có thể đổi mật khẩu bằng mật khẩu hiện tại; khôi phục qua email cần email đã gắn với tài khoản.
+
+### Chạy mobile
+
+```powershell
+npm --prefix mobile ci
+Copy-Item mobile/.env.example mobile/.env
+npm run dev:mobile
+```
+
+Điền `EXPO_PUBLIC_API_URL` bằng URL backend mà điện thoại truy cập được, ví dụ `http://192.168.1.10:5000`; `EXPO_PUBLIC_WEB_URL` là URL web để chia sẻ liên kết. Dùng cùng mạng khi chạy qua LAN và cấu hình `PUBLIC_URL` để ảnh cũng truy cập được từ điện thoại. Thay đổi `.env` cần khởi động lại Metro; hướng dẫn xóa cache và build native ở [tài liệu mobile](mobile/README.md).
+
+`npm run dev:mobile` chỉ chạy Expo; giữ backend chạy ở terminal khác hoặc dùng `npm run dev:all` để chạy web, backend và Expo cùng lúc. Không đặt secret vào biến `EXPO_PUBLIC_*` vì chúng được đóng vào bundle.
+
+## 4. Email OTP và mật khẩu
+
+### Gửi email thật
+
+Điền trong `server/.env` với tài khoản SMTP của môi trường chạy:
 
 ```env
-# Server Configuration
-PORT=5000
-HOST_PORT=5000
-JWT_SECRET=
-
-# Database Configuration (Local hoặc Docker)
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=your_mysql_password
-DB_NAME=mugenbunko
-
-# Mailer OTP Verification (Gmail App Password)
 DEV_OTP=false
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=your_email@gmail.com
-SMTP_PASS=your_gmail_app_password
-
-# Cloudinary Storage
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
+SMTP_PASS=your_app_password
 ```
 
-OTP gửi email thật cần đủ `SMTP_USER` và `SMTP_PASS`; tên cũ `EMAIL_USER`/`EMAIL_PASS` không được backend sử dụng. Với Gmail, dùng [App Password theo hướng dẫn Google](https://support.google.com/accounts/answer/185833) của tài khoản đã bật xác minh hai bước. Điền thông tin trực tiếp trong `server/.env` (file đã được Git bỏ qua), sau đó khởi động lại backend. Nếu dùng cổng `465`, đặt `SMTP_SECURE=true`; cổng `587` dùng `false` để nâng cấp kết nối qua STARTTLS.
+Tên biến được sử dụng là `SMTP_USER`/`SMTP_PASS`; `EMAIL_USER`/`EMAIL_PASS` cũ không có tác dụng. Gmail dùng App Password theo [hướng dẫn Google](https://support.google.com/accounts/answer/185833) của tài khoản đã bật xác minh hai bước. Cổng `587` dùng STARTTLS (`SMTP_SECURE=false`); cổng `465` dùng TLS ngay khi kết nối (`SMTP_SECURE=true`). Sau khi đổi cấu hình, khởi động lại backend.
 
-Chạy `npm run check:smtp` từ thư mục gốc để kiểm tra cấu hình, kết nối và xác thực SMTP mà không gửi email. Lệnh không in mật khẩu hoặc mã OTP; kết nối thành công chưa bảo đảm email sẽ vào hộp thư đến. Nếu chỉ thử local khi chưa có SMTP, có thể chủ động đặt `DEV_OTP=true`: mã được điền sẵn trên web và giao diện nói rõ chưa gửi email thật. Khi có SMTP hợp lệ, OTP chỉ được gửi qua email và không trả về JSON, kể cả khi cờ thử nghiệm đang bật. Production không cho phép lấy OTP qua chế độ thử nghiệm.
-
-Mẫu thư xác thực ở `server/emails/registrationOtp.ts`, gồm HTML có thương hiệu MugenBunko và bản văn bản thuần chứa cùng mã. Thư dùng tên người gửi “MugenBunko” cùng địa chỉ SMTP đã cấu hình; bố cục bảng, CSS nội tuyến và điều chỉnh màn hình nhỏ. Mã được giữ thành một chuỗi 6 số để sao chép; không chèn vào tiêu đề hoặc phần xem trước hộp thư. Mẫu không tải ảnh/font ngoài và không có mã theo dõi. Thay mẫu áp dụng cho email gửi mới, không thay đổi email đã nhận.
-
----
-
-### 9.3. Khởi chạy bằng Docker Compose (Khuyên dùng)
-Dựng toàn bộ Database và Ứng dụng Backend/Frontend Web chỉ với một lệnh:
-
-```bash
-docker-compose up --build -d
-```
-- **Web App**: Truy cập tại `http://localhost:5000`
-- **MySQL Container**: Mở tại cổng `3307` (hoặc `3306`)
-
----
-
-### 9.4. Khởi chạy thủ công từng dịch vụ (Local Development)
-
-#### Bước 1: Khởi tạo Database
-Import file CSDL mẫu vào MySQL:
-```bash
-mysql -u root -p < server/schema.sql
+```powershell
+npm run check:smtp
 ```
 
-#### Bước 2: Cài đặt Dependencies
-```bash
-# Cài đặt thư viện cho Web Root
-npm install
+Lệnh kiểm tra kết nối và xác thực SMTP, **không gửi email**. Kết quả thành công chưa bảo đảm thư vào hộp thư đến; kiểm tra cả thư mục spam khi thử luồng đăng ký/khôi phục.
 
-# Cài đặt thư viện cho Server Backend
-cd server && npm install && cd ..
+Nếu thử local khi chưa có SMTP, chủ động đặt `DEV_OTP=true`: web hiển thị mã thử nghiệm và nói rõ chưa gửi thư. Khi có SMTP, OTP không được trả về JSON. Production luôn tắt cơ chế trả mã thử nghiệm, kể cả khi cờ này được đặt thành `true`.
 
-# Cài đặt thư viện cho Mobile App
-cd mobile && npm install && cd ..
-```
+Mẫu thư tại [server/emails/registrationOtp.ts](server/emails/registrationOtp.ts) gồm email xác thực, mã khôi phục và thông báo đổi mật khẩu, với HTML mang thương hiệu MugenBunko và bản text dự phòng. Có thể sửa bố cục/nội dung và tên hiển thị người gửi; địa chỉ gửi phụ thuộc tài khoản SMTP. Thư không tải ảnh/font ngoài, không chèn OTP vào tiêu đề và không gửi mật khẩu. Mẫu mới áp dụng cho email gửi sau khi cập nhật.
 
-#### Bước 3: Chạy ứng dụng
+### Luồng tài khoản trên web
 
-- **Chạy đồng thời cả Web Frontend và Backend Server:**
-  ```bash
-  npm run dev
-  ```
-  - Frontend Web: `http://localhost:5173`
-  - Backend API: `http://localhost:5000`
+| Chức năng | Vị trí / API |
+| --- | --- |
+| Đăng nhập | `#/login` → `POST /api/auth/login` |
+| Đăng ký | `#/register` → `POST /api/auth/send-otp`, `POST /api/auth/register` |
+| Quên mật khẩu | `#/forgot-password` → `POST /api/auth/forgot-password` |
+| Đặt lại mật khẩu | Nhập email, OTP và mật khẩu mới → `POST /api/auth/reset-password` |
+| Đổi mật khẩu chủ động | Hồ sơ → Thông tin cơ bản → Mật khẩu & bảo mật → `POST /api/auth/change-password` |
 
-- **Chạy tất cả (Web + Backend + Mobile Expo):**
-  ```bash
-  npm run dev:all
-  ```
+OTP gồm **6 chữ số**, có hiệu lực **5 phút**, chờ **60 giây** trước khi gửi lại và tối đa **5 lần thử sai** cho mỗi mã. Mã đăng ký và khôi phục có mục đích riêng, không dùng thay nhau. Mật khẩu mới cần ít nhất 8 ký tự, có chữ hoa ASCII, chữ số và ký tự đặc biệt, tối đa 72 byte UTF-8; không được trùng mật khẩu hiện tại khi đổi/đặt lại.
 
-- **Chạy riêng Mobile App:**
-  ```bash
-  npm run dev:mobile
-  # Sau đó quét mã QR bằng ứng dụng Expo Go trên điện thoại
-  ```
+Yêu cầu quên mật khẩu trả thông báo chung cho email tồn tại, không tồn tại, bị khóa hoặc đang chờ gửi lại. SMTP xử lý ở nền; thông báo tiếp nhận không xác nhận email đã được gửi. API đặt lại dùng `{ email, otp, newPassword }`; API đổi chủ động cần phiên đăng nhập và `{ currentPassword, newPassword }`.
 
----
+Cập nhật mật khẩu và tiêu thụ OTP khôi phục diễn ra trong transaction. Đổi/đặt lại thành công tăng `users.auth_version`, vô hiệu các phiên cũ, xóa mã khôi phục còn chờ và ngắt socket của tài khoản trên tiến trình xử lý. Người dùng đăng nhập lại bằng mật khẩu mới; tài khoản có email được gửi thông báo thay đổi.
 
-## Kiểm tra các nâng cấp Reader, Tủ sách và Studio
+## 5. Quy định cộng đồng và bầu chọn mod
 
-Đăng nhập và đăng ký web là hai trang riêng tại `#/login` và `#/register`. Các liên kết cần tài khoản giữ trang đích trong `returnTo`; đăng nhập/đăng ký thành công quay về trang đó. Biểu mẫu đăng ký giữ OTP email, kiểm tra mật khẩu nhập lại và thời gian chờ gửi lại mã; lỗi hiển thị ngay trong trang. Mật khẩu chỉ được giữ trong bộ nhớ của biểu mẫu.
+Trang `#/rules` hiển thị bộ quy định; liên kết từng điều dùng `#/rules?section=<id>`. Admin quản lý ở `#/manage-rules`, có bản nháp cục bộ theo tài khoản, xem trước và nút **Công bố**. Khi lưu gặp cập nhật đồng thời, API trả `409` cùng bản mới để xử lý xung đột. Bản nháp trên trình duyệt chưa đồng bộ giữa các thiết bị.
 
-Khôi phục mật khẩu tại `#/forgot-password`, mở từ “Quên mật khẩu?” trên trang đăng nhập và giữ `returnTo` khi quay lại. Nhập email đã đăng ký, nhận mã 6 số rồi nhập mật khẩu mới hai lần; mã có hạn 5 phút, chờ 60 giây trước khi gửi lại và tối đa 5 lần thử mỗi mã. `POST /api/auth/forgot-password` trả thông báo chung cho email tồn tại, không tồn tại, bị khóa hoặc đang chờ gửi lại; xử lý gửi SMTP ở nền để thời gian gửi thư không làm lộ tài khoản. Email chưa đăng ký vẫn đi qua cùng bước lưu challenge/thời gian chờ nhưng không nhận thư. Chế độ thử nghiệm chỉ trả `devOtp` ở local khi không có SMTP. `POST /api/auth/reset-password` dùng `{ email, otp, newPassword }`; mã đăng ký và khôi phục có `purpose` riêng, không dùng thay nhau. Việc cập nhật mật khẩu và xóa mã diễn ra trong cùng transaction.
+Bộ mặc định tại [server/communityRules.ts](server/communityRules.ts) gồm **25 điều**, bổ sung 20 điều so với bộ 5 điều ban đầu: tài khoản, quyền tác giả, AI, đăng lại, phân loại nội dung, ứng xử, quyền riêng tư, đánh giá, spoiler, spam, tin nhắn, bầu chọn, báo cáo, chế tài và khiếu nại. Quy định hướng dẫn thành viên và người quản lý; các thời hạn xử lý/chế tài cần người quản lý thực hiện.
 
-Đổi mật khẩu chủ động trong Hồ sơ → Thông tin cơ bản → Mật khẩu & bảo mật. `POST /api/auth/change-password` yêu cầu đăng nhập và `{ currentPassword, newPassword }`, kiểm tra mật khẩu hiện tại, mật khẩu mới khác mật khẩu cũ và cùng chính sách với đăng ký. Giới hạn thử đổi theo tài khoản; luồng khôi phục có giới hạn theo IP và theo challenge. Cả hai luồng tăng `users.auth_version`, xóa challenge khôi phục còn chờ và yêu cầu đăng nhập lại; token/cookie cũ hết hiệu lực, socket đang kết nối trên tiến trình xử lý được ngắt ngay. Kết nối ở tiến trình khác phải xác thực lại phiên khi gửi thao tác. Tài khoản có email nhận thư thông báo thay đổi, không chứa mật khẩu. Tài khoản chưa có email vẫn đổi được bằng mật khẩu hiện tại; khôi phục qua email cần email đã được gắn với tài khoản.
+Migration chỉ nâng cấp khi toàn bộ 5 điều hiện có khớp chính xác bản mặc định cũ, giữ ID để bảo toàn liên kết. Tài liệu đã được admin sửa/thêm/xóa hoặc cố ý để trống được giữ nguyên; chạy lại không nhân bản nội dung. Bảng mới được khởi tạo bộ 25 điều.
 
-Migration bổ sung `users.auth_version` và chuyển khóa chính OTP sang `(email, purpose)`; mã đăng ký đang còn hạn được giữ nguyên. Production chạy migration trước khi khởi động bản mới. Chạy `npm run test:passwords` cho kiểm tra API, mã một lần, hết hạn, cập nhật đồng thời, rollback và thu hồi phiên; `npm run test:auth:browser` kiểm tra các biểu mẫu và điều hướng web. Các bộ kiểm tra dùng database tách biệt và không gửi email thật.
+Bầu chọn mod mở tại `#/elections`, tab **Bầu chọn mod** trong Admin và **Hội đồng bầu chọn** trong Mod. Hai luồng phiếu cộng đồng/hội đồng được chốt riêng; admin quyết định bổ nhiệm, có giải trình, khiếu nại và nhật ký. Quyền mod gắn với nhiệm kỳ được kiểm tra ở backend. Chi tiết thể lệ, phân quyền và dữ liệu ở [docs/ELECTIONS.md](docs/ELECTIONS.md).
 
-Quy định cộng đồng công khai tại `#/rules`, hỗ trợ mục lục, tìm kiếm không dấu và liên kết đến điều khoản `#/rules?section=<id>`. Admin soạn tại `#/manage-rules`; xem trước dùng cùng cách trình bày với trang công khai. Bản đang soạn được khôi phục từ trình duyệt theo tài khoản, chỉ nút “Công bố” mới cập nhật nội dung cho độc giả. Đây là bản lưu trên thiết bị, chưa đồng bộ giữa các thiết bị. API sửa/xóa yêu cầu `baseRule` gồm `title`, `content`, `order_index` để đối chiếu bản gốc; khi có cập nhật đồng thời trả `409` cùng bản mới, khi điều khoản đã bị xóa trả `404`. Xóa hết quy định sẽ giữ tài liệu rỗng qua các lần khởi động lại, không tự khôi phục dữ liệu mẫu.
+## 6. Dữ liệu và bảo mật
 
-Bộ mặc định gồm 25 điều tại `server/communityRules.ts`: giữ 5 chủ đề ban đầu và bổ sung 20 điều về tài khoản, phân loại tác phẩm, AI, đăng lại, ứng xử, quyền riêng tư, đánh giá, spoiler, diễn đàn, spam, số liệu, tin nhắn, bầu chọn, báo cáo, kiểm duyệt, chế tài và khiếu nại. Các tiểu mục có tiêu đề riêng khi đọc hoặc xem trước. Đây là quy định để thành viên và người quản lý áp dụng; thời hạn xử lý, cảnh báo và mở khóa cần được người quản lý thực hiện, chưa phải cơ chế chế tài tự động.
+Schema hiện tại được ghép từ [server/schema.sql](server/schema.sql), [server/db.ts](server/db.ts), [server/readerSchema.ts](server/readerSchema.ts) và [server/electionSchema.ts](server/electionSchema.ts), cùng các migration OTP/quy định. File SQL ban đầu không đại diện đầy đủ cho các bảng và cột bổ sung.
 
-Khi khởi tạo hoặc chạy migration, `server/communityRulesMigration.ts` tạo bộ 25 điều cho bảng mới, hoặc nâng cấp nguyên tử nếu tài liệu hiện tại khớp chính xác cả 5 điều mặc định cũ; giữ ID của 5 điều để bảo toàn liên kết. Nếu admin đã sửa, thêm, xóa hoặc cố ý để trống, migration giữ nguyên toàn bộ tài liệu đó. Chạy lại không nhân bản hay ghi đè nội dung. Production áp dụng qua quy trình migration hiện có, không tự thay dữ liệu khi khởi động với `migrate: false`.
+| Nhóm dữ liệu | Bảng tiêu biểu |
+| --- | --- |
+| Tài khoản và phiên | `users`, `user_roles`, `email_otps`, `revoked_tokens` |
+| Tác phẩm | `novels`, `novel_tags`, `chapters`, `chapter_versions`, `genres` |
+| Đọc và tủ sách | `reading_progress`, `chapter_reads`, `reading_sessions`, `bookmarks`, `library_collections`, `collection_novels`, `read_cooldowns` |
+| Cộng đồng | `comments`, `reviews`, `reports`, `forum_posts`, `forum_comments`, `forum_post_likes`, `friends`, `messages`, `follows` |
+| Điều hành | `rules`, `events`, `announcements`, `notifications`, `deleted_novels` |
+| Bầu chọn | `elections`, `election_candidates`, `election_voters`, `election_ballots`, `election_reviews`, `election_complaints`, `election_audit` |
 
-Kiểm tra tĩnh và build frontend trước khi bàn giao thay đổi:
+- Mật khẩu được băm bcrypt với cost 12 cho đăng ký/đổi/khôi phục; OTP lưu HMAC-SHA-256 theo email/mục đích, không lưu mã thuần.
+- Web dùng cookie `HttpOnly`, `SameSite=Strict`, thêm `Secure` trong production; native lưu token bằng SecureStore. Token cũ được chuyển khỏi localStorage/AsyncStorage theo luồng nâng cấp phiên.
+- Đăng xuất thu hồi token trên server và đóng socket cùng phiên; thao tác cần mạng. Token thu hồi lưu hash trong `revoked_tokens`; phiên có `auth_version` cũ bị từ chối sau khi đổi mật khẩu.
+- Backend kiểm tra tài khoản, trạng thái và quyền hiện hành từ database; kiểm tra origin cho thao tác dùng cookie, CORS allowlist, Helmet/CSP, giới hạn payload và tốc độ request.
+- Nội dung HTML được làm sạch; upload tối đa 5 MB, kiểm tra MIME/signature và dùng tên UUID. Ảnh lưu ở Cloudinary khi có đủ cấu hình, hoặc thư mục upload của backend.
+- Tiến độ đọc gắn theo tài khoản; điều kiện hoàn thành chương và cộng XP được server kiểm tra. Feed công khai lọc nội dung chưa xuất bản/bị khóa theo quyền.
 
-```bash
+Development áp dụng migration khi khởi động. **Production phải chạy migration trước khi chạy bản server mới**: gồm `users.auth_version`, khóa OTP `(email, purpose)`, phiên thu hồi, thứ tự chương, tiến độ, bộ sưu tập, lịch sử bản thảo và bầu chọn. Bảng OTP thuần kiểu cũ được nâng cấp và mã cũ vô hiệu; mã đăng ký đã ở định dạng hash hợp lệ được giữ khi bổ sung `purpose`.
+
+## 7. Kiểm thử và build
+
+Chạy tại thư mục gốc sau khi cài dependency tương ứng:
+
+```powershell
 npm run typecheck
 npm run lint
 npm run build
@@ -384,101 +267,126 @@ npm --prefix server run build
 npm --prefix mobile run typecheck
 ```
 
-Build web không thay thế bước kiểm tra TypeScript. Các trang Studio, diễn đàn, hồ sơ và quản trị được tải theo nhu cầu; khi sửa điều hướng cần kiểm tra cả mở trực tiếp URL và chuyển trang trong ứng dụng.
+Build Vite không thay thế kiểm tra TypeScript. Các bộ kiểm thử có sẵn:
 
-Backend development tự tạo các bảng tiến độ đọc, kệ sách và lịch sử bản thảo khi khởi động. Production chạy migration riêng trước khi khởi động ứng dụng theo hướng dẫn dưới đây.
+| Phạm vi | Lệnh |
+| --- | --- |
+| Điều hướng xác thực | `npm run test:auth` |
+| API mật khẩu/thu hồi phiên | `npm run test:passwords` |
+| Bảo mật, OTP, email, mật khẩu | `npm --prefix server run test:security` |
+| Đăng nhập/đăng ký/khôi phục/đổi mật khẩu trên web | `npm run test:auth:browser` |
+| Reader và tủ sách | `npm run test:upgrades`, `npm run test:upgrades:browser` |
+| Studio | `npm run test:studio`, `npm run test:studio:browser` |
+| Quy định cộng đồng | `npm run test:rules`, `npm run test:rules:browser` |
+| Header, trang chủ, giới thiệu | `npm run test:header:browser`, `npm run test:hero:browser`, `npm run test:about:browser` |
+| Bầu chọn | `npm run test:elections`, `npm run test:elections:browser`, `npm run test:elections:mobile` |
+| Mobile API/giao diện | `npm run test:mobile`, `npm run test:mobile:browser` |
 
-Studio bổ sung cột `chapters.sort_order`; migration trên dữ liệu cũ gán thứ tự ban đầu theo ID để giữ mục lục hiện có. Khởi động lại backend development để áp dụng; production chạy `npm --prefix server run build` và `npm --prefix server run migrate:production` trước khi chạy bản mới.
+Kiểm thử integration/browser đọc cấu hình kết nối MySQL từ `server/.env`, dùng database tạm `mugenbunko_test_*` và tự dọn sau khi chạy; SMTP được tắt trong fixture, không gửi email thật. Tài khoản DB test cần quyền tạo/xóa database. Trình duyệt mặc định là Edge headless trên Windows; đặt `UPGRADE_BROWSER_PATH` để dùng executable Chromium khác. Ảnh kiểm tra được lưu dưới `artifacts/` và các thư mục ảnh sinh tự động đã được Git bỏ qua.
 
-- **Reader:** lưu đoạn đang đọc và đồng bộ theo tài khoản; vị trí khi mất mạng được gửi lại khi có kết nối. Khách chưa đăng nhập lưu trên thiết bị.
-- **Tủ sách:** tạo kệ, chọn bìa từ truyện, quản lý tác phẩm và chia sẻ kệ công khai. Đổi sang riêng tư sẽ chặn liên kết công khai.
-- **Studio:** nút “Lịch sử phiên bản” trong thanh công cụ cho xem và khôi phục 50 bản nội dung gần nhất. Khôi phục tạo bản nháp và giữ nội dung hiện tại trong lịch sử.
+Mobile có các lệnh đóng gói riêng: `npm --prefix mobile run export:web`, `export:android`, `export:ios`. Kết quả là bundle JavaScript; APK/IPA ký phát hành cần quy trình build native. Kiểm thử trình duyệt không thay thế kiểm tra Android/iOS thật.
 
-Chạy kiểm thử với Node.js 24 và cấu hình MySQL trong `server/.env`:
+Kiểm tra dependency riêng cho từng phần: `npm audit`, `npm --prefix server audit`, `npm --prefix mobile audit`. Xem kết quả tại thời điểm bàn giao/triển khai; không dùng `audit fix --force` để ép đổi Expo sang phiên bản không tương thích. Mobile có script `postinstall` vá bộ giải mã query; nếu cài bằng `--ignore-scripts`, chạy `npm --prefix mobile run postinstall` trước khi build/test.
 
-```bash
-npm run test:upgrades
-npm run test:upgrades:browser
-npm run test:studio
-npm run test:studio:browser
-npm run test:auth
-npm run test:auth:browser
-npm run test:rules
-npm run test:rules:browser
+## 8. Triển khai production bằng Docker
+
+Compose chạy **MySQL 8.4**, web/API chung container và một service migration trong profile `tools`. MySQL chỉ nối mạng nội bộ, không mở cổng host. Cổng app mặc định bind `127.0.0.1:5000` để đặt sau reverse proxy HTTPS; image chạy bằng user `node` và không đóng gói `.env`.
+
+### Cấu hình
+
+```powershell
+Copy-Item .env.production.example .env.production
 ```
 
-Bộ test dùng database riêng có tên `mugenbunko_test_*`, yêu cầu tài khoản MySQL có quyền tạo/xóa database và tự dọn sau khi chạy. Kiểm thử trình duyệt sử dụng Edge headless trên Windows; có thể đặt `UPGRADE_BROWSER_PATH` để chọn executable Chromium khác. Ảnh kiểm tra nằm trong `artifacts/upgrades/` và được Git bỏ qua.
+Điền `DB_ADMIN_PASSWORD`, `DB_PASSWORD` và `JWT_SECRET` bằng ba secret riêng; `DB_APP_USER` mặc định là `mugen_app`. Đặt `FRONTEND_URL` thành origin HTTPS của web (nhiều origin cách nhau bằng dấu phẩy), `PUBLIC_URL` là URL HTTPS công khai của backend, `TRUST_PROXY` đúng theo reverse proxy và điền SMTP để đăng ký/khôi phục nhận thư.
 
-## Bầu chọn và bổ nhiệm kiểm duyệt viên
+Cookie production yêu cầu web/API cùng site. Backend từ chối JWT secret thiếu/ngắn/mặc định và không cho ứng dụng chạy production bằng DB user `root`.
 
-Web có trang `#/elections`, tab **Bầu chọn mod** trong Admin và **Hội đồng bầu chọn** trong Mod. Mobile mở từ mục Cá nhân hoặc khu Quản trị/kiểm duyệt. Luồng gồm đề cử có đồng ý, hồ sơ, hai vòng phiếu riêng, thống kê đã chốt, quyết định admin, khiếu nại và nhiệm kỳ.
+### Database mới
 
-Xem thể lệ, phân quyền, migration và lệnh kiểm thử tại [docs/ELECTIONS.md](docs/ELECTIONS.md). Development tự tạo bảng mới khi khởi động backend; production cần chạy migration trước khi cập nhật server.
-
-## Đưa lên production
-
-### Bảo mật phiên và nội dung
-
-Web dùng cookie phiên `HttpOnly`, `SameSite=Strict` và `Secure` trong production; frontend và API cần cùng site, với `FRONTEND_URL` khai báo đúng origin. JWT cũ trong localStorage được đổi sang cookie khi làm mới phiên và sau đó xóa khỏi localStorage. Mobile native dùng SecureStore; token AsyncStorage cũ chỉ bị xóa sau khi đã lưu an toàn. Expo web cũng dùng cookie thay vì lưu token.
-
-Logout gọi server để thu hồi token; socket cùng phiên bị đóng và socket hết hạn tự ngắt ngay cả khi không gửi thao tác. Khi offline, ứng dụng báo chưa thể kết thúc phiên để người dùng thử lại. Token thu hồi được lưu dạng SHA-256 trong bảng `revoked_tokens`; **chạy migration trước khi cập nhật server production**. Startup production kiểm tra bảng này và dừng nếu schema chưa sẵn sàng.
-
-API đánh giá kiểm tra số chương hoàn thành từ server (series 3 chương, oneshot 1 chương), chỉ cho tương tác với truyện đã công khai, và cộng XP một lần khi các request đến đồng thời. Feed bình luận/đánh giá/thông báo và bìa kệ công khai loại truyện chưa xuất bản hoặc đã khóa. Metadata truyện đã xóa chỉ hiện đầy đủ cho nhân sự điều hành; người dùng khác nhận thông báo gỡ bỏ chung vì dữ liệu cũ không ghi trạng thái công khai. Server kiểm tra luồng trả lời, người nhận thông báo, quyền tác giả và thông báo diễn đàn. Các thao tác đăng nội dung có giới hạn 30 request/phút/tài khoản.
-
-API mobile production yêu cầu HTTPS. Native cần build lại để đóng gói SecureStore; kiểm tra lưu/khôi phục phiên trên Android/iOS trước khi phát hành. Chỉ bản xem thử web trên loopback được phép dùng API HTTP loopback.
-
-Dependency mobile được cập nhật trong Expo SDK 57, vá Axios, shell-quote, UUID và decode-uri-component. `mobile/scripts/patch-query-decoder.mjs` chạy sau cài đặt để giữ API CommonJS của query-string 7 với decoder ESM đã vá; nếu cài bằng `--ignore-scripts`, chạy `npm --prefix mobile run postinstall` trước khi build/test. Kiểm tra tương thích và input URL bất thường nằm trong `tests/mobile-dependencies.test.mjs`.
-
-Lockfile web cũng cập nhật các bản tương thích với khoảng phiên bản đã khai báo, gồm Vite và các dependency công cụ build. Khi kiểm tra bảo mật, quét cả dev dependency vì chúng được dùng khi xây dựng bản phát hành.
-
-Hai advisory upstream chưa có bản phát hành vá: [braces](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) và [node-forge](https://github.com/advisories/GHSA-86w9-cpqp-85rv). Chúng còn kéo theo cảnh báo audit trong dependency công cụ Expo/Metro/code-signing. Không công khai Metro/dev server; chỉ phát hành bundle production và theo dõi bản sửa upstream. `npm audit` sạch ở web/backend không có nghĩa đã kiểm chứng cấu hình máy chủ triển khai.
-
-Sử dụng Node.js 24. Docker image chạy bằng user `node`, chỉ chứa dependency backend cần lúc chạy và không đóng gói file `.env`. MySQL chỉ nối mạng nội bộ; cổng ứng dụng mặc định bind `127.0.0.1` để đặt sau reverse proxy HTTPS.
-
-Sao chép `.env.production.example` thành `.env.production`, điền domain, SMTP và ba secret riêng biệt: mật khẩu quản trị DB, mật khẩu DB của ứng dụng, JWT secret. Sinh mỗi secret bằng `node -e "console.log(require('node:crypto').randomBytes(48).toString('hex'))"`. `FRONTEND_URL` là danh sách origin HTTPS cách nhau bằng dấu phẩy; `PUBLIC_URL` là URL HTTPS công khai của backend. Đặt `TRUST_PROXY` đúng với proxy thực tế và chỉ cho proxy truy cập cổng app. SMTP chưa cấu hình sẽ trả 503; production không trả OTP qua JSON, kể cả khi đặt `DEV_OTP=true`.
-
-Với **database mới**, chạy:
-
-```bash
+```powershell
 docker compose --env-file .env.production up -d db
 docker compose --env-file .env.production --profile tools run --rm --build migrate
 docker compose --env-file .env.production up -d --build app
 ```
 
-Migration chạy bằng tài khoản quản trị; sau đó thu hẹp `mugen_app` về SELECT/INSERT/UPDATE/DELETE trên database ứng dụng. Startup production không tự sửa schema và từ chối DB user `root`. Migration không chạy phần seed/TRUNCATE của `server/schema.sql`, không tạo admin có mật khẩu mặc định.
+Migration chạy bằng tài khoản quản trị DB, tạo/nâng schema, sau đó thu hẹp quyền ứng dụng về `SELECT/INSERT/UPDATE/DELETE`. Không chạy phần seed/TRUNCATE và không tạo admin mặc định. Production khởi động chỉ kiểm tra schema, không tự sửa bảng.
 
-Tạo admin đầu tiên bằng cách đặt `ADMIN_USERNAME` và `ADMIN_PASSWORD` trong shell quản trị, rồi chạy:
+Tạo admin bằng cách nhập `ADMIN_USERNAME` và `ADMIN_PASSWORD` vào môi trường shell quản trị như bước tạo admin local, rồi chạy:
 
-```bash
+```powershell
 docker compose --env-file .env.production exec -e ADMIN_USERNAME -e ADMIN_PASSWORD app node server/dist/createAdmin.js
 ```
 
-Mật khẩu admin phải có ít nhất 16 ký tự, tối đa 72 byte. Lệnh không ghi đè hay nâng quyền tài khoản đã tồn tại. Không lưu mật khẩu vào lịch sử lệnh hoặc repository.
+Xóa các biến mật khẩu khỏi shell sau khi chạy. Chỉ reverse proxy nên truy cập cổng app; kiểm tra `/healthz` qua địa chỉ triển khai sau khi khởi động.
 
-Với **database đang có dữ liệu**, backup và thử migration trên bản sao trước, kể cả bước nâng MySQL 8.0 lên 8.4. Đặt `DB_ADMIN_PASSWORD` khớp mật khẩu root hiện tại; đổi biến môi trường không tự đổi mật khẩu trong volume cũ. Volume MySQL cũ không tự tạo user từ `MYSQL_USER`: cần tạo tài khoản `DB_APP_USER` với mật khẩu `DB_PASSWORD` trước khi chạy migration. Nếu chuyển từ Compose cũ, sao chép ảnh từ thư mục bind `server/uploads` sang volume `uploads_data` trước khi chuyển traffic. Khi thay JWT secret, các phiên đăng nhập và OTP đang chờ sẽ hết hiệu lực. Không import trực tiếp `server/schema.sql` lên production vì file đó vẫn chứa seed dành cho development/test.
+### Nâng cấp database đang có dữ liệu
 
-Ứng dụng có `/healthz`, giới hạn payload và tốc độ request, CORS allowlist, CSP, OTP lưu hash trong DB và xác thực quyền từ DB ở mỗi request. Upload tối đa 5 MB, kiểm tra MIME/signature và dùng tên file UUID. Backup cả database lẫn volume `uploads_data`; nếu sử dụng Cloudinary thì quản lý backup media tại dịch vụ đó.
+Backup và thử migration trên bản sao trước, gồm cả nâng MySQL 8.0 lên 8.4 nếu cần. `DB_ADMIN_PASSWORD` phải khớp mật khẩu hiện tại; đổi `.env.production` không tự đổi mật khẩu hoặc tạo user trong volume cũ. Tạo `DB_APP_USER` với đúng mật khẩu trước khi chạy migration nếu database chưa có tài khoản này.
 
-Migration nâng bảng `email_otps` cũ có `otp_code` và thời gian `TIMESTAMP` sang `code_hash`, thời gian mili giây, thời điểm gửi và số lần thử. Mã cũ bị vô hiệu hóa; người dùng cần yêu cầu mã mới. Chạy lại migration giữ nguyên mã mới và thời gian chờ gửi lại. Production kiểm tra đủ cột OTP khi khởi động; lỗi gửi mã được log theo bước xử lý và mã lỗi, không log email, OTP, mật khẩu hoặc tham số SQL. `npm --prefix server run test:security` bao gồm kiểm tra nâng cấp từ bảng OTP cũ.
+Nếu chuyển từ cách chạy dùng thư mục `server/uploads`, sao chép ảnh vào volume `uploads_data` trước khi chuyển traffic. Backup cả database và ảnh; Cloudinary cần quản lý media tại dịch vụ tương ứng. Khi đổi JWT secret, phiên đăng nhập và OTP đang chờ sẽ hết hiệu lực. Không import toàn bộ `server/schema.sql` lên database đang sử dụng.
 
-Cấu hình hiện tại dành cho một instance. Presence socket và các rate limiter HTTP nằm trong bộ nhớ tiến trình; cần shared store/Socket.IO adapter khi chạy nhiều instance. API danh mục và diễn đàn đã phân trang, nhưng các view hiện tại vẫn ghép các trang để giữ tìm kiếm/lọc toàn bộ dữ liệu. Khi dữ liệu lớn cần chuyển tìm kiếm/lọc sang server, phân trang chương/bình luận và kiểm thử tải trên staging trước khi quyết định cấu hình máy.
+## 9. Cấu trúc repository và tài liệu
 
-Kiểm tra hồi quy (test dùng database tạm, không gửi email thật):
-
-```bash
-npm run test:upgrades
-npm --prefix server run test:security
-npm run test:upgrades:browser
-npm run test:mobile
-npm run test:mobile:browser
-npm audit
-npm --prefix server audit
-npm --prefix mobile audit
+```text
+MugenBunko/
+├── src/                      # React web, điều hướng hash trong App.tsx
+│   ├── components/           # Biểu mẫu, reader/editor, thành phần dùng chung
+│   ├── pages/                # Home, Reader, Studio, cộng đồng, quản trị
+│   ├── hooks/                # Đồng bộ, bản nháp, chuyển động, quy định
+│   ├── styles/               # CSS theo chức năng; design system ở index.css
+│   └── utils/                # Tiến độ, xác thực, mật khẩu và tiện ích
+├── server/                   # Express API và Socket.IO
+│   ├── routes/               # auth, passwords, reader, library, elections...
+│   ├── middleware/           # Xác thực, phân quyền, bảo mật, log
+│   ├── emails/               # HTML/text email OTP và bảo mật tài khoản
+│   ├── utils/                # OTP, SMTP, session, upload, mật khẩu
+│   ├── tests/                # API integration, migration và fixture
+│   ├── db.ts                 # Khởi tạo kết nối và điều phối migration
+│   ├── migrateProduction.ts  # Migration tách khỏi startup production
+│   └── .env.example          # Mẫu cấu hình local, không chứa secret thật
+├── mobile/                   # Expo / React Native; có README riêng
+├── shared/                   # Hợp đồng/nhãn bầu chọn dùng chung
+├── tests/                    # Unit và kiểm thử trình duyệt
+├── docs/                     # Sơ đồ tuần tự và tài liệu nghiệp vụ
+├── artifacts/                # Báo cáo, ERD, script dựng tài liệu
+├── public/                   # Tài nguyên tĩnh
+├── Dockerfile
+├── docker-compose.yml
+└── .env.production.example   # Mẫu cấu hình triển khai
 ```
 
-Audit mobile hiện vẫn trả mã lỗi do hai advisory upstream nêu trên; không bỏ qua chúng hoặc dùng `audit fix --force` để hạ Expo xuống SDK không tương thích.
+| Tài liệu | Đường dẫn |
+| --- | --- |
+| Sơ đồ tuần tự hệ thống | [docs/SO_DO_TUAN_TU_HE_THONG.md](docs/SO_DO_TUAN_TU_HE_THONG.md) |
+| Nghiệp vụ bầu chọn mod | [docs/ELECTIONS.md](docs/ELECTIONS.md) |
+| Cài đặt và kiểm thử mobile | [mobile/README.md](mobile/README.md) |
+| Chương 2 — Cơ sở lý thuyết | [Word](artifacts/chapter-2/Chuong_2_Co_so_ly_thuyet_MugenBunko.docx) |
+| Thiết kế cơ sở dữ liệu | [Word](artifacts/database-design/Muc_3_6_Thiet_ke_co_so_du_lieu_MugenBunko.docx), [ERD](artifacts/database-design/ERD_MugenBunko_word.png) |
+| Chương 4 — Triển khai hệ thống | [Word](artifacts/chapter-4/Chuong_4_Trien_khai_he_thong_MugenBunko.docx), [PDF](artifacts/chapter-4/Chuong_4_Trien_khai_he_thong_MugenBunko.pdf) |
+| Chương 5 — Kết luận và hướng phát triển | [Word](artifacts/chapter-5/Chuong_5_Ket_luan_va_huong_phat_trien_MugenBunko.docx), [PDF](artifacts/chapter-5/Chuong_5_Ket_luan_va_huong_phat_trien_MugenBunko.pdf) |
+| Báo cáo test case và kết quả | [Word](artifacts/test-report/MugenBunko_TestCase_KetQua_NguyenHoangViet.docx) |
+
+Các tài liệu báo cáo phản ánh thời điểm xuất bản; lệnh chạy và cấu hình hiện tại được mô tả trong README này. `.env`, secret SMTP/JWT, ảnh test và file tạm không được đưa vào Git.
+
+## 10. Xử lý lỗi thường gặp và phạm vi hiện tại
+
+| Hiện tượng | Kiểm tra |
+| --- | --- |
+| Backend không khởi động/kết nối database | MySQL đang chạy, thông tin `DB_*`, quyền tạo schema ở local; production đã chạy migration và dùng DB user riêng |
+| Web không tải dữ liệu | Backend `/healthz`, `VITE_API_BASE`, cổng đang dùng và `FRONTEND_URL`; khởi động lại Vite khi đổi `.env` |
+| Không gửi được OTP | Điền đủ `SMTP_USER`/`SMTP_PASS`, đúng cổng/TLS, khởi động lại backend rồi chạy `npm run check:smtp`; Gmail cần App Password |
+| Báo đã tiếp nhận khôi phục nhưng chưa có thư | Kiểm tra email gắn tài khoản đang hoạt động, thư mục spam và log SMTP; phản hồi chung không xác nhận tài khoản tồn tại |
+| Mã không hợp lệ | Dùng mã mới nhất đúng luồng đăng ký/khôi phục; mã hết hạn sau 5 phút hoặc bị khóa sau 5 lần sai |
+| Đổi mật khẩu xong bị đăng xuất | Hành vi dự kiến: đăng nhập lại bằng mật khẩu mới |
+| Điện thoại không gọi API/tải ảnh | URL LAN thay cho `localhost`, khả năng truy cập mạng, `PUBLIC_URL`, biến `EXPO_PUBLIC_*` và cache Metro |
+| Test API báo thiếu quyền DB | Dùng tài khoản development có quyền tạo/xóa database tạm; không dùng DB user production chỉ có quyền đọc/ghi |
+
+Phạm vi vận hành hiện tại là **một instance backend**. Presence và rate limiter HTTP nằm trong bộ nhớ; triển khai nhiều instance cần shared store/Socket.IO adapter. Một số màn hình còn ghép dữ liệu từ nhiều trang API để lọc toàn bộ; cần tối ưu truy vấn và kiểm thử tải trước khi mở rộng dữ liệu/người dùng.
+
+Lựa chọn banner trong Admin là cấu hình trên trình duyệt hiện tại. Bản nháp cục bộ chưa đồng bộ giữa các thiết bị. Mobile cần kiểm tra thiết bị thật và build native trước khi phát hành; API production của mobile yêu cầu HTTPS. Kết quả audit dependency và cấu hình hạ tầng cần được kiểm tra tại mỗi lần triển khai; không công khai Metro/dev server.
 
 <p align="center">
-  <i>Được xây dựng với niềm đam mê dành cho cộng đồng yêu thích Light Novel & Công nghệ phần mềm.</i><br>
-  <b>© 2026 MugenBunko Team. All Rights Reserved.</b>
+  <i>Không gian dành cho những câu chuyện chưa có hồi kết.</i><br>
+  © 2026 MugenBunko
 </p>
