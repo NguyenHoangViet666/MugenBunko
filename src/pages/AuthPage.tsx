@@ -3,6 +3,8 @@ import type { FormEvent } from 'react';
 import { Icons } from '../components/Icons';
 import { authHref } from '../utils/authNavigation';
 import type { AuthMode } from '../utils/authNavigation';
+import PasswordRecoveryForm from '../components/PasswordRecoveryForm';
+import type { PasswordRecoveryProps } from '../components/PasswordRecoveryForm';
 import '../styles/auth.css';
 
 export interface LoginFields { username: string; password: string }
@@ -11,10 +13,13 @@ interface Props {
     mode: AuthMode; returnTo: string; theme: string; onThemeChange: (theme: string) => void;
     onLogin: (fields: LoginFields) => Promise<void>; onRegister: (fields: RegisterFields) => Promise<void>;
     sendRegistrationOtp: (email: string) => Promise<string | undefined>;
+    requestPasswordReset: PasswordRecoveryProps['requestPasswordReset']; resetPassword: PasswordRecoveryProps['resetPassword'];
+    notice?: string;
 }
 
-export default function AuthPage({ mode, returnTo, theme, onThemeChange, onLogin, onRegister, sendRegistrationOtp }: Props) {
+export default function AuthPage({ mode, returnTo, theme, onThemeChange, onLogin, onRegister, sendRegistrationOtp, requestPasswordReset, resetPassword, notice }: Props) {
     const register = mode === 'register';
+    const recovery = mode === 'forgot-password';
     const [login, setLogin] = useState<LoginFields>({ username: '', password: '' });
     const [registration, setRegistration] = useState<RegisterFields>({ username: '', displayname: '', password: '', email: '', otp: '' });
     const [confirmation, setConfirmation] = useState('');
@@ -39,7 +44,7 @@ export default function AuthPage({ mode, returnTo, theme, onThemeChange, onLogin
     useEffect(() => {
         const previousTitle = document.title;
         setError(''); setShowPassword(false);
-        document.title = `${mode === 'login' ? 'Đăng nhập' : 'Đăng ký'} · MugenBunko`;
+        document.title = `${mode === 'login' ? 'Đăng nhập' : mode === 'forgot-password' ? 'Quên mật khẩu' : 'Đăng ký'} · MugenBunko`;
         headingRef.current?.focus({ preventScroll: true });
         window.scrollTo({ top: 0, behavior: 'instant' });
         return () => { document.title = previousTitle; };
@@ -74,7 +79,7 @@ export default function AuthPage({ mode, returnTo, theme, onThemeChange, onLogin
         try {
             const code = await sendRegistrationOtp(registration.email.trim());
             if (code) setRegistration(current => ({ ...current, otp: code }));
-            setOtpNotice('Đã gửi mã đến email của bạn. Mã có hiệu lực trong 5 phút; hãy kiểm tra cả thư mục spam.');
+            setOtpNotice(code ? 'Mã thử nghiệm đã được điền sẵn, có hiệu lực trong 5 phút. Chưa gửi email thật.' : 'Đã gửi mã đến email của bạn. Mã có hiệu lực trong 5 phút; hãy kiểm tra cả thư mục spam.');
             setResendAt(Date.now() + 60000);
         } catch (err) { setError(err instanceof Error ? err.message : 'Không thể gửi mã xác thực.'); }
         finally { sendLock.current = false; setSending(false); }
@@ -95,11 +100,17 @@ export default function AuthPage({ mode, returnTo, theme, onThemeChange, onLogin
                 <div className="auth-story-caption"><span aria-hidden="true">栞</span><p>Mỗi dấu trang là một lời hẹn<br />với thế giới bạn yêu thích.</p></div>
             </div><div className="auth-story-footer"><span>Đọc · Lưu giữ · Sáng tác</span><span lang="ja" aria-hidden="true">あなたの物語</span></div></section>
             <section className="auth-form-section" aria-labelledby="auth-title"><div className="auth-form-wrap">
-                <div className="auth-form-intro"><span className="auth-eyebrow">{register ? 'MỞ MỘT TRANG MỚI' : 'CHÀO MỪNG TRỞ LẠI'}</span>
-                    <h1 ref={headingRef} tabIndex={-1} id="auth-title">{register ? 'Tạo tài khoản' : 'Đăng nhập'}</h1>
-                    <p>{register ? 'Tham gia MugenBunko để giữ những câu chuyện ở gần hơn.' : 'Đăng nhập để tiếp tục hành trình đọc của bạn.'}</p></div>
-                <div className="auth-switch"><span>{register ? 'Đã có tài khoản?' : 'Chưa có tài khoản?'}</span><a href={authHref(register ? 'login' : 'register', returnTo)}
-                    aria-disabled={busy || sending} onClick={event => { if (busy || sending) event.preventDefault(); }}>{register ? 'Đăng nhập' : 'Đăng ký ngay'} <span aria-hidden="true">↗</span></a></div>
+                <div className="auth-form-intro"><span className="auth-eyebrow">{recovery ? 'KHÔI PHỤC TÀI KHOẢN' : register ? 'MỞ MỘT TRANG MỚI' : 'CHÀO MỪNG TRỞ LẠI'}</span>
+                    <h1 ref={headingRef} tabIndex={-1} id="auth-title">{recovery ? 'Quên mật khẩu?' : register ? 'Tạo tài khoản' : 'Đăng nhập'}</h1>
+                    <p>{recovery ? 'Nhận mã qua email đăng ký và tạo mật khẩu mới cho tài khoản của bạn.' : register ? 'Tham gia MugenBunko để giữ những câu chuyện ở gần hơn.' : 'Đăng nhập để tiếp tục hành trình đọc của bạn.'}</p></div>
+                <div className="auth-switch"><span>{recovery ? 'Đã nhớ mật khẩu?' : register ? 'Đã có tài khoản?' : 'Chưa có tài khoản?'}</span><a href={authHref(register || recovery ? 'login' : 'register', returnTo)}
+                    aria-disabled={busy || sending} onClick={event => { if (busy || sending) event.preventDefault(); }}>{register || recovery ? 'Đăng nhập' : 'Đăng ký ngay'} <span aria-hidden="true">↗</span></a></div>
+                {recovery ? <PasswordRecoveryForm returnTo={returnTo} requestPasswordReset={requestPasswordReset} onBusyChange={setBusy} resetPassword={async fields => {
+                    await resetPassword(fields);
+                    setLogin(previous => ({ ...previous, password: '' }));
+                    setRegistration(previous => ({ ...previous, password: '', otp: '' })); setConfirmation('');
+                }} /> : <>
+                {mode === 'login' && notice && <p className="auth-recovery-notice" role="status">{notice}</p>}
                 {error && <div ref={errorRef} className="auth-error" role="alert" tabIndex={-1}>{error}</div>}
                 <form className="auth-form" onSubmit={event => void submit(event)}>
                     <fieldset disabled={busy || sending}><legend className="auth-sr-only">{register ? 'Thông tin đăng ký' : 'Thông tin đăng nhập'}</legend>
@@ -123,11 +134,14 @@ export default function AuthPage({ mode, returnTo, theme, onThemeChange, onLogin
                                     onChange={event => setRegistration(current => ({ ...current, otp: event.target.value.replace(/\D/g, '') }))} placeholder="000000" aria-describedby="auth-otp-notice" />
                                     <button type="button" className="outline-btn" disabled={sending || seconds > 0 || !registration.email.trim()} onClick={() => void sendCode()}>{sending ? 'Đang gửi…' : seconds > 0 ? `Gửi lại sau ${seconds}s` : 'Gửi mã xác thực'}</button></div>
                                 <p id="auth-otp-notice" className="auth-field-hint" role="status">{otpNotice || 'Nhận mã tại email ở trên để hoàn tất đăng ký.'}</p></div></>}
+                        {!register && <div className="auth-forgot-link"><a href={authHref('forgot-password', returnTo)} aria-disabled={busy || sending}
+                            onClick={event => { if (busy || sending) event.preventDefault(); }}>Quên mật khẩu?</a></div>}
                         <button type="submit" className="primary-btn auth-submit" disabled={busy || sending || (register && !/^\d{6}$/.test(registration.otp))}>{busy ? (register ? 'Đang tạo tài khoản…' : 'Đang đăng nhập…') : register ? 'Đăng Ký Tài Khoản' : 'Đăng Nhập'}<span aria-hidden="true">→</span></button>
                     </fieldset>
                 </form>
                 <p className="auth-after-form">{register ? 'Muốn viết truyện? Bạn có thể đăng ký quyền tác giả trong hồ sơ sau khi tạo tài khoản.' : 'Tủ sách và tiến độ đọc sẽ được đồng bộ khi bạn đăng nhập.'}</p>
-                <footer className="auth-form-footer"><span>© {new Date().getFullYear()} MugenBunko</span><a href="#/about">Về MugenBunko</a></footer>
+                </>}
+                <footer className="auth-form-footer"><span>© {new Date().getFullYear()} MugenBunko</span><a href="#/rules" target="_blank" rel="noopener noreferrer" aria-label="Quy định cộng đồng (mở tab mới)">Quy định cộng đồng ↗</a><a href="#/about">Về MugenBunko</a></footer>
             </div></section>
         </main>
     </div>;

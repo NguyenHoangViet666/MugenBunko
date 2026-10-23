@@ -12,6 +12,7 @@ export interface Notification {
 export interface User {
     id: number;
     username: string;
+    email?: string | null;
     displayname: string;
     coins: number;
     level: number;

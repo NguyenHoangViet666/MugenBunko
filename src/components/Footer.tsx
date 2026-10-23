@@ -40,7 +40,7 @@ export default function Footer({
                 <div className="footer-links">
                     <h4>Điều khoản</h4>
                     <ul>
-                        <li><span onClick={() => { setCurrentView('rules'); setActiveNovelId(null); }} style={{ cursor: 'pointer' }}>Quy định cộng đồng</span></li>
+                        <li><a href="#/rules">Quy định cộng đồng</a></li>
                         <li><a href="#">Bảo mật nội dung</a></li>
                     </ul>
                 </div>

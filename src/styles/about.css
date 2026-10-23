@@ -71,7 +71,69 @@
   position: relative;
   z-index: 1;
   padding: 24px 0;
-  animation: about-story-enter 0.8s ease both;
+}
+.about-story--motion-ready .about-story__hero-copy > * {
+  animation: about-story-enter 720ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.about-story--motion-ready .about-story__hero h1 { animation-delay: 80ms; }
+.about-story--motion-ready .about-story__intro { animation-delay: 140ms; }
+.about-story--motion-ready .about-story__description { animation-delay: 180ms; }
+.about-story--motion-ready .about-story__actions { animation-delay: 220ms; }
+.about-story--motion-ready .about-story__hero-footnote { animation-delay: 260ms; }
+
+/* Content stays visible unless the observer has successfully enabled reveals. */
+.about-story--motion-ready [data-about-reveal] {
+  transition: opacity 640ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 640ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.about-story--motion-ready .about-reveal-pending {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+}
+.about-story--motion-ready [data-about-reveal]:focus-within {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+.about-story--parallax-enabled [data-about-parallax] {
+  translate: 0 var(--about-parallax-y, 0px);
+}
+.about-story__kanji-field {
+  --kanji-drift-start: 80px;
+  --kanji-drift-end: -100px;
+  --kanji-drift-sway: 16px;
+  overflow: clip;
+  user-select: none;
+}
+.about-story__kanji-field > span {
+  position: absolute;
+  color: color-mix(in srgb, var(--text-main) 24%, transparent);
+  font-family: var(--font-serif);
+  line-height: 1;
+  transform: rotate(var(--glyph-rotation));
+}
+.about-story--motion-ready .about-story__kanji-field > span {
+  animation: about-story-kanji-drift var(--glyph-duration) var(--glyph-delay) linear infinite;
+}
+.about-story--hero-outside .about-story__kanji-field > span,
+.about-story--motion-paused .about-story__kanji-field > span {
+  animation-play-state: paused;
+}
+@keyframes about-story-kanji-drift {
+  0% {
+    opacity: 0;
+    transform: translate3d(calc(-1 * var(--kanji-drift-sway)), var(--kanji-drift-start), 0)
+      rotate(calc(var(--glyph-rotation) - 12deg));
+  }
+  12%, 88% { opacity: 1; }
+  50% {
+    transform: translate3d(var(--kanji-drift-sway), -8px, 0) rotate(var(--glyph-rotation));
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-8px, var(--kanji-drift-end), 0)
+      rotate(calc(var(--glyph-rotation) + 16deg));
+  }
 }
 .about-story__hero h1 {
   margin: 30px 0 25px;
@@ -166,7 +228,9 @@
   overflow: clip;
   height: 590px;
   isolation: isolate;
-  animation: about-story-enter 1s 0.15s ease both;
+}
+.about-story--motion-ready .about-story__art {
+  animation: about-story-enter 850ms 120ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 .about-story__portal {
   position: absolute;
@@ -259,7 +323,18 @@
   background: #f2ecd9;
   border-right: 7px solid #cfc6b1;
   border-bottom: 4px solid #cfc6b1;
-  animation: about-story-float 7s ease-in-out infinite;
+}
+.about-story--motion-ready .about-story__book--main {
+  --about-book-lift: -5px;
+  animation: about-story-float 8s ease-in-out infinite;
+}
+.about-story--motion-ready .about-story__book--back {
+  --about-book-lift: -3px;
+  animation: about-story-float 10s -3s ease-in-out infinite;
+}
+.about-story--hero-outside .about-story__book,
+.about-story--motion-paused .about-story__book {
+  animation-play-state: paused;
 }
 .about-story__book--main::before {
   content: "";
@@ -806,10 +881,10 @@
 @keyframes about-story-float {
   0%,
   100% {
-    transform: translateY(0) rotate(-13deg);
+    translate: 0 0;
   }
   50% {
-    transform: translateY(-9px) rotate(-11deg);
+    translate: 0 var(--about-book-lift, -5px);
   }
 }
 @media (min-width: 1600px) {
@@ -1157,16 +1232,39 @@
     font-size: 51px;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .about-story__hero-copy,
-  .about-story__art,
-  .about-story__book--main {
-    animation: none;
+@media (max-width: 1023px), (hover: none), (pointer: coarse) {
+  .about-story [data-about-parallax] { translate: none; }
+}
+@media (max-width: 768px) {
+  .about-story__kanji-field {
+    --kanji-drift-start: 40px;
+    --kanji-drift-end: -50px;
+    --kanji-drift-sway: 8px;
   }
+  .about-story__kanji-field > span:nth-child(n + 9) { display: none; }
+  .about-story--motion-ready [data-about-reveal] {
+    transition-duration: 480ms;
+  }
+  .about-story--motion-ready .about-reveal-pending {
+    transform: translate3d(0, 12px, 0);
+  }
+  .about-story--motion-ready .about-story__book--main { --about-book-lift: -3px; }
+  .about-story--motion-ready .about-story__book--back { --about-book-lift: -2px; }
+}
+@media (prefers-reduced-motion: reduce) {
   .about-story *,
   .about-story *::before,
   .about-story *::after {
-    transition: none;
+    animation: none !important;
+    transition: none !important;
     scroll-behavior: auto;
   }
+  .about-story [data-about-reveal],
+  .about-story__hero-copy > *,
+  .about-story__art {
+    opacity: 1;
+    transform: none;
+  }
+  .about-story [data-about-parallax],
+  .about-story__book { translate: none !important; }
 }

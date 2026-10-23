@@ -1,0 +1,22 @@
+{
+  "document": "C:\\Users\\VTS\\.gemini\\antigravity\\scratch\\mugenbunko-react\\artifacts\\database-design\\Muc_3_6_Thiet_ke_co_so_du_lieu_MugenBunko.docx",
+  "tables_in_model": 37,
+  "fields_in_dictionary": 221,
+  "word_tables": 40,
+  "embedded_images": 1,
+  "erd_sha256": "bd3a87e44f11dde91212704f7667b31316f08bae6f161f22a008ff24727582c8",
+  "erd_embedded_pixel_identical": true,
+  "body_font": "Times New Roman 13 pt",
+  "dictionary_font": "Times New Roman 12 pt",
+  "paper": "A4 portrait",
+  "words_whitespace": 5802,
+  "schema_sources": [
+    "server/db.ts",
+    "server/electionSchema.ts",
+    "server/readerSchema.ts",
+    "server/schema.sql"
+  ],
+  "native_word_preview_pages": 22,
+  "all_dictionary_fields_present_in_pdf_text": true,
+  "visual_layout_reviewed": true
+}

@@ -62,6 +62,22 @@
 .auth-form-footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 48px; padding-top: 22px; border-top: 1px solid var(--border-color); font-size: .68rem; color: var(--text-content); }
 .auth-form-footer a { color: var(--text-content); }
 .auth-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.auth-forgot-link { display: flex; justify-content: flex-end; margin: -4px 0 20px; font-size: .8rem; }
+.auth-forgot-link a, .auth-text-button { color: var(--text-main); text-decoration: underline; text-underline-offset: 4px; }
+.auth-recovery-step { color: var(--text-content); font-size: .75rem; margin: 0 0 22px; }
+.auth-recovery-notice { margin-bottom: 22px; padding: 14px 16px; background: var(--sidebar-bg); border-left: 2px solid var(--sakura-pink); color: var(--text-content); font-size: .8rem; line-height: 1.8; }
+.auth-session-note { margin: 0 0 20px; }
+.auth-recovery-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px; margin-top: 20px; }
+.auth-text-button { padding: 4px 0; border: 0; background: transparent; font: inherit; font-size: .78rem; cursor: pointer; }
+.auth-success { padding: 24px; background: var(--sidebar-bg); border: 1px solid var(--border-color); border-radius: 8px; outline: none; }
+.auth-success h2 { font-size: 1.3rem; margin-bottom: 14px; }
+.auth-success p { color: var(--text-content); font-size: .86rem; line-height: 1.85; margin-bottom: 22px; }
+.password-security { --auth-error: #ad243d; margin: 32px 0 0; padding: 28px 0 0; border-top: 1px solid var(--border-color); max-width: 560px; scroll-margin-top: 160px; }
+.theme-charcoal .password-security { --auth-error: #ff9bad; }
+.password-security-description { color: var(--text-content); font-size: .82rem; line-height: 1.8; overflow-wrap: anywhere; margin-bottom: 24px; }
+.password-security :is(input, button):focus-visible { outline: 2px solid var(--sakura-pink); outline-offset: 3px; }
+.password-security fieldset:disabled { opacity: .65; }
+.password-security .primary-btn { min-height: 44px; margin-top: 4px; }
 @media (min-width: 1800px) { .auth-layout { max-width: 1800px; margin-inline: auto; } }
 @media (max-width: 1000px) {
     .auth-layout { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }

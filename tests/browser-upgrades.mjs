@@ -463,10 +463,10 @@ try {
     await clickText(admin, '← Quay lại');
     await waitSelector(admin, '.admin-workspace');
     await evaluate(admin, "document.querySelector('.admin-sidebar-links a[href=\"#/manage-rules\"]').click();true");
-    await waitSelector(admin, '.author-studio-container');
+    await waitSelector(admin, '.rules-admin');
     assert.equal(await evaluate(admin, 'location.hash'), '#/manage-rules');
     await send('Page.reload', {}, admin);
-    await waitSelector(admin, '.author-studio-container');
+    await waitSelector(admin, '.rules-admin');
     await evaluate(admin, 'history.back();true');
     await waitSelector(admin, '.admin-workspace');
     await closePage(admin);

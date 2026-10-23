@@ -2,6 +2,7 @@ import { beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { getReadingProgress, getShelfStatus, storeReadingProgress } from '../src/utils/readingProgress.ts';
 import type { Novel } from '../src/types';
+import { getLastReading } from '../src/utils/lastReading.ts';
 
 const values = new Map<string, string>();
 Object.defineProperty(globalThis, 'localStorage', { value: { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value) } });
@@ -43,5 +44,28 @@ describe('Reading progress migration and shelf semantics', () => {
         storeReadingProgress('reader', novel, progress);
         assert.deepEqual(getReadingProgress('reader', novel)?.completedChapterIds, [10]);
         assert.equal(JSON.parse(values.get('mugen_reading_history_reader')!).length, 1);
+    });
+});
+
+describe('Header reading continuation', () => {
+    beforeEach(() => values.clear());
+    it('selects the newest readable story and follows chapter IDs after reordering', () => {
+        values.set('mugen_readprogress_reader_1', JSON.stringify({ chapterId: 20, chapterIndex: 99, updatedAt: 100 }));
+        const newer = { ...novel, id: 2, title: 'Newer story' };
+        values.set('mugen_readprogress_reader_2', JSON.stringify({ chapterId: 20, chapterIndex: 0, updatedAt: 200 }));
+        const continuation = getLastReading([novel, newer], 'reader');
+        assert.equal(continuation?.novel.id, 2); assert.equal(continuation?.chapterIndex, 1);
+        assert.equal(getLastReading([{ ...novel, chapters: novel.chapters!.slice().reverse() }], 'reader')?.chapterIndex, 0);
+    });
+    it('skips unavailable, completed and malformed history without leaking account history to guests', () => {
+        values.set('mugen_readprogress_reader_1', JSON.stringify({ version: 2, chapterId: 20, completedChapterIds: [10, 20], updatedAt: 100 }));
+        assert.equal(getLastReading([novel]), null);
+        assert.equal(getLastReading([{ ...novel, status: 'suspended' }], 'reader'), null);
+        assert.equal(getLastReading([{ ...novel, status: 'completed' }], 'reader'), null);
+        assert.equal(getLastReading([{ ...novel, chapters: [] }], 'reader'), null);
+        values.set('mugen_readprogress_reader_1', JSON.stringify({ chapterId: 10, updatedAt: 'Infinity' }));
+        assert.equal(getLastReading([novel], 'reader'), null);
+        values.set('mugen_readprogress_reader_1', 'invalid');
+        assert.equal(getLastReading([novel], 'reader'), null);
     });
 });

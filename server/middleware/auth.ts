@@ -5,7 +5,7 @@ import { JWT_SECRET } from '../config.js';
 import { clearSessionCookie, cookieToken, tokenHash } from '../utils/sessions.js';
 
 export interface AuthenticatedRequest extends Request {
-    user?: { id: number; username: string; roles: string[]; tokenHash: string; expiresAt: number };
+    user?: { id: number; username: string; roles: string[]; tokenHash: string; expiresAt: number; authVersion: number };
     authToken?: string;
 }
 
@@ -13,17 +13,20 @@ export async function resolveUser(token: string) {
     const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     if (typeof decoded === 'string' || !Number.isSafeInteger(decoded.id) || decoded.id <= 0) throw new Error('Invalid token subject');
     if (!Number.isSafeInteger(decoded.exp)) throw new jwt.JsonWebTokenError('Missing token expiration');
+    const authVersion = decoded.sv ?? 0;
+    if (!Number.isSafeInteger(authVersion) || authVersion < 0) throw new jwt.JsonWebTokenError('Invalid session version');
     const hash = tokenHash(token);
-    const users = await db.query<any[]>(`SELECT u.id, u.username, u.status, r.role,
+    const users = await db.query<any[]>(`SELECT u.id, u.username, u.status, u.auth_version, r.role,
         EXISTS(SELECT 1 FROM revoked_tokens revoked WHERE revoked.token_hash = ?) AS revoked FROM users u
         LEFT JOIN user_roles r ON r.user_id = u.id AND (r.role <> 'moderator' OR NOT EXISTS (
             SELECT 1 FROM election_candidates ec WHERE ec.user_id=u.id AND ec.decision='appointed'
             AND ec.ended_at IS NULL AND ec.term_ends_at<=UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000
         )) WHERE u.id = ?`, [hash, decoded.id]);
     if (users[0]?.revoked) throw new jwt.JsonWebTokenError('Session revoked');
+    if (users.length && Number(users[0].auth_version) !== authVersion) throw new jwt.JsonWebTokenError('Session revoked by password change');
     if (!users.length || users[0].status !== 'active') return null;
     return { id: users[0].id as number, username: users[0].username as string,
-        roles: users.flatMap(row => row.role ? [row.role as string] : []), tokenHash: hash, expiresAt: decoded.exp! * 1000 };
+        roles: users.flatMap(row => row.role ? [row.role as string] : []), tokenHash: hash, expiresAt: decoded.exp! * 1000, authVersion };
 }
 
 export async function authenticateToken(req: AuthenticatedRequest, res: Response, next: NextFunction) {

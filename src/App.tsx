@@ -4,6 +4,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import AuthPage from './pages/AuthPage';
 import type { LoginFields, RegisterFields } from './pages/AuthPage';
+import type { ResetPasswordFields } from './components/PasswordRecoveryForm';
 import { authHref, parseAuthHash, safeAuthReturn } from './utils/authNavigation';
 import type { AuthMode } from './utils/authNavigation';
 import NewNovelModal from './components/NewNovelModal';
@@ -19,6 +20,7 @@ import Explore from './pages/Explore';
 import ErrorBoundary from './components/ErrorBoundary';
 import { PageLoading, PageError } from './components/LoadState';
 import { useReadingSync } from './hooks/useReadingSync';
+import { useDialogFocus } from './hooks/useDialogFocus';
 
 import { User, Novel, Comment, Review, SystemEvent, Report, ForumPost, Message, UserRole } from './types';
 import { compressImage } from './utils/imageCompressor';
@@ -145,6 +147,7 @@ const getInitialRoute = (): InitialRoute => {
     if (hash === '#/mod-dashboard') return { view: 'mod-dashboard', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
     if (hash === '#/admin-dashboard') return { view: 'admin-dashboard', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
     if (hash === '#/manage-rules') return { view: 'manage-rules', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
+    if (/^#\/rules(?:\?section=[1-9]\d*)?$/.test(hash)) return { view: 'rules', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
     if (hash === '#/profile') return { view: 'profile', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
     if (hash === '#/about') return { view: 'about', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
     if (/^#\/elections(?:\/[1-9]\d*)?$/.test(hash)) return { view: 'elections', novelId: null, chapterIndex: null, triggerLogin: false, profileViewingUsername: null };
@@ -198,6 +201,7 @@ interface Petal {
 
 export default function App() {
     const isSessionExpiringRef = useRef(false);
+    const [authNotice, setAuthNotice] = useState('');
 
     const handleSessionExpired = (customMsg?: string) => {
         if (isSessionExpiringRef.current) return;
@@ -253,7 +257,7 @@ export default function App() {
 
             // 401 Unauthorized: Token không hợp lệ hoặc đã hết hạn
             if (res.status === 401) {
-                const isAuthAttempt = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/send-otp') || url.includes('/auth/reset-password');
+                const isAuthAttempt = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/send-otp') || url.includes('/auth/reset-password') || url.includes('/auth/forgot-password');
                 if (!isAuthAttempt && (token || currentUser)) {
                     try {
                         const clone = res.clone();
@@ -394,6 +398,7 @@ export default function App() {
     const [confirmModalOpen, setConfirmModalOpen] = useState<boolean>(false);
     const [confirmModalMessage, setConfirmModalMessage] = useState<string>( "");
     const [confirmModalOnConfirm, setConfirmModalOnConfirm] = useState<(() => void) | null>(null);
+    const confirmDialogRef = useDialogFocus(confirmModalOpen);
 
     const triggerConfirm = (message: string, onConfirm: () => void) => {
         setConfirmModalMessage(message);
@@ -416,6 +421,7 @@ export default function App() {
     const [filterGenre, setFilterGenre] = useState<string>("Tất cả");
     const [filterType, setFilterType] = useState<string>("all");
     const [categoryDrawerOpen, setCategoryDrawerOpen] = useState<boolean>(false);
+    const categoryDrawerRef = useDialogFocus(categoryDrawerOpen);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [filterSort, setFilterSort] = useState<string>("reads");
@@ -570,7 +576,7 @@ export default function App() {
 
         const auth = parseAuthHash(hash);
         if (auth) {
-            if (sessionUser) {
+            if (sessionUser && auth.mode !== 'forgot-password') {
                 window.history.replaceState(null, '', auth.returnTo);
                 parseHashAndSetStates();
             } else {
@@ -662,6 +668,12 @@ export default function App() {
             return;
         }
 
+        if (/^#\/rules(?:\?section=[1-9]\d*)?$/.test(hash)) {
+            setCurrentView('rules');
+            setActiveNovelId(null);
+            return;
+        }
+
         const eventMatch = hash.match(/^#\/event\/([1-9]\d{0,14})$/);
         if (eventMatch) {
             setActiveEventId(Number(eventMatch[1]));
@@ -731,7 +743,7 @@ export default function App() {
     useEffect(() => {
         let expectedHash = '#/';
 
-        if (currentView === 'login' || currentView === 'register') {
+        if (currentView === 'login' || currentView === 'register' || currentView === 'forgot-password') {
             expectedHash = authHref(currentView, authReturnTo);
         } else if (currentView === 'library') {
             expectedHash = '#/library';
@@ -743,6 +755,8 @@ export default function App() {
             expectedHash = '#/admin-dashboard';
         } else if (currentView === 'manage-rules') {
             expectedHash = '#/manage-rules';
+        } else if (currentView === 'rules') {
+            expectedHash = /^#\/rules(?:\?section=[1-9]\d*)?$/.test(window.location.hash) ? window.location.hash : '#/rules';
         } else if (currentView === 'event-detail' && activeEventId !== null) {
             expectedHash = `#/event/${activeEventId}`;
         } else if (currentView === 'profile') {
@@ -1094,6 +1108,7 @@ export default function App() {
     // AUTHENTICATION CONTROLLER FLOWS
     // ----------------------------------------------------
     const finishAuthentication = (user: User) => {
+        setAuthNotice('');
         localStorage.setItem(DB_KEYS.session, JSON.stringify(user));
         localStorage.removeItem('mugen_token');
         setCurrentUser(user);
@@ -1161,6 +1176,33 @@ export default function App() {
         showToast("Đã đăng xuất tài khoản an toàn.");
     };
 
+    const clearPasswordSession = () => {
+        localStorage.removeItem(DB_KEYS.session); localStorage.removeItem('mugen_token');
+        for (const key of Object.keys(sessionStorage)) if (key.startsWith('mugen_cache_')) sessionStorage.removeItem(key);
+        setCurrentUser(null); setProfileDisplayname(''); setProfileAvatarSeed(''); setProfileBio(''); setProfileRoles(['reader']);
+    };
+    const submitPasswordRequest = async (route: string, body: unknown) => {
+        let response: Response;
+        try { response = await fetchWithAuth(`${API_BASE}/auth/${route}`, { method: 'POST', body: JSON.stringify(body) }); }
+        catch { throw new Error('Không thể kết nối máy chủ. Dữ liệu đã nhập vẫn được giữ lại; hãy thử lại.'); }
+        let data;
+        try { data = await response.json(); }
+        catch { throw new Error('Máy chủ chưa xử lý được yêu cầu. Vui lòng thử lại.'); }
+        if (!response.ok || !data.success) throw new Error(data.error || 'Chưa xử lý được yêu cầu mật khẩu. Vui lòng thử lại.');
+        return data;
+    };
+    const requestPasswordReset = async (email: string) => {
+        return await submitPasswordRequest('forgot-password', { email }) as { message: string; devOtp?: string };
+    };
+    const resetPassword = async (fields: ResetPasswordFields) => {
+        await submitPasswordRequest('reset-password', fields);
+        clearPasswordSession();
+    };
+    const changePassword = async (currentPassword: string, newPassword: string) => {
+        const data = await submitPasswordRequest('change-password', { currentPassword, newPassword });
+        clearPasswordSession(); setAuthNotice(data.message); openAuth('login', '#/profile', true);
+    };
+
     // ----------------------------------------------------
     // BREADCRUMBS BUILDER
     // ----------------------------------------------------
@@ -1180,6 +1222,8 @@ export default function App() {
             items.push(<span key="mod" className="breadcrumb-item active">Bảng Kiểm Duyệt Mod</span>);
         } else if (currentView === 'admin-dashboard') {
             items.push(<span key="adm" className="breadcrumb-item active">Trang Quản Trị Admin</span>);
+        } else if (currentView === 'rules' || currentView === 'manage-rules') {
+            items.push(<span key="rules" className="breadcrumb-item active">{currentView === 'rules' ? 'Quy định cộng đồng' : 'Quản lý quy định'}</span>);
         } else if (currentView === 'profile') {
             items.push(<span key="prof" className="breadcrumb-item active">Thông Tin Cá Nhân</span>);
         } else if (currentView === 'about') {
@@ -2343,10 +2387,10 @@ export default function App() {
         );
     }
 
-    if (currentView === 'login' || currentView === 'register') {
+    if (currentView === 'login' || currentView === 'register' || currentView === 'forgot-password') {
         return <AuthPage mode={currentView} returnTo={authReturnTo} theme={theme}
             onThemeChange={handleThemeChange} onLogin={handleLoginSubmit} onRegister={handleRegisterSubmit}
-            sendRegistrationOtp={sendRegistrationOtp} />;
+            sendRegistrationOtp={sendRegistrationOtp} requestPasswordReset={requestPasswordReset} resetPassword={resetPassword} notice={authNotice} />;
     }
 
     return (
@@ -2371,10 +2415,11 @@ export default function App() {
             {/* Category Drawer (Left Slide-out menu) */}
             {categoryDrawerOpen && (
                 <div className="category-drawer-overlay" onClick={() => setCategoryDrawerOpen(false)}>
-                    <div className="category-drawer" onClick={(e) => e.stopPropagation()}>
+                    <section ref={categoryDrawerRef} id="site-navigation-drawer" className="category-drawer" role="dialog" aria-modal="true" aria-labelledby="site-navigation-title"
+                        onClick={event => event.stopPropagation()} onKeyDown={event => { if (event.key === 'Escape') setCategoryDrawerOpen(false); }}>
                         <div className="drawer-header">
-                            <h3>KHÁM PHÁ</h3>
-                            <button className="close-drawer-btn" onClick={() => setCategoryDrawerOpen(false)}>&times;</button>
+                            <h3 id="site-navigation-title">THƯ VIỆN MUGENBUNKO</h3>
+                            <button className="close-drawer-btn" aria-label="Đóng menu điều hướng" onClick={() => setCategoryDrawerOpen(false)}>&times;</button>
                         </div>
                         <div className="drawer-body">
                             <div className="drawer-section">
@@ -2392,14 +2437,8 @@ export default function App() {
                                     >
                                         Diễn Đàn Thảo Luận
                                     </button>
-                                    {currentUser && (
-                                        <button 
-                                            className={`drawer-opt-btn ${currentView === 'library' ? 'active' : ''}`}
-                                            onClick={() => { setCurrentView('library'); setActiveNovelId(null); setCategoryDrawerOpen(false); }}
-                                        >
-                                            Tủ Sách Cá Nhân
-                                        </button>
-                                    )}
+                                    <a className={`drawer-opt-btn ${currentView === 'explore' ? 'active' : ''}`} href="#/explore" onClick={() => setCategoryDrawerOpen(false)}>Khám Phá Truyện</a>
+                                    <a className={`drawer-opt-btn ${currentView === 'library' ? 'active' : ''}`} href="#/library" onClick={() => setCategoryDrawerOpen(false)}>Tủ Sách Cá Nhân</a>
                                     <button className={`drawer-opt-btn ${currentView === 'elections' ? 'active' : ''}`} onClick={() => { setCurrentView('elections'); setActiveNovelId(null); setCategoryDrawerOpen(false); }}>Bầu chọn kiểm duyệt viên</button>
                                     <button
                                         className={`drawer-opt-btn ${currentView === 'about' ? 'active' : ''}`}
@@ -2469,7 +2508,7 @@ export default function App() {
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </section>
                 </div>
             )}
 
@@ -2482,6 +2521,9 @@ export default function App() {
             {currentView !== 'reader' && (
                 <Header
                     currentUser={currentUser}
+                    novels={novels}
+                    progressRevision={readingSync.revision}
+                    categoryDrawerOpen={categoryDrawerOpen}
                     currentView={currentView}
                     setCurrentView={setCurrentView}
                     setActiveNovelId={setActiveNovelId}
@@ -2772,10 +2814,11 @@ export default function App() {
 
                 {currentView === 'manage-rules' && currentUser && currentUser.roles.includes('admin') && (
                     <ManageRules
+                        key={currentUser.id}
+                        userId={currentUser.id}
                         API_BASE={API_BASE}
                         fetchWithAuth={fetchWithAuth}
                         showToast={showToast}
-                        setCurrentView={setCurrentView}
                         triggerConfirm={triggerConfirm}
                     />
                 )}
@@ -2783,7 +2826,7 @@ export default function App() {
                 {currentView === 'rules' && (
                     <ViewRules
                         API_BASE={API_BASE}
-                        setCurrentView={setCurrentView}
+                        isAdmin={Boolean(currentUser?.roles.includes('admin'))}
                     />
                 )}
 
@@ -2869,6 +2912,7 @@ export default function App() {
                         setProfileRoles={setProfileRoles as any}
                         regenerateProfileAvatar={regenerateProfileAvatar}
                         saveBasicProfile={saveBasicProfile}
+                        changePassword={changePassword}
                         handleRoleCheckboxChange={handleRoleCheckboxChange}
                         saveUserRoles={saveUserRoles}
                         setCurrentView={setCurrentView}
@@ -2898,15 +2942,15 @@ export default function App() {
             {/* ================= MODALS & OVERLAYS ================= */}
             {confirmModalOpen && (
                 <div className="modal-overlay" onClick={(e) => { if ((e.target as HTMLElement).className === 'modal-overlay') setConfirmModalOpen(false); }}>
-                    <div className="modal-content" style={{ maxWidth: '400px' }}>
+                    <section ref={confirmDialogRef} className="modal-content" role="dialog" aria-modal="true" aria-label="Xác nhận thao tác" aria-describedby="confirmation-message" onKeyDown={event => { if (event.key === 'Escape') setConfirmModalOpen(false); }} style={{ maxWidth: '400px' }}>
                         <div className="modal-header" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                             <h3 style={{ margin: 0, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <Icons.AlertCircle size={18} /> Xác nhận hành động
                             </h3>
-                            <button className="close-btn" onClick={() => setConfirmModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}>&times;</button>
+                            <button className="close-btn" aria-label="Đóng xác nhận" onClick={() => setConfirmModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}>&times;</button>
                         </div>
                         <div className="modal-body" style={{ paddingTop: '16px' }}>
-                            <p style={{ fontSize: '0.88rem', color: 'var(--text-main)', marginBottom: '20px', lineHeight: 1.5 }}>
+                            <p id="confirmation-message" style={{ fontSize: '0.88rem', color: 'var(--text-main)', marginBottom: '20px', lineHeight: 1.5 }}>
                                 {confirmModalMessage}
                             </p>
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
@@ -2929,7 +2973,7 @@ export default function App() {
                                 </button>
                             </div>
                         </div>
-                    </div>
+                    </section>
                 </div>
             )}
             {imageModalOpen && (

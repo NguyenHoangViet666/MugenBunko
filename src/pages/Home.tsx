@@ -2,6 +2,16 @@ import React from 'react';
 import { Novel, User, ForumPost, SystemEvent } from '../types';
 import { calculateUserLevel } from '../utils/levelHelper';
 import { getReadingProgress } from '../utils/readingProgress';
+import '../styles/hero-motion.css';
+
+const HERO_PETALS = [
+    { left: '8%', duration: '15s', delay: '-4s' },
+    { left: '22%', duration: '18s', delay: '-12s' },
+    { left: '42%', duration: '16s', delay: '-7s' },
+    { left: '60%', duration: '19s', delay: '-16s' },
+    { left: '76%', duration: '14s', delay: '-3s' },
+    { left: '88%', duration: '17s', delay: '-10s' },
+];
 
 // ================= MONOCHROME PROFESSIONAL SVG ICONS =================
 const Icons = {
@@ -219,6 +229,12 @@ const Icons = {
             <line x1="14" y1="1" x2="14" y2="4"></line>
         </svg>
     ),
+    Pause: () => (
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true">
+            <rect x="6" y="4" width="4" height="16" rx="1" />
+            <rect x="14" y="4" width="4" height="16" rx="1" />
+        </svg>
+    ),
     Play: () => (
         <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" stroke="none">
             <polygon points="5 3 19 12 5 21 5 3"></polygon>
@@ -353,14 +369,36 @@ export default function Home({
 
     const [heroIdx, setHeroIdx] = React.useState(0);
     const [isHeroHovered, setIsHeroHovered] = React.useState(false);
+    const [isHeroFocused, setIsHeroFocused] = React.useState(false);
+    const [isHeroMotionPaused, setIsHeroMotionPaused] = React.useState(false);
+    const [prefersReducedMotion, setPrefersReducedMotion] = React.useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const [isDocumentVisible, setIsDocumentVisible] = React.useState(() => !document.hidden);
+    const [isHeroInView, setIsHeroInView] = React.useState(true);
+    const heroRef = React.useRef<HTMLDivElement>(null);
+    const isHeroPaused = isHeroHovered || isHeroFocused || isHeroMotionPaused || prefersReducedMotion || !isDocumentVisible || !isHeroInView;
 
     React.useEffect(() => {
-        if (heroNovels.length <= 1 || isHeroHovered) return;
-        const timer = setInterval(() => {
-            setHeroIdx(prev => (prev + 1) % heroNovels.length);
-        }, 7000);
-        return () => clearInterval(timer);
-    }, [heroNovels.length, isHeroHovered]);
+        const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+        const updateMotion = () => setPrefersReducedMotion(motion.matches);
+        const updateVisibility = () => setIsDocumentVisible(!document.hidden);
+        motion.addEventListener('change', updateMotion);
+        document.addEventListener('visibilitychange', updateVisibility);
+        return () => {
+            motion.removeEventListener('change', updateMotion);
+            document.removeEventListener('visibilitychange', updateVisibility);
+        };
+    }, []);
+
+    React.useEffect(() => {
+        if (!heroRef.current) return;
+        const observer = new IntersectionObserver(([entry]) => setIsHeroInView(entry.isIntersecting), { threshold: 0 });
+        observer.observe(heroRef.current);
+        return () => observer.disconnect();
+    }, [heroNovels.length]);
+
+    React.useEffect(() => {
+        setHeroIdx(index => index < heroNovels.length ? index : 0);
+    }, [heroNovels.length]);
 
     React.useEffect(() => {
         const historyKey = currentUser ? `mugen_reading_history_${currentUser.username}` : 'mugen_reading_history_guest';
@@ -891,7 +929,7 @@ export default function Home({
     };
 
     return (
-        <div className="page-view active">
+        <div className="page-view active home-page">
             
             {/* 1. FEATURED HERO BANNER 3.0 (CINEMATIC, THUMBNAIL STRIP & PROGRESS BAR) */}
             {heroNovels.length > 0 && (() => {
@@ -908,13 +946,23 @@ export default function Home({
 
                 return (
                     <div 
-                        className="featured-banner"
-                        onMouseEnter={() => setIsHeroHovered(true)}
-                        onMouseLeave={() => setIsHeroHovered(false)}
+                        ref={heroRef}
+                        className={`featured-banner ${isHeroPaused ? 'hero-motion-paused' : ''}`}
+                        role="region"
+                        aria-label="Tác phẩm đề cử"
+                        onPointerEnter={event => { if (event.pointerType === 'mouse') setIsHeroHovered(true); }}
+                        onPointerLeave={event => { if (event.pointerType === 'mouse') setIsHeroHovered(false); }}
+                        onFocusCapture={() => setIsHeroFocused(true)}
+                        onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setIsHeroFocused(false); }}
                     >
-                        <div className="featured-bg-cover" style={{ backgroundImage: `url(${currentHero.cover})` }}></div>
-                        <div className="featured-overlay-ambient"></div>
-                        <div className="featured-kanji-watermark">無限文庫 • 今週の推薦</div>
+                        <div key={`scene-${currentHero.id}`} className="featured-bg-cover hero-motion-loop" style={{ backgroundImage: `url(${currentHero.cover})` }} aria-hidden="true" />
+                        <div className="featured-overlay-ambient" aria-hidden="true" />
+                        <div className="hero-sakura-petals" aria-hidden="true">
+                            {HERO_PETALS.map((petal, index) => <span key={index} className="hero-petal hero-motion-loop" style={{
+                                '--petal-left': petal.left, '--petal-duration': petal.duration, '--petal-delay': petal.delay,
+                            } as React.CSSProperties} />)}
+                        </div>
+                        <div className="featured-kanji-watermark" aria-hidden="true">無限文庫 • 今週の推薦</div>
 
                         <div className="featured-banner-content" key={currentHero.id}>
                             <div className="featured-info">
@@ -1002,9 +1050,10 @@ export default function Home({
                             </div>
 
                             {/* Book Showcase (Realistic Physical Light Novel) */}
-                            <div className="featured-cover-showcase" onClick={() => openNovelDetail(currentHero.id)}>
-                                <div className="hero-book-ambient-glow"></div>
-                                <div className="hero-book-wrapper">
+                            <a className="featured-cover-showcase" href={`#/novel/${currentHero.id}`} aria-label={`Chi tiết tác phẩm ${currentHero.title}`}>
+                                <div className="hero-book-ambient-glow hero-motion-loop" aria-hidden="true" />
+                                <div className="hero-book-float hero-motion-loop">
+                                  <div className="hero-book-wrapper">
                                     <div className="hero-book-cover">
                                         <div className="hero-book-spine"></div>
                                         <img src={currentHero.cover} alt={currentHero.title} />
@@ -1012,19 +1061,20 @@ export default function Home({
                                             <Icons.Flame /> #{heroIdx + 1} Hot
                                         </span>
                                     </div>
+                                  </div>
                                 </div>
-                            </div>
+                            </a>
                         </div>
 
                         {/* Interactive Thumbnail Strip & Carousel Controls */}
-                        {heroNovels.length > 1 && (
-                            <div className="hero-bottom-bar">
-                                <div className="hero-thumb-strip">
+                        <div className="hero-bottom-bar">
+                                {heroNovels.length > 1 && <div className="hero-thumb-strip">
                                     {heroNovels.map((n, idx) => (
                                         <button
                                             key={n.id}
                                             className={`hero-thumb-item ${idx === heroIdx ? 'active' : ''}`}
                                             onClick={() => setHeroIdx(idx)}
+                                            aria-pressed={idx === heroIdx}
                                             title={n.title}
                                         >
                                             <img src={n.cover} alt={n.title} className="hero-thumb-img" />
@@ -1034,9 +1084,18 @@ export default function Home({
                                             </div>
                                         </button>
                                     ))}
-                                </div>
+                                </div>}
 
                                 <div className="hero-carousel-controls">
+                                    {!prefersReducedMotion && <button
+                                        type="button"
+                                        className="hero-arrow-btn hero-motion-toggle"
+                                        onClick={() => setIsHeroMotionPaused(paused => !paused)}
+                                        aria-pressed={isHeroMotionPaused}
+                                        aria-label={isHeroMotionPaused ? 'Tiếp tục chuyển động banner' : 'Tạm dừng chuyển động banner'}
+                                        title={isHeroMotionPaused ? 'Tiếp tục chuyển động' : 'Tạm dừng chuyển động'}
+                                    >{isHeroMotionPaused ? <Icons.Play /> : <Icons.Pause />}</button>}
+                                    {heroNovels.length > 1 && <>
                                     <button 
                                         className="hero-arrow-btn" 
                                         onClick={() => setHeroIdx(prev => (prev - 1 + heroNovels.length) % heroNovels.length)}
@@ -1050,6 +1109,8 @@ export default function Home({
                                                 key={n.id}
                                                 className={`hero-dot-btn ${idx === heroIdx ? 'active' : ''}`}
                                                 onClick={() => setHeroIdx(idx)}
+                                                aria-label={`Xem đề cử ${idx + 1}: ${n.title}`}
+                                                aria-pressed={idx === heroIdx}
                                                 title={n.title}
                                             />
                                         ))}
@@ -1061,16 +1122,19 @@ export default function Home({
                                     >
                                         <Icons.ChevronRight />
                                     </button>
+                                    </>}
                                 </div>
-                            </div>
-                        )}
+                        </div>
 
                         {/* Auto-advance visual progress bar */}
                         {heroNovels.length > 1 && (
-                            <div className="hero-progress-bar-track">
+                            <div className="hero-progress-bar-track" aria-hidden="true">
                                 <div
-                                    key={`${heroIdx}-${isHeroHovered ? 'paused' : 'running'}`}
-                                    className={`hero-progress-bar-fill ${isHeroHovered ? 'paused' : ''}`}
+                                    key={currentHero.id}
+                                    className={`hero-progress-bar-fill ${isHeroPaused ? 'paused' : ''}`}
+                                    onAnimationEnd={event => {
+                                        if (event.animationName === 'heroSlideProgress') setHeroIdx(index => (index + 1) % heroNovels.length);
+                                    }}
                                 />
                             </div>
                         )}

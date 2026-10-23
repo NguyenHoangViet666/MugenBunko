@@ -7,8 +7,9 @@ const router = Router();
 router.get('/', async (req: Request, res: Response) => {
     try {
         const rules = await db.query<any[]>(
-            "SELECT id, title, content, order_index FROM \`rules\` ORDER BY order_index ASC, id ASC"
+            "SELECT id, title, content, order_index, updated_at FROM \`rules\` ORDER BY order_index ASC, id ASC"
         );
+        res.setHeader('Cache-Control', 'no-store');
         res.json(rules);
     } catch (err) {
         console.error("Error fetching rules:", err);

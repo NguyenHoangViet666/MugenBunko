@@ -1,318 +1,154 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { FormEvent } from 'react';
 import Icons from '../components/Icons';
-import { Rule } from '../types';
+import { PageError, PageLoading } from '../components/LoadState';
+import RuleContent from '../components/RuleContent';
+import { useRules } from '../hooks/useRules';
+import type { Rule } from '../types';
+import '../styles/rules.css';
 
 interface ManageRulesProps {
     API_BASE: string;
+    userId: number;
     fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>;
     showToast: (msg: string) => void;
-    setCurrentView: (view: string) => void;
     triggerConfirm: (msg: string, callback: () => void) => void;
 }
+type RuleDraft = { base: Rule | null; title: string; content: string; orderIndex: string };
+const validRule = (value: Rule) => value && Number.isSafeInteger(value.id) && typeof value.title === 'string' && typeof value.content === 'string' && Number.isInteger(value.order_index);
+function recoverDraft(key: string): RuleDraft | null {
+    try {
+        const value = JSON.parse(localStorage.getItem(key) || 'null');
+        if (value && typeof value.title === 'string' && typeof value.content === 'string' && typeof value.orderIndex === 'string' && (value.base === null || validRule(value.base))) return value;
+    } catch { /* Storage may be unavailable or an old draft may be invalid. */ }
+    return null;
+}
+const toDraft = (rule: Rule): RuleDraft => ({ base: rule, title: rule.title, content: rule.content, orderIndex: String(rule.order_index) });
+const sortRules = (rules: Rule[]) => [...rules].sort((a, b) => a.order_index - b.order_index || a.id - b.id);
 
-export default function ManageRules({ API_BASE, fetchWithAuth, showToast, setCurrentView, triggerConfirm }: ManageRulesProps) {
-    const [rules, setRules] = useState<Rule[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [editingRule, setEditingRule] = useState<Rule | null>(null); // null or Rule object
-    const [isAdding, setIsAdding] = useState(false);
-    const [title, setTitle] = useState('');
-    const [content, setContent] = useState('');
-    const [orderIndex, setOrderIndex] = useState(0);
-
-    const fetchRules = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch(`${API_BASE}/policies`);
-            if (res.ok) {
-                const data = await res.json();
-                setRules(data);
-            }
-        } catch (err) {
-            console.error("Error loading rules:", err);
-            if (showToast) showToast("Lỗi tải danh sách quy định!");
-        } finally {
-            setLoading(false);
-        }
-    };
+export default function ManageRules({ API_BASE, userId, fetchWithAuth, showToast, triggerConfirm }: ManageRulesProps) {
+    const { rules, setRules, loading, error, retry } = useRules(API_BASE);
+    const draftKey = `mugen_rule_draft:${userId}`;
+    const [draft, setDraft] = useState<RuleDraft | null>(() => recoverDraft(draftKey));
+    const [recovered, setRecovered] = useState(() => Boolean(recoverDraft(draftKey)));
+    const [preview, setPreview] = useState(false);
+    const [busy, setBusy] = useState<'save' | 'delete' | null>(null);
+    const busyRef = useRef(false);
+    const [saveError, setSaveError] = useState('');
+    const [storageError, setStorageError] = useState(false);
+    const [conflict, setConflict] = useState<Rule | null>(null);
+    const dirty = Boolean(draft && (draft.base
+        ? draft.title !== draft.base.title || draft.content !== draft.base.content || draft.orderIndex !== String(draft.base.order_index)
+        : draft.title || draft.content));
 
     useEffect(() => {
-        fetchRules();
-    }, []);
-
-    const handleAdd = () => {
-        setIsAdding(true);
-        setEditingRule(null);
-        setTitle('');
-        setContent('');
-        setOrderIndex(rules.length > 0 ? Math.max(...rules.map(r => r.order_index)) + 10 : 10);
-    };
-
-    const handleEdit = (rule: Rule) => {
-        setEditingRule(rule);
-        setIsAdding(false);
-        setTitle(rule.title);
-        setContent(rule.content);
-        setOrderIndex(rule.order_index);
-    };
-
-    const handleCancel = () => {
-        setIsAdding(false);
-        setEditingRule(null);
-        setTitle('');
-        setContent('');
-        setOrderIndex(0);
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!title.trim() || !content.trim()) {
-            alert("Vui lòng nhập đầy đủ tiêu đề và nội dung quy định!");
-            return;
-        }
-
-        const payload = {
-            title: title.trim(),
-            content: content.trim(),
-            orderIndex: Number(orderIndex) || 0
-        };
-
         try {
-            let res: Response;
-            if (isAdding) {
-                res = await fetchWithAuth(`${API_BASE}/admin/rules`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-            } else if (editingRule) {
-                res = await fetchWithAuth(`${API_BASE}/admin/rules/${editingRule.id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-            } else {
-                return;
-            }
+            if (dirty && draft) localStorage.setItem(draftKey, JSON.stringify(draft));
+            else localStorage.removeItem(draftKey);
+            setStorageError(false);
+        } catch { setStorageError(true); }
+    }, [draft, dirty, draftKey]);
+    useEffect(() => {
+        if (!dirty || !storageError) return;
+        const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+        window.addEventListener('beforeunload', warn);
+        return () => window.removeEventListener('beforeunload', warn);
+    }, [dirty, storageError]);
 
-            const data = await res.json();
-            if (res.ok && data.success) {
-                if (showToast) showToast(isAdding ? "Thêm quy định mới thành công!" : "Cập nhật quy định thành công!");
-                handleCancel();
-                fetchRules();
-            } else {
-                alert(data.error || "Gặp lỗi khi lưu quy định.");
-            }
-        } catch (err) {
-            console.error("Submit rule error:", err);
-            alert("Lỗi kết nối máy chủ.");
-        }
+    const replaceDraft = (next: RuleDraft | null) => {
+        if (busyRef.current) return;
+        const apply = () => { setDraft(next); setPreview(false); setSaveError(''); setConflict(null); setRecovered(false); };
+        if (dirty) triggerConfirm('Bỏ các thay đổi chưa công bố của điều khoản đang soạn? Bản đã công bố vẫn được giữ nguyên.', apply);
+        else apply();
     };
-
-    const handleDelete = async (ruleId: number) => {
-        triggerConfirm("Bạn có chắc chắn muốn xóa vĩnh viễn quy định này không? Độc giả sẽ không thể xem nội dung này nữa.", async () => {
-            try {
-                const res = await fetchWithAuth(`${API_BASE}/admin/rules/${ruleId}`, {
-                    method: 'DELETE'
-                });
-                const data = await res.json();
-                if (res.ok && data.success) {
-                    if (showToast) showToast("Đã xóa quy định thành công.");
-                    fetchRules();
-                } else {
-                    alert(data.error || "Lỗi khi xóa quy định.");
-                }
-            } catch (err) {
-                console.error("Delete rule error:", err);
-                alert("Lỗi kết nối máy chủ khi xóa.");
+    const updateDraft = (field: 'title' | 'content' | 'orderIndex', value: string) => {
+        setDraft(previous => previous ? { ...previous, [field]: value } : previous);
+        setSaveError('');
+    };
+    const save = async (event: FormEvent) => {
+        event.preventDefault();
+        if (!draft || !dirty || busyRef.current) return;
+        const title = draft.title.trim(), content = draft.content.trim(), orderIndex = Number(draft.orderIndex);
+        if (!title || !content || title.length > 255 || new TextEncoder().encode(content).length > 60000 || draft.orderIndex.trim() === '' || !Number.isInteger(orderIndex) || orderIndex < 0 || orderIndex > 1000000) {
+            setSaveError('Nhập tiêu đề (tối đa 255 ký tự), nội dung (tối đa 60 KB) và thứ tự nguyên từ 0 đến 1.000.000.'); return;
+        }
+        busyRef.current = true; setBusy('save'); setSaveError(''); setConflict(null);
+        try {
+            const response = await fetchWithAuth(`${API_BASE}/admin/rules${draft.base ? `/${draft.base.id}` : ''}`, {
+                method: draft.base ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, content, orderIndex, ...(draft.base ? { baseRule: draft.base } : {}) })
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success || !validRule(data.rule)) {
+                if (response.status === 409 && validRule(data.rule)) setConflict(data.rule);
+                throw new Error(data.error || 'Chưa công bố được thay đổi. Vui lòng thử lại.');
             }
+            setRules(previous => sortRules([...previous.filter(rule => rule.id !== data.rule.id), data.rule]));
+            setDraft(toDraft(data.rule)); setRecovered(false);
+            showToast(draft.base ? 'Đã cập nhật quy định công khai.' : 'Đã công bố điều khoản mới.');
+        } catch (error) {
+            setSaveError(error instanceof Error && error.message !== 'Failed to fetch' ? error.message : 'Mất kết nối. Nội dung đang soạn vẫn được giữ lại, bạn có thể thử lại.');
+        } finally { busyRef.current = false; setBusy(null); }
+    };
+    const deleteRule = () => {
+        const rule = draft?.base;
+        if (!rule || busyRef.current) return;
+        triggerConfirm(`Xóa “${rule.title}” khỏi quy định công khai? Thao tác này không thể hoàn tác.${dirty ? ' Nội dung đang sửa của điều khoản này cũng sẽ bị bỏ.' : ''}`, () => {
+            if (busyRef.current) return;
+            busyRef.current = true; setBusy('delete'); setSaveError('');
+            void (async () => {
+                try {
+                    const response = await fetchWithAuth(`${API_BASE}/admin/rules/${rule.id}`, {
+                        method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ baseRule: rule })
+                    });
+                    const data = await response.json();
+                    if (!response.ok || !data.success) {
+                        if (response.status === 409 && validRule(data.rule)) setConflict(data.rule);
+                        throw new Error(data.error || 'Chưa xóa được điều khoản.');
+                    }
+                    setRules(previous => previous.filter(item => item.id !== rule.id));
+                    setDraft(null); setRecovered(false); setConflict(null); showToast('Đã xóa điều khoản khỏi trang công khai.');
+                } catch (error) { setSaveError(error instanceof Error ? error.message : 'Chưa xóa được điều khoản. Vui lòng thử lại.'); }
+                finally { busyRef.current = false; setBusy(null); }
+            })();
         });
     };
 
-    return (
-        <div className="author-studio-container" style={{ minHeight: '80vh', padding: '20px 0' }}>
-            <div className="studio-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-                <div>
-                    <h2 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--color-primary, #ea580c)' }}>
-                        Sửa đổi quy định hệ thống
-                    </h2>
-                    <p style={{ fontSize: '14px', color: 'var(--text-muted, #94a3b8)', marginTop: '5px' }}>
-                        Trình soạn thảo quy định đăng tải tác phẩm và quy chuẩn cộng đồng dành riêng cho Quản trị viên.
-                    </p>
-                </div>
-                {!isAdding && !editingRule && (
-                    <button className="btn btn-primary" onClick={handleAdd} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Icons.Plus size={16} /> Thêm quy định mới
-                    </button>
-                )}
+    return <div className="rules-page rules-admin">
+        <header className="rules-heading">
+            <div className="rules-heading-top"><a className="rules-back-link" href="#/admin-dashboard"><Icons.ArrowLeft size={15} /> Quản trị</a><a className="outline-btn" href="#/rules"><Icons.Eye size={15} /> Xem trang công khai</a></div>
+            <span className="rules-eyebrow">QUẢN TRỊ NỘI DUNG</span><h1>Quy định cộng đồng</h1>
+            <p>Soạn từng điều khoản, kiểm tra cách hiển thị rồi công bố cho cộng đồng.</p>
+        </header>
+        {loading && !rules.length && !draft ? <PageLoading reader /> : <>
+            {error && <PageError message={error} onRetry={retry} />}
+            <div className="rules-admin-layout">
+                <aside className="rules-admin-list" aria-label="Danh sách điều khoản">
+                    <div className="rules-list-heading"><h2>Điều khoản <span>{rules.length}</span></h2><button type="button" className="primary-btn" disabled={Boolean(busy) || loading || Boolean(error)} onClick={() => replaceDraft({ base: null, title: '', content: '', orderIndex: String(Math.min(1000000, Math.max(0, ...rules.map(rule => rule.order_index)) + 10)) })}><Icons.Plus size={15} /> Thêm mới</button></div>
+                    {!loading && !error && !rules.length && <p className="rules-list-empty">Chưa có điều khoản nào. Bắt đầu bằng một bản soạn mới.</p>}
+                    {rules.map((rule, index) => <button type="button" key={rule.id} disabled={Boolean(busy)} className={`rules-list-item ${draft?.base?.id === rule.id ? 'selected' : ''}`} aria-pressed={draft?.base?.id === rule.id} onClick={() => { if (draft?.base?.id !== rule.id) replaceDraft(toDraft(rule)); }}><span>{String(index + 1).padStart(2, '0')}</span><span>{rule.title}<small>Thứ tự: {rule.order_index}</small></span><Icons.Edit size={14} /></button>)}
+                    <p className="rules-sidebar-note">Danh sách này là nội dung đang công khai. Bản đang soạn chỉ được lưu trên trình duyệt cho tài khoản của bạn.</p>
+                </aside>
+                <section className="rules-editor" aria-label="Soạn điều khoản">
+                    {!draft ? <div className="rules-empty"><Icons.FileText size={32} /><h2>Chọn một điều khoản để chỉnh sửa</h2><p>Hoặc thêm điều khoản mới. Bạn có thể xem trước trước khi công bố.</p></div> : <form onSubmit={save} noValidate>
+                        <div className="rules-editor-heading"><div><span className="rules-eyebrow">{draft.base ? 'CHỈNH SỬA ĐIỀU KHOẢN' : 'ĐIỀU KHOẢN MỚI'}</span><h2>{draft.base ? draft.base.title : 'Soạn điều khoản'}</h2></div><span className={`rules-draft-status ${dirty ? 'is-dirty' : ''}`} role="status">{busy === 'save' ? 'Đang công bố…' : dirty ? (storageError ? 'Chưa lưu bản soạn' : 'Bản soạn trên thiết bị') : draft.base ? 'Đã công bố' : 'Chưa công bố'}</span></div>
+                        {recovered && dirty && <p className="rules-notice" role="status">Đã khôi phục nội dung đang soạn trên thiết bị này. Thay đổi chưa được công bố.</p>}
+                        {storageError && dirty && <p className="rules-form-error" role="alert">Trình duyệt chưa lưu được bản soạn. Hãy sao chép nội dung trước khi rời trang.</p>}
+                        <div className="rules-editor-tabs" aria-label="Chế độ soạn thảo"><button type="button" aria-pressed={!preview} onClick={() => setPreview(false)}><Icons.Edit size={15} /> Soạn thảo</button><button type="button" aria-pressed={preview} onClick={() => setPreview(true)}><Icons.Eye size={15} /> Xem trước</button></div>
+                        <fieldset disabled={Boolean(busy)} className={preview ? 'rules-fields is-hidden' : 'rules-fields'}>
+                            <div className="rules-field-row"><label htmlFor="rule-title">Tiêu đề điều khoản<input id="rule-title" value={draft.title} onChange={event => updateDraft('title', event.target.value)} maxLength={255} placeholder="Ví dụ: Điều 1. Quy chuẩn đăng tải" required /></label><label htmlFor="rule-order">Thứ tự hiển thị<input id="rule-order" type="number" min="0" max="1000000" step="1" value={draft.orderIndex} onChange={event => updateDraft('orderIndex', event.target.value)} aria-describedby="rule-order-hint" required /><small id="rule-order-hint">Số nhỏ hiển thị trước.</small></label></div>
+                            <label htmlFor="rule-content">Nội dung<textarea id="rule-content" value={draft.content} onChange={event => updateDraft('content', event.target.value)} rows={17} placeholder="Nhập nội dung quy định…" aria-describedby="rule-content-hint" required /></label><p id="rule-content-hint" className="rules-field-hint">Văn bản thuần. Xuống dòng để ngắt ý; để một dòng trống để tách đoạn.</p>
+                        </fieldset>
+                        {preview && <div className="rules-preview"><p className="rules-preview-label">BẢN XEM TRƯỚC · CHƯA CÔNG BỐ</p><RuleContent preview rule={{ id: draft.base?.id || 0, title: draft.title.trim() || 'Tiêu đề điều khoản', content: draft.content.trim() || 'Nội dung điều khoản sẽ hiển thị tại đây.' }} /></div>}
+                        {saveError && <div className="rules-form-error" role="alert"><p>{saveError}</p>{conflict && <button type="button" className="outline-btn" disabled={Boolean(busy)} onClick={() => {
+                            const latest = conflict;
+                            triggerConfirm('Nạp bản đã được cập nhật trên máy chủ? Nội dung đang soạn sẽ được thay thế bằng bản này.', () => { setRules(previous => sortRules([...previous.filter(rule => rule.id !== latest.id), latest])); setDraft(toDraft(latest)); setConflict(null); setSaveError(''); setRecovered(false); });
+                        }}>Nạp bản mới từ máy chủ</button>}</div>}
+                        <div className="rules-publish-note"><Icons.Eye size={16} /><p>“{draft.base ? 'Công bố thay đổi' : 'Công bố điều khoản'}” sẽ cập nhật trang quy định ngay lập tức. Nội dung đang soạn chưa ảnh hưởng đến độc giả.</p></div>
+                        <div className="rules-editor-actions"><div>{draft.base && <button type="button" className="rules-delete-btn" disabled={Boolean(busy)} onClick={deleteRule}><Icons.Trash size={15} /> {busy === 'delete' ? 'Đang xóa…' : 'Xóa điều khoản'}</button>}</div><div><button type="button" className="outline-btn" disabled={Boolean(busy)} onClick={() => replaceDraft(null)}>Đóng bản soạn</button><button type="submit" className="primary-btn" disabled={!dirty || Boolean(busy)}>{busy === 'save' ? 'Đang công bố…' : draft.base ? 'Công bố thay đổi' : 'Công bố điều khoản'}</button></div></div>
+                    </form>}
+                </section>
             </div>
-
-            {loading ? (
-                <div style={{ textAlign: 'center', padding: '50px 0', color: 'var(--text-muted, #94a3b8)' }}>
-                    Đang tải danh sách điều khoản...
-                </div>
-            ) : isAdding || editingRule ? (
-                /* Form soạn thảo */
-                <div className="studio-card" style={{ padding: '30px', borderRadius: '12px', border: '1px solid var(--border-color, rgba(255,255,255,0.08))', background: 'var(--card-bg, rgba(20,20,20,0.6))' }}>
-                    <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px', color: 'var(--text-color, #f8fafc)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {isAdding ? <><Icons.Plus size={18} /> Tạo điều khoản quy định mới</> : <><Icons.Edit size={18} /> Chỉnh sửa: {editingRule?.title}</>}
-                    </h3>
-                    <form onSubmit={handleSubmit}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px', color: 'var(--text-color, #f8fafc)' }}>
-                                    Tiêu đề điều khoản
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder="Ví dụ: Điều 1. Dung lượng và Định dạng văn bản"
-                                    value={title}
-                                    onChange={(e) => setTitle(e.target.value)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '10px 14px',
-                                        borderRadius: '6px',
-                                        border: '1px solid var(--border-color, rgba(255,255,255,0.12))',
-                                        background: 'rgba(0,0,0,0.2)',
-                                        color: '#fff',
-                                        fontSize: '15px'
-                                    }}
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px', color: 'var(--text-color, #f8fafc)' }}>
-                                    Thứ tự hiển thị (Order)
-                                </label>
-                                <input
-                                    type="number"
-                                    value={orderIndex}
-                                    onChange={(e) => setOrderIndex(Number(e.target.value))}
-                                    style={{
-                                        width: '100%',
-                                        padding: '10px 14px',
-                                        borderRadius: '6px',
-                                        border: '1px solid var(--border-color, rgba(255,255,255,0.12))',
-                                        background: 'rgba(0,0,0,0.2)',
-                                        color: '#fff',
-                                        fontSize: '15px',
-                                        textAlign: 'center'
-                                    }}
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        <div style={{ marginBottom: '25px' }}>
-                            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px', color: 'var(--text-color, #f8fafc)' }}>
-                                Nội dung chi tiết quy định
-                            </label>
-                            <textarea
-                                placeholder="Nhập nội dung điều khoản..."
-                                value={content}
-                                onChange={(e) => setContent(e.target.value)}
-                                rows={18}
-                                style={{
-                                    width: '100%',
-                                    padding: '14px',
-                                    borderRadius: '6px',
-                                    border: '1px solid var(--border-color, rgba(255,255,255,0.12))',
-                                    background: 'rgba(0,0,0,0.2)',
-                                    color: '#fff',
-                                    fontSize: '15px',
-                                    lineHeight: '1.6',
-                                    fontFamily: 'monospace',
-                                    resize: 'vertical'
-                                }}
-                                required
-                            />
-                            <small style={{ display: 'block', color: 'var(--text-muted, #94a3b8)', marginTop: '5px' }}>
-                                Mẹo: Các dòng trống sẽ tự động được hiển thị thành ngắt đoạn văn bản khi độc giả xem.
-                            </small>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                            <button type="button" className="btn btn-secondary" onClick={handleCancel} style={{ padding: '8px 16px' }}>
-                                Hủy bỏ
-                            </button>
-                            <button type="submit" className="btn btn-primary" style={{ padding: '8px 20px' }}>
-                                Lưu quy định
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            ) : (
-                /* Danh sách quy định hiện tại */
-                <div>
-                    {rules.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '40px', background: 'rgba(0,0,0,0.1)', borderRadius: '8px', color: 'var(--text-muted)' }}>
-                            Chưa có điều khoản quy định nào trong cơ sở dữ liệu. Nhấp "Thêm quy định mới" để tạo.
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            {rules.map((rule) => (
-                                <div 
-                                    key={rule.id} 
-                                    className="studio-card" 
-                                    style={{
-                                        padding: '20px', 
-                                        borderRadius: '10px', 
-                                        border: '1px solid var(--border-color, rgba(255,255,255,0.06))',
-                                        background: 'var(--card-bg, rgba(30,30,30,0.3))',
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center'
-                                    }}
-                                >
-                                    <div style={{ flex: 1, paddingRight: '20px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <span style={{ 
-                                                fontSize: '11px', 
-                                                background: 'rgba(234,88,12,0.15)', 
-                                                color: 'var(--color-primary, #ea580c)', 
-                                                padding: '2px 8px', 
-                                                borderRadius: '12px',
-                                                fontWeight: '600'
-                                            }}>
-                                                Thứ tự: {rule.order_index}
-                                            </span>
-                                            <h4 style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text-color, #f8fafc)' }}>
-                                                {rule.title}
-                                            </h4>
-                                        </div>
-                                        <p style={{ 
-                                            fontSize: '13px', 
-                                            color: 'var(--text-muted, #94a3b8)', 
-                                            marginTop: '6px',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap',
-                                            maxWidth: '600px'
-                                        }}>
-                                            {rule.content}
-                                        </p>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '10px' }}>
-                                        <button 
-                                            className="btn btn-secondary" 
-                                            onClick={() => handleEdit(rule)}
-                                            style={{ padding: '6px 12px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '5px' }}
-                                        >
-                                            <Icons.Edit size={13} /> Sửa
-                                        </button>
-                                        <button 
-                                            className="btn btn-danger" 
-                                            onClick={() => handleDelete(rule.id)}
-                                            style={{ padding: '6px 12px', fontSize: '13px', background: '#991b1b', borderColor: '#991b1b', display: 'flex', alignItems: 'center', gap: '5px' }}
-                                        >
-                                            <Icons.Trash size={13} /> Xóa
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-        </div>
-    );
+        </>}
+    </div>;
 }

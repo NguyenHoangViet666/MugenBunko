@@ -116,6 +116,7 @@ try {
     await setValue(page, '#register-confirm-password', 'DifferentPassword1!');
     await clickText(page, 'Gửi mã xác thực');
     await until(() => evaluate(page, "document.querySelector('#register-otp').value.length === 6"), 'Development OTP not filled');
+    assert.match(await evaluate(page, "document.querySelector('#auth-otp-notice').textContent"), /Chưa gửi email thật/);
     assert.ok(await evaluate(page, "[...document.querySelectorAll('button')].some(b => b.disabled && b.textContent.includes('Gửi lại sau'))"));
     await evaluate(page, "document.querySelector('.auth-form').requestSubmit();true"); await waitSelector(page, '.auth-error');
     assert.match(await evaluate(page, "document.querySelector('.auth-error').textContent"), /chưa khớp/);
@@ -136,9 +137,10 @@ try {
         await evaluate(page, "document.querySelector('.app-header button[title=\"Đăng xuất\"]').click();true");
         await until(() => evaluate(page, "localStorage.getItem('mugen_session')===null"), 'Logout did not complete');
     };
+    let activePassword = 'SecurePassword123!';
     const login = async () => {
         await setValue(page, '#login-username', 'auth-page-reader@example.test');
-        await setValue(page, '#login-password', 'SecurePassword123!');
+        await setValue(page, '#login-password', activePassword);
         await evaluate(page, "document.querySelector('.auth-form').requestSubmit();true");
     };
     await logout();
@@ -174,7 +176,71 @@ try {
     console.log('PASS: connection errors appear inline and retain the entered credentials for retry');
     await send('Page.reload', {}, page); await waitSelector(page, '.auth-login');
 
-    for (const mode of ['login', 'register']) {
+    await evaluate(page, "location.hash='#/login?returnTo=%23%2Flibrary';true"); await waitSelector(page, '.auth-login');
+    await evaluate(page, "document.querySelector('.auth-forgot-link a').click();true"); await waitSelector(page, '.auth-forgot-password');
+    assert.equal(await evaluate(page, 'location.hash'), '#/forgot-password?returnTo=%23%2Flibrary');
+    await send('Page.reload', {}, page); await waitSelector(page, '.password-recovery-form');
+    await setValue(page, '#recovery-email', 'auth-page-reader@example.test');
+    await evaluate(page, "document.querySelector('.password-recovery-form').requestSubmit();true");
+    await waitSelector(page, '#recovery-otp');
+    await until(() => evaluate(page, "document.querySelector('#recovery-otp').value.length===6"), 'Recovery OTP was not filled');
+    await setValue(page, '#recovery-password', 'RecoveredInBrowser123!');
+    await setValue(page, '#recovery-confirm-password', 'NotTheSame123!');
+    await evaluate(page, "document.querySelector('.password-recovery-form').requestSubmit();true"); await waitSelector(page, '.auth-error');
+    assert.match(await evaluate(page, 'document.querySelector(".auth-error").textContent'), /chưa khớp/);
+    await setValue(page, '#recovery-confirm-password', 'RecoveredInBrowser123!');
+    await send('Network.setBlockedURLs', { urls: [fixture.url + '/api/auth/reset-password'] }, page);
+    await evaluate(page, "document.querySelector('.password-recovery-form').requestSubmit();true");
+    await until(() => evaluate(page, "!document.querySelector('.password-recovery-form fieldset').disabled"), 'Recovery failed to release busy state');
+    assert.match(await evaluate(page, 'document.querySelector(".auth-error").textContent'), /Không thể kết nối/);
+    assert.equal(await evaluate(page, "document.querySelector('#recovery-password').value"), 'RecoveredInBrowser123!');
+    await send('Network.setBlockedURLs', { urls: [] }, page);
+    for (const width of [1440, 390, 320]) {
+        await send('Emulation.setDeviceMetricsOverride', { width, height: 1050, deviceScaleFactor: 1, mobile: width <= 768 }, page);
+        await sleep(120);
+        assert.ok(await evaluate(page, 'document.documentElement.scrollWidth<=innerWidth'), `Recovery form overflow at ${width}`);
+        if (width !== 320) await screenshot(page, `recovery-step-two-${width}`);
+    }
+    await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1050, deviceScaleFactor: 1, mobile: false }, page);
+    await evaluate(page, "window.passwordRequestCount=0;window.passwordOriginalFetch=window.fetch;window.fetch=async(...args)=>{if(String(args[0]).endsWith('/auth/reset-password')){window.passwordRequestCount++;await new Promise(resolve=>setTimeout(resolve,300));}return window.passwordOriginalFetch(...args);};document.querySelector('.password-recovery-form').requestSubmit();document.querySelector('.password-recovery-form').requestSubmit();true");
+    await waitSelector(page, '.auth-success');
+    assert.equal(await evaluate(page, 'window.passwordRequestCount'), 1);
+    assert.equal(await evaluate(page, "localStorage.getItem('mugen_session')"), null);
+    await evaluate(page, "window.fetch=window.passwordOriginalFetch;document.querySelector('.auth-success a').click();true"); await waitSelector(page, '.auth-login');
+    assert.equal(await evaluate(page, "document.querySelector('#login-password').value"), '');
+    activePassword = 'RecoveredInBrowser123!';
+    await login(); await waitSelector(page, '.personal-library');
+    assert.equal(await evaluate(page, 'location.hash'), '#/library');
+    console.log('PASS: recovery deep link/reload, email OTP, confirmation, failed-request preservation, one-use submit and login with the new password');
+
+    await evaluate(page, "location.hash='#/profile';true"); await waitSelector(page, '.change-password-form');
+    await setValue(page, '#change-current-password', 'WrongCurrent123!');
+    await setValue(page, '#change-password', 'ChangedInBrowser123!');
+    await setValue(page, '#change-confirm-password', 'ChangedInBrowser123!');
+    await evaluate(page, "document.querySelector('.change-password-form').requestSubmit();true"); await waitSelector(page, '.password-security .auth-error');
+    assert.match(await evaluate(page, 'document.querySelector(".password-security .auth-error").textContent'), /hiện tại chưa đúng/);
+    assert.equal(await evaluate(page, "JSON.parse(localStorage.getItem('mugen_session')).username"), 'auth_page_reader');
+    await setValue(page, '#change-current-password', activePassword);
+    for (const width of [1440, 390, 320]) {
+        await send('Emulation.setDeviceMetricsOverride', { width, height: 1050, deviceScaleFactor: 1, mobile: width <= 768 }, page);
+        await sleep(120);
+        const clipped = await evaluate(page, "[...document.querySelectorAll('.password-security input,.password-security button')].filter(e=>e.getClientRects().length).filter(e=>e.getBoundingClientRect().left<0||e.getBoundingClientRect().right>innerWidth).map(e=>e.id||e.textContent)");
+        assert.deepEqual(clipped, [], `Password change controls at ${width}`);
+        if (width !== 320) { await evaluate(page, "document.querySelector('.password-security').scrollIntoView({block:'start'});true"); await screenshot(page, `change-password-${width}`); }
+    }
+    await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1050, deviceScaleFactor: 1, mobile: false }, page);
+    await evaluate(page, "document.querySelector('.change-password-form').requestSubmit();document.querySelector('.change-password-form').requestSubmit();true");
+    await waitSelector(page, '.auth-login');
+    assert.match(await evaluate(page, 'document.querySelector(".auth-recovery-notice").textContent'), /Đã đổi mật khẩu/);
+    assert.equal(await evaluate(page, "localStorage.getItem('mugen_session')"), null);
+    assert.equal(await evaluate(page, 'location.hash'), '#/login?returnTo=%23%2Fprofile');
+    activePassword = 'ChangedInBrowser123!';
+    await login(); await waitSelector(page, '.change-password-form');
+    assert.equal(await evaluate(page, "Object.values(localStorage).some(value=>value.includes('RecoveredInBrowser123!')||value.includes('ChangedInBrowser123!'))"), false);
+    await logout();
+    console.log('PASS: profile password change, wrong-current-password feedback, mobile form, sign-out and reauthentication');
+
+    for (const mode of ['login', 'register', 'forgot-password']) {
         await evaluate(page, `window.location.hash='#/${mode}';true`); await waitSelector(page, `.auth-${mode}`);
         for (const theme of ['washi', 'sepia', 'charcoal']) {
             for (let step = 0; step < 3; step++) {
@@ -196,7 +262,7 @@ try {
     await evaluate(gate, "document.querySelector('.mobile-gate-bypass-link').click();true"); await waitSelector(gate, '.auth-login'); await closePage(gate);
     assert.deepEqual(exceptions, [], 'Browser runtime exceptions');
     await closePage(page);
-    console.log('PASS: both auth pages fit 320–1440px in all three themes, preserve the mobile gate and have no runtime exceptions');
+    console.log('PASS: login, registration and recovery fit 320–1440px in all three themes, preserve the mobile gate and have no runtime exceptions');
 } finally {
     if (socket?.readyState === WebSocket.OPEN) await send('Browser.close').catch(() => {});
     socket?.close();

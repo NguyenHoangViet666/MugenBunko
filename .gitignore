@@ -22,6 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+__pycache__/
+*.py[cod]
+~$*
 
 # Environment variables
 .env
@@ -32,6 +35,18 @@ dist-ssr
 # Screenshots from the upgrade browser smoke checks
 artifacts/upgrades/
 artifacts/performance/
+artifacts/header/
+artifacts/rules/
+artifacts/hero/
+artifacts/about/
+artifacts/email/
+artifacts/auth/
+artifacts/studio/
+
+# Generated report previews and layout experiments
+artifacts/chapter-*/preview_*
+artifacts/database-design/preview_*
+artifacts/database-design/probe_*
 
 # Mobile browser validation artifacts
 artifacts/mobile/

@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes } from 'node:crypto';
 
-export async function startFixture(options: { webRoot?: string } = {}) {
+export async function startFixture(options: { webRoot?: string; legacyOtpSchema?: boolean } = {}) {
     const base = fileURLToPath(new URL('../../', import.meta.url));
     const root = fs.existsSync(path.join(base, 'src')) ? base : path.dirname(base);
     dotenv.config({ path: path.join(root, 'server/.env'), quiet: true } as any);
@@ -26,6 +26,13 @@ export async function startFixture(options: { webRoot?: string } = {}) {
     const schema = fs.readFileSync(path.join(root, 'server/schema.sql'), 'utf8')
         .replace(/^CREATE DATABASE[^\n]+\r?$/gm, '').replace(/^USE[^\n]+\r?$/gm, '');
     await admin.query(schema);
+    if (options.legacyOtpSchema) {
+        await admin.query(`CREATE TABLE email_otps (
+            email VARCHAR(255) PRIMARY KEY, otp_code VARCHAR(10) NOT NULL,
+            expires_at TIMESTAMP NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB`);
+        await admin.query("INSERT INTO email_otps (email, otp_code, expires_at) VALUES ('legacy-otp@example.test', '123456', CURRENT_TIMESTAMP + INTERVAL 5 MINUTE)");
+    }
     const { default: db } = await import('../db.js');
     const { JWT_SECRET } = await import('../config.js');
     await db.initializeDbConnection();

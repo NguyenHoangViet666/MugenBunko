@@ -3,6 +3,7 @@ import Icons from '../components/Icons';
 import { calculateUserLevel, getTierName, getTierClassName } from '../utils/levelHelper';
 import { User, Novel, ForumPost } from '../types';
 import { formatDate } from '../utils/dateFormatter';
+import ChangePasswordForm from '../components/ChangePasswordForm';
 
 interface SocialUser {
     id: number;
@@ -53,6 +54,7 @@ interface UserProfileProps {
     fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>;
     API_BASE: string;
     triggerConfirm: (msg: string, callback: () => void) => void;
+    changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 export default function UserProfile({
@@ -86,7 +88,8 @@ export default function UserProfile({
     handleRequestAuthorRole,
     handleAvatarUpload,
     regenerateProfileAvatar,
-    saveBasicProfile
+    saveBasicProfile,
+    changePassword
 }: UserProfileProps) {
     const [socialSearchQuery, setSocialSearchQuery] = useState("");
     const [socialSearchResults, setSocialSearchResults] = useState<SocialUser[]>([]);
@@ -439,6 +442,7 @@ export default function UserProfile({
                                     <textarea value={profileBio} onChange={(e) => setProfileBio(e.target.value)} style={{ width: '100%', minHeight: '80px', padding: '8px', border: '1px solid var(--border-color)', borderRadius: '4px', outline: 'none', fontFamily: 'inherit' }} />
                                 </div>
                                 <button className="primary-btn" onClick={saveBasicProfile}>Lưu thay đổi hồ sơ</button>
+                                <ChangePasswordForm email={currentUser?.email} changePassword={changePassword} />
 
                                 <hr style={{ margin: '24px 0', border: 'none', borderTop: '1px solid var(--border-color)' }} />
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Icons } from "../components/Icons";
 import AboutKanjiBackground from "../components/AboutKanjiBackground";
+import { useAboutMotion } from "../hooks/useAboutMotion";
 import "../styles/about.css";
 
 interface AboutProps {
@@ -69,7 +70,7 @@ const paths = [
 function BookPortal() {
   return (
     <div className="about-story__art" aria-hidden="true">
-      <div className="about-story__orbit" />
+      <div className="about-story__orbit" data-about-parallax="0.025" />
       <div className="about-story__portal">
         <div className="about-story__portal-lines" />
         <span className="about-story__sun" />
@@ -131,6 +132,7 @@ function BookPortal() {
 }
 
 export default function About({ setCurrentView }: AboutProps) {
+  const aboutRef = useAboutMotion();
   const [paper, setPaper] = useState("washi");
   const [fontSize, setFontSize] = useState(18);
 
@@ -146,7 +148,7 @@ export default function About({ setCurrentView }: AboutProps) {
   };
 
   return (
-    <div className="about-story">
+    <div className="about-story" ref={aboutRef}>
       <section className="about-story__hero" aria-labelledby="about-title">
         <AboutKanjiBackground />
         <div className="about-story__hero-copy">
@@ -199,6 +201,7 @@ export default function About({ setCurrentView }: AboutProps) {
 
       <section
         className="about-story__manifesto"
+        data-about-reveal
         aria-labelledby="about-manifesto-title"
       >
         <p className="about-story__eyebrow">TIN VÀO SỨC MẠNH CỦA CÂU CHUYỆN</p>
@@ -214,13 +217,14 @@ export default function About({ setCurrentView }: AboutProps) {
           <br className="about-story__desktop-break" /> MugenBunko được tạo ra
           để những cuộc gặp ấy có một chốn riêng.
         </p>
-        <span className="about-story__seal" aria-hidden="true" lang="ja">
+        <span className="about-story__seal" data-about-parallax="0.04" aria-hidden="true" lang="ja">
           物<br />語
         </span>
       </section>
 
       <section
         className="about-story__reading"
+        data-about-reveal
         id="about-reading-guide"
         tabIndex={-1}
         aria-labelledby="about-reading-title"
@@ -344,6 +348,7 @@ export default function About({ setCurrentView }: AboutProps) {
 
       <section
         className="about-story__paths"
+        data-about-reveal
         aria-labelledby="about-paths-title"
       >
         <div className="about-story__section-heading">
@@ -378,7 +383,7 @@ export default function About({ setCurrentView }: AboutProps) {
         </div>
       </section>
 
-      <section className="about-story__faq" aria-labelledby="about-faq-title">
+      <section className="about-story__faq" data-about-reveal aria-labelledby="about-faq-title">
         <div>
           <p className="about-story__eyebrow">03 / TRƯỚC KHI LẬT TRANG</p>
           <h2 id="about-faq-title">
@@ -418,10 +423,12 @@ export default function About({ setCurrentView }: AboutProps) {
 
       <section
         className="about-story__closing"
+        data-about-reveal
         aria-labelledby="about-cta-title"
       >
         <span
           className="about-story__closing-kanji"
+          data-about-parallax="0.035"
           aria-hidden="true"
           lang="ja"
         >

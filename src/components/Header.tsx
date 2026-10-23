@@ -1,11 +1,15 @@
-import React from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { calculateUserLevel } from '../utils/levelHelper';
-import { User } from '../types';
+import { User, Novel } from '../types';
 import { Icons } from './Icons';
 import { authHref } from '../utils/authNavigation';
+import { getLastReading } from '../utils/lastReading';
 
 interface HeaderProps {
     currentUser: User | null;
+    novels: Novel[];
+    progressRevision: number;
+    categoryDrawerOpen: boolean;
     currentView: string;
     setCurrentView: (view: string) => void;
     setActiveNovelId?: (id: number | null) => void;
@@ -27,6 +31,9 @@ interface HeaderProps {
 
 export default function Header({
     currentUser,
+    novels,
+    progressRevision,
+    categoryDrawerOpen,
     currentView,
     setCurrentView,
     setActiveNovelId,
@@ -43,6 +50,19 @@ export default function Header({
     theme,
     handleThemeChange
 }: HeaderProps) {
+    const searchRef = useRef<HTMLInputElement>(null);
+    const lastReading = useMemo(() => getLastReading(novels, currentUser?.username), [novels, currentUser?.username, progressRevision]);
+    useEffect(() => {
+        const onKey = (event: KeyboardEvent) => {
+            if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'k' || categoryDrawerOpen) return;
+            const target = event.target instanceof HTMLElement ? event.target : null;
+            if (target?.closest('[contenteditable="true"], textarea, [role="dialog"]') ||
+                (target?.closest('input') && target !== searchRef.current)) return;
+            event.preventDefault(); searchRef.current?.focus(); searchRef.current?.select();
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [categoryDrawerOpen]);
     const handleSearchSubmit = (e: React.FormEvent) => {
         if (e) e.preventDefault();
         setCurrentView('explore');
@@ -55,110 +75,51 @@ export default function Header({
         else handleThemeChange('washi');
     };
 
-    const handleNav = (view: string) => {
-        setCurrentView(view);
-        if (setActiveNovelId) setActiveNovelId(null);
-    };
-
     return (
-        <header className="app-header">
+        <header className={`app-header${lastReading ? ' has-resume' : ''}`}>
              <div className="header-container">
                 <div className="header-left">
-                    <button className="category-burger-btn" onClick={() => setCategoryDrawerOpen(true)} title="Danh mục & Bộ lọc">
+                    <button className="category-burger-btn" onClick={() => setCategoryDrawerOpen(true)} title="Menu điều hướng" aria-label="Mở menu điều hướng" aria-expanded={categoryDrawerOpen} aria-controls="site-navigation-drawer">
                         <svg viewBox="0 0 24 24" width="22" height="22" style={{display:'block', fill:'var(--text-main)'}}>
                             <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
                         </svg>
                     </button>
                     
-                    <button type="button" className="header-logo" onClick={() => handleNav('home')} aria-label="MugenBunko — Trang chủ">
+                    <a className="header-logo" href="#/" aria-label="MugenBunko — Trang chủ">
                         <span className="kanji">無限文庫</span>
                         <span className="alphabet">MUGENBUNKO</span>
-                    </button>
-
-                    {/* Desktop Navigation Links */}
-                    <nav className="header-nav-desktop" id="header-nav-links">
-                        <button
-                            type="button"
-                            className={`header-nav-btn ${currentView === 'home' ? 'active' : ''}`}
-                            onClick={() => handleNav('home')}
-                            title="Về trang chủ"
-                        >
-                            <Icons.Home size={15} />
-                            <span>Trang Chủ</span>
-                        </button>
-
-                        <button
-                            type="button"
-                            className={`header-nav-btn ${currentView === 'explore' ? 'active' : ''}`}
-                            onClick={() => handleNav('explore')}
-                            title="Khám phá kho truyện"
-                        >
-                            <Icons.Compass size={15} />
-                            <span>Khám Phá</span>
-                        </button>
-
-                        <a
-                            className={`header-nav-btn ${currentView === 'library' ? 'active' : ''}`}
-                            href="#/library"
-                            title="Tủ sách cá nhân"
-                        >
-                            <Icons.Bookmark size={15} />
-                            <span>Tủ Sách</span>
-                        </a>
-
-                        <button
-                            type="button"
-                            className={`header-nav-btn ${currentView === 'forum' ? 'active' : ''}`}
-                            onClick={() => handleNav('forum')}
-                            title="Diễn đàn thảo luận"
-                        >
-                            <Icons.MessageSquare size={15} />
-                            <span>Diễn Đàn</span>
-                        </button>
-
-                        {currentUser && (currentUser.roles?.includes('author') || currentUser.roles?.includes('admin') || currentUser.roles?.includes('moderator')) && (
-                            <button
-                                type="button"
-                                className={`header-nav-btn ${currentView === 'studio' ? 'active' : ''}`}
-                                onClick={() => handleNav('studio')}
-                                title="Studio sáng tác"
-                            >
-                                <Icons.Feather size={15} />
-                                <span>Studio</span>
-                            </button>
-                        )}
-
-                        <a className={`header-nav-btn ${currentView === 'elections' ? 'active' : ''}`} href="#/elections" title="Bầu chọn kiểm duyệt viên"><Icons.Users size={15} /><span>Bầu Mod</span></a>
-                        <button
-                            type="button"
-                            className={`header-nav-btn ${currentView === 'about' ? 'active' : ''}`}
-                            onClick={() => handleNav('about')}
-                            title="Giới thiệu về MugenBunko"
-                        >
-                            <Icons.Info size={15} />
-                            <span>Giới Thiệu</span>
-                        </button>
-                    </nav>
+                    </a>
                 </div>
                 
                 <div className="header-search">
-                    <form className="search-box" onSubmit={handleSearchSubmit}>
+                    <form className="search-box" role="search" aria-label="Tìm trong thư viện" onSubmit={handleSearchSubmit}>
                         <button type="submit" aria-label="Tìm kiếm" style={{background:'none', border:'none', padding:0, cursor:'pointer', display:'flex', alignItems:'center'}}>
                             <svg className="icon-search" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                         </button>
                         <input 
+                            ref={searchRef}
                             type="text" 
                             aria-label="Tìm truyện, tác giả hoặc thẻ"
-                            placeholder="Tìm kiếm truyện, tác giả, tag..." 
+                            placeholder="Hôm nay bạn muốn đọc câu chuyện nào?"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
+                        {searchQuery && <button type="button" className="header-search-clear" aria-label="Xóa nội dung tìm kiếm" onClick={() => { setSearchQuery(''); searchRef.current?.focus(); }}>×</button>}
+                        <kbd className="header-search-shortcut" aria-hidden="true">{navigator.platform.includes('Mac') ? '⌘ K' : 'Ctrl K'}</kbd>
                     </form>
                 </div>
+
+                {lastReading && <a className="header-resume" href={`#/novel/${lastReading.novel.id}/reader/${lastReading.chapterIndex}`}
+                    aria-label={`Đọc tiếp ${lastReading.novel.title}, ${lastReading.chapter.title}`} title={`${lastReading.novel.title} · ${lastReading.chapter.title}`}>
+                    <img src={lastReading.novel.cover} alt="" onError={event => { event.currentTarget.onerror = null; event.currentTarget.src = '/assets/default_novel_cover.png'; }} />
+                    <span className="header-resume-copy"><small>Đọc tiếp<span> · Ch.{lastReading.chapterIndex + 1}</span></small><strong>{lastReading.novel.title}</strong></span>
+                    <span className="header-resume-arrow" aria-hidden="true">→</span>
+                </a>}
 
                 <div className="header-actions">
                     <button 
                         className="icon-btn theme-toggle-btn" 
+                        aria-label="Đổi giao diện"
                         onClick={cycleTheme} 
                         title={`Giao diện: ${theme === 'washi' ? 'Sáng (Washi)' : (theme === 'charcoal' ? 'Tối (Charcoal)' : 'Cổ điển (Sepia)')} - Bấm để chuyển đổi`} 
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -236,7 +197,7 @@ export default function Header({
                                 )}
                             </div>
 
-                            <button className="icon-btn" onClick={logoutUser} title="Đăng xuất">
+                            <button className="icon-btn" onClick={logoutUser} title="Đăng xuất" aria-label="Đăng xuất">
                                 <svg viewBox="0 0 24 24" style={{width:'20px', height:'20px', fill:'var(--text-main)'}}><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
                             </button>
                         </>

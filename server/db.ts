@@ -1,6 +1,8 @@
 import mysql, { Pool, PoolConnection } from 'mysql2/promise';
 import { readerSchema } from './readerSchema.js';
 import { electionSchema } from './electionSchema.js';
+import { initializeCommunityRules } from './communityRulesMigration.js';
+import { migrateEmailOtpSchema } from './otpSchemaMigration.js';
 import { production } from './config.js';
 import fs from 'fs';
 import path from 'path';
@@ -39,9 +41,9 @@ export async function initializeDbConnection(options: { migrate?: boolean } = {}
         if (!migrate) {
             if (!process.env.DB_USER || process.env.DB_USER === 'root') throw new Error('Production requires a restricted DB_USER.');
             pool = openPool();
-            await pool.execute('SELECT id, email FROM users LIMIT 0');
+            await pool.execute('SELECT id, email, auth_version FROM users LIMIT 0');
             await pool.execute('SELECT sort_order FROM chapters LIMIT 0');
-            await pool.execute('SELECT email FROM email_otps LIMIT 0');
+            await pool.execute('SELECT email, purpose, code_hash, expires_at, sent_at, attempts FROM email_otps LIMIT 0');
             await pool.execute('SELECT token_hash FROM revoked_tokens LIMIT 0');
             await pool.execute('SELECT id, result_snapshot FROM elections LIMIT 0');
             await pool.execute('SELECT id, term_ends_at, ended_at FROM election_candidates LIMIT 0');
@@ -89,6 +91,8 @@ export async function initializeDbConnection(options: { migrate?: boolean } = {}
 
         const [emailColumns] = await connectionWithDb.query<any[]>("SHOW COLUMNS FROM users LIKE 'email'");
         if (!emailColumns.length) await connectionWithDb.query('ALTER TABLE users ADD COLUMN email VARCHAR(150) NULL UNIQUE AFTER displayname');
+        const [authVersionColumns] = await connectionWithDb.query<any[]>("SHOW COLUMNS FROM users LIKE 'auth_version'");
+        if (!authVersionColumns.length) await connectionWithDb.query('ALTER TABLE users ADD COLUMN auth_version INT UNSIGNED NOT NULL DEFAULT 0');
 
         // Ensure read_cooldowns table exists (migration)
         console.log("Ensuring read_cooldowns migration table exists...");
@@ -259,6 +263,7 @@ export async function initializeDbConnection(options: { migrate?: boolean } = {}
 
         // Ensure rules table exists (migration)
         console.log("Ensuring rules migration table exists...");
+        const [existingRulesTables] = await connectionWithDb.query<any[]>("SHOW TABLES LIKE 'rules'");
         await connectionWithDb.query(`
             CREATE TABLE IF NOT EXISTS \`rules\` (
                 \`id\` INT AUTO_INCREMENT PRIMARY KEY,
@@ -292,45 +297,10 @@ export async function initializeDbConnection(options: { migrate?: boolean } = {}
             console.log("Initial genres seeded successfully.");
         }
 
-        // Seed initial rules if empty
-        const [rulesCheck] = await connectionWithDb.query<any[]>("SELECT COUNT(*) as count FROM \`rules\`");
-        if (rulesCheck[0].count === 0) {
-            console.log("Seeding initial rules into rules table...");
-            const initialRules = [
-                {
-                    title: "Điều 1. Dung lượng và Định dạng văn bản",
-                    content: "1.1. Dung lượng chương truyện:\nChương nội dung chính bắt buộc phải đạt độ dài tối thiểu là 1.000 từ. Các chương mở đầu (prologue), vĩ thanh (epilogue) hoặc thông báo của tác giả có thể ngắn hơn nhưng bắt buộc phải dán nhãn phân loại chính xác khi đăng tải. Nghiêm cấm hành vi chia nhỏ chương truyện bất hợp lý để thao túng số liệu hoặc cày điểm kinh nghiệm (XP).\n\n1.2. Quy chuẩn chính tả:\nTác phẩm phải sử dụng tiếng Việt chính thống, tuân thủ đúng quy chuẩn chính tả và ngữ pháp tiếng Việt hiện hành.\n\n1.3. Ngôn ngữ mạng và Viết tắt:\nNghiêm cấm lạm dụng viết tắt, ký tự đặc biệt hoặc ngôn ngữ mạng (teencode) trong văn phong kể và miêu tả (ngoại trừ trường hợp giả lập các đoạn hội thoại, tin nhắn thiết bị của nhân vật trong cốt truyện).\n\n1.4. Thuật ngữ ngoại lai:\nHạn chế sử dụng từ ngữ nước ngoài khi đã có từ tiếng Việt tương đương. Chỉ chấp nhận tên riêng hoặc các thuật ngữ đặc trưng của thể loại (như Isekai, Mana, Guild, Quest, Level...).\n\n1.5. Trình bày trực quan:\nVăn bản phải được phân đoạn rõ ràng để đảm bảo trải nghiệm đọc. Không chấp nhận văn bản dạng khối đặc (wall of text) hoặc lạm dụng khoảng trống xuống dòng liên tiếp để kéo dài trang.",
-                    order_index: 10
-                },
-                {
-                    title: "Điều 2. Giới hạn nội dung nhạy cảm và Cảnh báo độ tuổi",
-                    content: "2.1. Yếu tố người lớn (Ecchi):\nGiới hạn tối đa đối với các yếu tố nhạy cảm, gợi cảm trong tác phẩm là Ecchi (dừng lại ở mức độ gợi mở, tình huống hài hước nhẹ nhàng hoặc miêu tả gián tiếp). Nghiêm cấm mọi mô tả chi tiết, trực diện về hành vi quan hệ tình dục hoặc khiêu dâm (Smut, Hentai).\n\n2.2. Ảnh bìa và Minh họa:\nẢnh bìa tác phẩm và các hình ảnh minh họa đính kèm trong chương truyện không được chứa hình ảnh khỏa thân, phơi bày bộ phận nhạy cảm hoặc tư thế gợi dục trực diện.\n\n2.3. Yếu tố bạo lực (Combat/Gore):\nĐược phép miêu tả các cảnh hành động, chiến đấu phục vụ cốt truyện. Tuy nhiên, nghiêm cấm các nội dung cổ xúy hoặc mô tả chi tiết các hành vi bạo lực phản nhân văn (tra tấn bệnh hoạn, ngược đãi bạo hành nhóm yếu thế ngoài đời thực...).\n\n2.4. Tâm lý nhân vật:\nCho phép khai thác các đề tài tâm lý phức tạp (trầm cảm, ám ảnh...). Tuy nhiên, nghiêm cấm các nội dung mang tính chất lãng mạn hóa, khuyến khích hoặc hướng dẫn hành vi tự hủy hoại bản thân ngoài đời thực.",
-                    order_index: 20
-                },
-                {
-                    title: "Điều 3. Các chủ đề cấm kỵ tuyệt đối",
-                    content: "3.1. Chính trị đời thực:\nTuyệt đối không đề cập đến tình hình chính trị, chính trị gia, quốc gia hoặc thể chế chính trị ngoài đời thực dưới mọi hình thức. Nghiêm cấm sử dụng tác phẩm để tuyên truyền chính trị hoặc bôi nhọ bất kỳ tổ chức nào.\n\n3.2. Phân biệt đối xử:\nNghiêm cấm các nội dung miệt thị, kích động thù hận đối với bất kỳ sắc tộc, chủng tộc, giới tính, xu hướng tính dục hay tôn giáo ngoài đời thực.\n\n3.3. Lịch sử ngoài đời thực:\nTuyệt đối không nhắc đến, không sử dụng hoặc hư cấu dựa trên các sự kiện lịch sử hoặc nhân vật lịch sử có thật (bao gồm cả lịch sử Việt Nam và thế giới). Đối với các thể loại dã sử, cổ trang: Tác giả bắt buộc phải thiết lập bối cảnh hư cấu hoàn toàn (thế giới giả tưởng, triều đại song song tự sáng tạo 100% với tên quốc gia, niên hiệu và nhân vật hư cấu).",
-                    order_index: 30
-                },
-                {
-                    title: "Điều 4. Quyền tác giả và Bản quyền sáng tác",
-                    content: "4.1. Sở hữu trí tuệ:\nTác phẩm đăng tải phải hoàn toàn thuộc quyền sở hữu trí tuệ của tác giả. Nghiêm cấm mọi hình thức đạo văn (sao chép nguyên văn, viết lại cấu trúc câu giữ nguyên cốt truyện hoặc dịch lại tác phẩm nước ngoài rồi nhận là truyện tự sáng tác).\n\n4.2. Cấm truyện đồng nhân (Fanfiction):\nMugenBunko là nền tảng thuần sáng tác nguyên bản. Nghiêm cấm mọi tác phẩm đồng nhân, fanfiction phái sinh dựa trên các vũ trụ, thương hiệu, hoặc nhân vật có sẵn (từ anime, manga, game, hay tiểu thuyết của tác giả khác) nhằm tránh các tranh chấp về bản quyền thương mại ngoài đời thực.\n\n4.3. Quy định về tác phẩm hỗ trợ bởi AI:\nCho phép linh hoạt sử dụng công cụ trí tuệ nhân tạo (AI) hỗ trợ viết nội dung, với điều kiện chất lượng văn học, tính logic và trải nghiệm nghệ thuật của tác phẩm phải đạt tiêu chuẩn kiểm duyệt chung của nền tảng. Tác giả bắt buộc phải gắn nhãn/tag AI-Generated ở thông tin chi tiết của tác phẩm. Mọi tác phẩm có sự can thiệp sâu của AI nhưng cố tình giấu nhãn hoặc không khai báo chính xác khi bị phát hiện sẽ bị ẩn hoặc gỡ bỏ vĩnh viễn.",
-                    order_index: 40
-                },
-                {
-                    title: "Điều 5. Sửa đổi và Cập nhật Điều khoản",
-                    content: "5.1. Quyền sửa đổi:\nBan quản trị MugenBunko giữ quyền sửa đổi, bổ sung hoặc loại bỏ các điều khoản trong quy chế này vào bất kỳ lúc nào để phù hợp với định hướng phát triển của nền tảng.\n\n5.2. Hiệu lực:\nCác thay đổi về quy chế nội dung sẽ có hiệu lực ngay khi được cập nhật chính thức trên hệ thống. Tác giả có trách nhiệm thường xuyên cập nhật và điều chỉnh tác phẩm cho phù hợp với quy chế mới nhất.",
-                    order_index: 50
-                }
-            ];
-
-            for (const r of initialRules) {
-                await connectionWithDb.query(
-                    "INSERT INTO \`rules\` (title, content, order_index) VALUES (?, ?, ?)",
-                    [r.title, r.content, r.order_index]
-                );
-            }
-        }
+        // Seed new installations and upgrade only the untouched five-rule default.
+        // An edited or intentionally empty document belongs to the admin.
+        const rulesResult = await initializeCommunityRules(connectionWithDb, existingRulesTables.length === 0);
+        if (rulesResult !== 'unchanged') console.log(`Community rules ${rulesResult}: 25 articles.`);
 
         // Ensure deleted_novels table exists (migration)
         console.log("Ensuring deleted_novels migration table exists...");
@@ -377,6 +347,7 @@ export async function initializeDbConnection(options: { migrate?: boolean } = {}
             await connectionWithDb.query('UPDATE chapters SET sort_order = id');
         }
         await connectionWithDb.query(readerSchema);
+        if (await migrateEmailOtpSchema(connectionWithDb)) console.log('Legacy email OTP schema upgraded; old codes invalidated.');
         await connectionWithDb.query(electionSchema);
         await ensureIndexExists('election_candidates', 'idx_election_candidate_term', 'CREATE INDEX idx_election_candidate_term ON election_candidates (user_id, decision, ended_at, term_ends_at)');
         await ensureIndexExists('election_candidates', 'idx_election_term_expiry', 'CREATE INDEX idx_election_term_expiry ON election_candidates (decision, ended_at, term_ends_at, election_id)');

@@ -1,0 +1,195 @@
+/* Home hero motion stays inside the existing banner, using transform/opacity. */
+/* Let the discovery columns shrink, preventing mobile from zooming out the hero. */
+.home-page .discovery-layout > * { min-width: 0; }
+
+.featured-banner .featured-banner-content {
+    animation: none;
+}
+
+.featured-banner .featured-bg-cover {
+    animation: heroSceneReveal 900ms ease-out both, heroSceneDrift 22s ease-in-out infinite alternate;
+    pointer-events: none;
+}
+
+.featured-banner .featured-overlay-ambient::after {
+    content: '';
+    position: absolute;
+    inset: -12%;
+    background: radial-gradient(ellipse at 76% 42%, rgba(224, 82, 117, .12), transparent 54%);
+    pointer-events: none;
+}
+
+.hero-sakura-petals {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.hero-petal {
+    position: absolute;
+    top: -24px;
+    left: var(--petal-left);
+    width: 8px;
+    height: 12px;
+    border-radius: 80% 12% 70% 35%;
+    background: linear-gradient(135deg, #ffd2de, var(--sakura-pink));
+    opacity: 0;
+    animation: heroPetalDrift var(--petal-duration) linear var(--petal-delay) infinite;
+}
+
+.hero-petal:nth-child(even) {
+    width: 6px;
+    height: 9px;
+}
+
+.featured-banner .featured-info > * {
+    animation: heroTextReveal 620ms cubic-bezier(.22, .7, .25, 1) both;
+}
+
+.featured-banner .featured-badges-row { animation-delay: 60ms; }
+.featured-banner .featured-info h1 { animation-delay: 120ms; }
+.featured-banner .featured-desc { animation-delay: 180ms; }
+.featured-banner .featured-meta { animation-delay: 240ms; }
+.featured-banner .featured-actions-row { animation-delay: 300ms; }
+
+.featured-banner .featured-cover-showcase {
+    perspective: 900px;
+    text-decoration: none;
+    animation: heroCoverReveal 850ms cubic-bezier(.22, .7, .25, 1) 100ms both;
+}
+
+.hero-book-float {
+    animation: heroBookFloat 7s ease-in-out infinite;
+}
+
+.featured-banner .hero-book-ambient-glow {
+    animation: heroGlowBreathe 8s ease-in-out infinite alternate;
+}
+
+.featured-banner .hero-book-cover::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: linear-gradient(110deg, transparent 25%, rgba(255, 255, 255, .2) 48%, transparent 70%);
+    transform: translateX(-120%);
+    pointer-events: none;
+    animation: heroCoverSheen 1300ms ease-in-out 450ms both;
+}
+
+.featured-banner.hero-motion-paused .hero-motion-loop {
+    animation-play-state: paused;
+}
+
+.featured-banner .hero-motion-toggle[aria-pressed='true'] {
+    color: #fff;
+    border-color: var(--sakura-pink);
+    background: rgba(224, 82, 117, .18);
+}
+
+.featured-banner .hero-bottom-bar {
+    justify-content: flex-end;
+}
+
+.featured-banner .hero-thumb-strip {
+    margin-right: auto;
+}
+
+.featured-banner .hero-arrow-btn:focus-visible,
+.featured-banner .hero-thumb-item:focus-visible,
+.featured-banner .hero-dot-btn:focus-visible,
+.featured-banner .featured-cover-showcase:focus-visible {
+    outline: 2px solid var(--sakura-pink);
+    outline-offset: 4px;
+}
+
+@media (max-width: 992px) {
+    .featured-banner { flex-direction: column; }
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .featured-banner .featured-cover-showcase:hover .hero-book-wrapper,
+    .featured-banner .featured-cover-showcase:focus-visible .hero-book-wrapper {
+        transform: translateY(-5px) rotateY(-6deg) rotateX(2deg) scale(1.02);
+    }
+}
+
+@keyframes heroSceneReveal {
+    from { opacity: .45; }
+    to { opacity: 1; }
+}
+
+@keyframes heroSceneDrift {
+    from { transform: scale(1.15) translate3d(-.7%, 0, 0); }
+    to { transform: scale(1.22) translate3d(.7%, -1%, 0); }
+}
+
+@keyframes heroTextReveal {
+    from { opacity: 0; transform: translate3d(0, 12px, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes heroCoverReveal {
+    from { opacity: 0; transform: translate3d(18px, 6px, 0) scale(.96); }
+    to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes heroBookFloat {
+    0%, 100% { transform: translate3d(0, 0, 0) rotate(-.3deg); }
+    50% { transform: translate3d(0, -6px, 0) rotate(.3deg); }
+}
+
+@keyframes heroGlowBreathe {
+    from { opacity: .6; transform: scale(.94); }
+    to { opacity: .95; transform: scale(1.08); }
+}
+
+@keyframes heroCoverSheen {
+    0% { opacity: 0; transform: translateX(-120%); }
+    25%, 65% { opacity: 1; }
+    100% { opacity: 0; transform: translateX(120%); }
+}
+
+@keyframes heroPetalDrift {
+    0% { opacity: 0; transform: translate3d(0, -20px, 0) rotate(0deg) rotateY(20deg); }
+    12% { opacity: .28; }
+    50% { transform: translate3d(42px, 270px, 0) rotate(105deg) rotateY(125deg); }
+    85% { opacity: .18; }
+    100% { opacity: 0; transform: translate3d(95px, 610px, 0) rotate(220deg) rotateY(230deg); }
+}
+
+@media (max-width: 768px) {
+    .featured-banner .hero-bottom-bar .hero-carousel-controls {
+        display: flex !important;
+        min-height: 44px;
+    }
+
+    .featured-banner .hero-carousel-controls .hero-arrow-btn { width: 44px !important; height: 44px !important; }
+
+    .featured-banner .hero-petal:nth-child(n + 4) { display: none; }
+
+    .featured-banner .hero-book-float { animation-name: heroBookFloatNarrow; }
+
+    @keyframes heroBookFloatNarrow {
+        0%, 100% { transform: translate3d(0, 0, 0); }
+        50% { transform: translate3d(0, -3px, 0); }
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .featured-banner *,
+    .featured-banner *::before,
+    .featured-banner *::after {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    .featured-banner .hero-sakura-petals,
+    .featured-banner .hero-progress-bar-track,
+    .featured-banner .hero-motion-toggle,
+    .featured-banner .hero-book-cover::after { display: none; }
+
+    .featured-banner .hero-book-wrapper { transform: none !important; }
+}

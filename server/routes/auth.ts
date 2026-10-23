@@ -8,16 +8,22 @@ import db from '../db.js';
 import { JWT_SECRET, production } from '../config.js';
 import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.js';
 import { checkRole } from '../middleware/roles.js';
-import { issueOtp, verifyOtp } from '../utils/otp.js';
+import { issueOtp, verifyOtp, discardOtp } from '../utils/otp.js';
+import { getSmtpOptions } from '../utils/mailer.js';
+import { logOtpFailure } from '../utils/otpDiagnostics.js';
+import { registrationOtpEmail } from '../emails/registrationOtp.js';
 import { clearSessionCookie, revokeSession, setSessionCookie } from '../utils/sessions.js';
+import { validPassword } from '../utils/passwordPolicy.js';
+import passwordRoutes from './passwords.js';
 
 const router = Router();
 router.use((_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+router.use(passwordRoutes);
 const emailPattern = /^[a-zA-Z0-9.!#$%&'*+\-/=?^_`{|}~]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+$/;
 const emailValue = (value: unknown) => typeof value === 'string' ? value.trim().toLowerCase() : '';
 const limitedText = (value: unknown, max: number) => typeof value === 'string' && value.length <= max;
 const otpLimiter = rateLimit({ windowMs: 15 * 60000, limit: 20, standardHeaders: true, legacyHeaders: false });
-const tokenFor = (user: any) => jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { algorithm: 'HS256', expiresIn: '1d', jwtid: randomUUID() });
+const tokenFor = (user: any, authVersion = 0) => jwt.sign({ id: user.id, username: user.username, sv: authVersion }, JWT_SECRET, { algorithm: 'HS256', expiresIn: '1d', jwtid: randomUUID() });
 
 async function userSession(id: number, knownRoles?: string[]) {
     const users = await db.query<any[]>(`SELECT id, username, displayname, email, coins, level, xp, bio,
@@ -34,24 +40,30 @@ async function userSession(id: number, knownRoles?: string[]) {
 router.post('/send-otp', otpLimiter, async (req, res) => {
     const email = emailValue(req.body.email);
     if (email.length > 150 || !emailPattern.test(email)) return res.status(400).json({ error: 'Email không hợp lệ.' });
-    const hasSmtp = Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
     const developmentOtp = !production && process.env.DEV_OTP === 'true';
-    if (!hasSmtp && !developmentOtp) return res.status(503).json({ error: 'Dịch vụ gửi email chưa được cấu hình.' });
+    let stage: Parameters<typeof logOtpFailure>[0] = 'configuration';
     try {
+        const smtp = getSmtpOptions();
+        if (!smtp && !developmentOtp) return res.status(503).json({ error: 'Dịch vụ gửi email chưa được cấu hình.' });
+        stage = 'account_lookup';
         if ((await db.query<any[]>('SELECT id FROM users WHERE email = ?', [email])).length) return res.status(400).json({ error: 'Email đã được sử dụng.' });
+        stage = 'otp_storage';
         const code = await issueOtp(email);
         if (!code) return res.status(429).json({ error: 'Vui lòng chờ 60 giây trước khi gửi lại mã.' });
-        if (hasSmtp) {
-            const transporter = nodemailer.createTransport({ host: process.env.SMTP_HOST || 'smtp.gmail.com', port: Number(process.env.SMTP_PORT || 587),
-                secure: process.env.SMTP_SECURE === 'true', requireTLS: process.env.SMTP_SECURE !== 'true',
-                connectionTimeout: 10000, socketTimeout: 15000,
-                auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }, disableFileAccess: true, disableUrlAccess: true });
-            try { await transporter.sendMail({ from: process.env.SMTP_USER, to: email, subject: 'Mã xác thực MugenBunko', text: `Mã xác thực: ${code}. Có hiệu lực trong 5 phút. Không chia sẻ mã này.` }); }
-            catch { await db.query('DELETE FROM email_otps WHERE email = ?', [email]); return res.status(503).json({ error: 'Không thể gửi email. Vui lòng thử lại.' }); }
+        if (smtp) {
+            stage = 'smtp_setup';
+            const transporter = nodemailer.createTransport(smtp);
+            try { await transporter.sendMail({ from: { name: 'MugenBunko', address: smtp.auth.user }, to: email, ...registrationOtpEmail(code) }); }
+            catch (error) {
+                logOtpFailure('smtp_delivery', error);
+                stage = 'otp_cleanup';
+                await discardOtp(email, code);
+                return res.status(503).json({ error: 'Không thể gửi email. Vui lòng thử lại.' });
+            }
             finally { transporter.close(); }
         }
-        res.json({ success: true, message: 'Mã xác thực đã được gửi.', ...(developmentOtp ? { devOtp: code } : {}) });
-    } catch { res.status(503).json({ error: 'Không thể gửi mã xác thực lúc này.' }); }
+        res.json({ success: true, message: smtp ? 'Mã xác thực đã được gửi.' : 'Mã thử nghiệm đã được tạo; không gửi email.', ...(!smtp && developmentOtp ? { devOtp: code } : {}) });
+    } catch (error) { logOtpFailure(stage, error); res.status(503).json({ error: 'Không thể gửi mã xác thực lúc này.' }); }
 });
 router.post('/verify-otp', otpLimiter, async (req, res) => {
     const email = emailValue(req.body.email);
@@ -60,17 +72,17 @@ router.post('/verify-otp', otpLimiter, async (req, res) => {
     try {
         if (!await verifyOtp(email, code)) return res.status(400).json({ error: 'Mã không đúng, hết hạn hoặc đã vượt số lần thử.' });
         res.json({ success: true, message: 'Xác thực thành công.' });
-    } catch { res.status(503).json({ error: 'Không thể xác thực lúc này.' }); }
+    } catch (error) { logOtpFailure('verification', error); res.status(503).json({ error: 'Không thể xác thực lúc này.' }); }
 });
 router.post('/login', async (req, res) => {
     const { username, password } = req.body;
     if (!limitedText(username, 150) || !username.trim() || !limitedText(password, 200) || !password) return res.status(400).json({ error: 'Thông tin đăng nhập không hợp lệ.' });
     try {
-        const users = await db.query<any[]>('SELECT id, password, status FROM users WHERE username = ? OR email = ? LIMIT 1', [username.trim(), username.trim().toLowerCase()]);
+        const users = await db.query<any[]>('SELECT id, password, status, auth_version FROM users WHERE username = ? OR email = ? LIMIT 1', [username.trim(), username.trim().toLowerCase()]);
         if (!users.length || !await bcrypt.compare(password, users[0].password)) return res.status(401).json({ error: 'Sai tài khoản hoặc mật khẩu.' });
         if (users[0].status !== 'active') return res.status(403).json({ error: 'Tài khoản đã bị khóa.' });
         const user = await userSession(users[0].id);
-        const token = tokenFor(user);
+        const token = tokenFor(user, Number(users[0].auth_version));
         if (req.get('X-Mugen-Client') !== 'native') setSessionCookie(res, token, Date.now() + 86400000);
         res.json({ user, token });
     } catch { res.status(503).json({ error: 'Không thể đăng nhập lúc này.' }); }
@@ -80,7 +92,7 @@ router.post('/register', async (req, res) => {
     const email = emailValue(req.body.email);
     const { displayname, password } = req.body;
     if (!/^[a-z0-9_]{3,50}$/.test(username) || !limitedText(displayname, 100) || !displayname.trim() ||
-        !limitedText(password, 72) || Buffer.byteLength(password, 'utf8') > 72 || !/^(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/.test(password) ||
+        !validPassword(password) ||
         (email && (email.length > 150 || !emailPattern.test(email))) || (production && !email)) return res.status(400).json({ error: 'Thông tin đăng ký không hợp lệ. Mật khẩu cần 8–72 byte, chữ hoa, số và ký tự đặc biệt.' });
     try {
         const duplicate = await db.query<any[]>('SELECT id FROM users WHERE username = ? OR (email = ? AND ? <> ?) LIMIT 1', [username, email, email, '']);

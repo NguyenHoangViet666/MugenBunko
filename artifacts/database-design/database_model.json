@@ -1,0 +1,1881 @@
+{
+  "users": {
+    "fields": [
+      {
+        "name": "id",
+        "type": "INT",
+        "tail": "AUTO_INCREMENT PRIMARY KEY"
+      },
+      {
+        "name": "username",
+        "type": "VARCHAR(50)",
+        "tail": "UNIQUE NOT NULL"
+      },
+      {
+        "name": "password",
+        "type": "VARCHAR(255)",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "displayname",
+        "type": "VARCHAR(100)",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "email",
+        "type": "VARCHAR(150)",
+        "tail": "NULL UNIQUE"
+      },
+      {
+        "name": "coins",
+        "type": "INT",
+        "tail": "DEFAULT 1000"
+      },
+      {
+        "name": "level",
+        "type": "INT",
+        "tail": "DEFAULT 1"
+      },
+      {
+        "name": "xp",
+        "type": "INT",
+        "tail": "DEFAULT 0"
+      },
+      {
+        "name": "bio",
+        "type": "TEXT",
+        "tail": "NULL"
+      },
+      {
+        "name": "avatar_seed",
+        "type": "VARCHAR(100)",
+        "tail": "NULL"
+      },
+      {
+        "name": "status",
+        "type": "VARCHAR(20)",
+        "tail": "DEFAULT 'active'"
+      },
+      {
+        "name": "author_request",
+        "type": "VARCHAR(20)",
+        "tail": "DEFAULT NULL"
+      },
+      {
+        "name": "date_joined",
+        "type": "TIMESTAMP",
+        "tail": "DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "primary": [
+      "id"
+    ],
+    "unique": [
+      [
+        "username"
+      ],
+      [
+        "email"
+      ]
+    ],
+    "fks": {},
+    "indexes": [],
+    "source": "server/schema.sql"
+  },
+  "user_roles": {
+    "fields": [
+      {
+        "name": "user_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "role",
+        "type": "VARCHAR(20)",
+        "tail": "NOT NULL"
+      }
+    ],
+    "primary": [
+      "user_id",
+      "role"
+    ],
+    "unique": [],
+    "fks": {
+      "user_id": {
+        "target": "users.id",
+        "delete": "CASCADE"
+      }
+    },
+    "indexes": [],
+    "source": "server/schema.sql"
+  },
+  "novels": {
+    "fields": [
+      {
+        "name": "id",
+        "type": "INT",
+        "tail": "AUTO_INCREMENT PRIMARY KEY"
+      },
+      {
+        "name": "title",
+        "type": "VARCHAR(255)",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "author_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "cover",
+        "type": "VARCHAR(255)",
+        "tail": "DEFAULT 'assets/default_novel_cover.png'"
+      },
+      {
+        "name": "summary",
+        "type": "TEXT",
+        "tail": "NULL"
+      },
+      {
+        "name": "genre",
+        "type": "VARCHAR(500)",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "status",
+        "type": "VARCHAR(20)",
+        "tail": "DEFAULT 'active'"
+      },
+      {
+        "name": "type",
+        "type": "VARCHAR(50)",
+        "tail": "DEFAULT 'series'"
+      },
+      {
+        "name": "reads",
+        "type": "INT",
+        "tail": "DEFAULT 0"
+      },
+      {
+        "name": "rating",
+        "type": "DECIMAL(2,1)",
+        "tail": "DEFAULT 5.0"
+      },
+      {
+        "name": "bookmarks_count",
+        "type": "INT",
+        "tail": "DEFAULT 0"
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "tail": "DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "primary": [
+      "id"
+    ],
+    "unique": [],
+    "fks": {
+      "author_id": {
+        "target": "users.id",
+        "delete": "CASCADE"
+      }
+    },
+    "indexes": [],
+    "source": "server/schema.sql"
+  },
+  "novel_tags": {
+    "fields": [
+      {
+        "name": "novel_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "tag",
+        "type": "VARCHAR(50)",
+        "tail": "NOT NULL"
+      }
+    ],
+    "primary": [
+      "novel_id",
+      "tag"
+    ],
+    "unique": [],
+    "fks": {
+      "novel_id": {
+        "target": "novels.id",
+        "delete": "CASCADE"
+      }
+    },
+    "indexes": [],
+    "source": "server/schema.sql"
+  },
+  "chapters": {
+    "fields": [
+      {
+        "name": "id",
+        "type": "INT",
+        "tail": "AUTO_INCREMENT PRIMARY KEY"
+      },
+      {
+        "name": "novel_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "volume_name",
+        "type": "VARCHAR(100)",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "title",
+        "type": "VARCHAR(255)",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "content",
+        "type": "LONGTEXT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "status",
+        "type": "VARCHAR(20)",
+        "tail": "DEFAULT 'draft'"
+      },
+      {
+        "name": "scheduled_release",
+        "type": "TIMESTAMP",
+        "tail": "NULL"
+      },
+      {
+        "name": "word_count",
+        "type": "INT",
+        "tail": "NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "sort_order",
+        "type": "INT",
+        "tail": "NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "tail": "DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "primary": [
+      "id"
+    ],
+    "unique": [],
+    "fks": {
+      "novel_id": {
+        "target": "novels.id",
+        "delete": "CASCADE"
+      }
+    },
+    "indexes": [
+      {
+        "name": "idx_chapters_novel_status",
+        "fields": "novel_id, status"
+      },
+      {
+        "name": "idx_chapters_scheduled",
+        "fields": "scheduled_release"
+      }
+    ],
+    "source": "server/schema.sql"
+  },
+  "bookmarks": {
+    "fields": [
+      {
+        "name": "user_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "novel_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "tail": "DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "primary": [
+      "user_id",
+      "novel_id"
+    ],
+    "unique": [],
+    "fks": {
+      "user_id": {
+        "target": "users.id",
+        "delete": "CASCADE"
+      },
+      "novel_id": {
+        "target": "novels.id",
+        "delete": "CASCADE"
+      }
+    },
+    "indexes": [],
+    "source": "server/schema.sql"
+  },
+  "follows": {
+    "fields": [
+      {
+        "name": "follower_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "author_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      }
+    ],
+    "primary": [
+      "follower_id",
+      "author_id"
+    ],
+    "unique": [],
+    "fks": {
+      "follower_id": {
+        "target": "users.id",
+        "delete": "CASCADE"
+      },
+      "author_id": {
+        "target": "users.id",
+        "delete": "CASCADE"
+      }
+    },
+    "indexes": [],
+    "source": "server/schema.sql"
+  },
+  "comments": {
+    "fields": [
+      {
+        "name": "id",
+        "type": "INT",
+        "tail": "AUTO_INCREMENT PRIMARY KEY"
+      },
+      {
+        "name": "novel_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "user_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "parent_id",
+        "type": "INT",
+        "tail": "NULL"
+      },
+      {
+        "name": "text",
+        "type": "TEXT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "tail": "DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "primary": [
+      "id"
+    ],
+    "unique": [],
+    "fks": {
+      "novel_id": {
+        "target": "novels.id",
+        "delete": "CASCADE"
+      },
+      "user_id": {
+        "target": "users.id",
+        "delete": "CASCADE"
+      },
+      "parent_id": {
+        "target": "comments.id",
+        "delete": "CASCADE"
+      }
+    },
+    "indexes": [],
+    "source": "server/schema.sql"
+  },
+  "reviews": {
+    "fields": [
+      {
+        "name": "id",
+        "type": "INT",
+        "tail": "AUTO_INCREMENT PRIMARY KEY"
+      },
+      {
+        "name": "novel_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "user_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "stars",
+        "type": "INT",
+        "tail": "NOT NULL CHECK (`stars` BETWEEN 1 AND 5)"
+      },
+      {
+        "name": "text",
+        "type": "TEXT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "tail": "DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "primary": [
+      "id"
+    ],
+    "unique": [
+      [
+        "user_id",
+        "novel_id"
+      ]
+    ],
+    "fks": {
+      "novel_id": {
+        "target": "novels.id",
+        "delete": "CASCADE"
+      },
+      "user_id": {
+        "target": "users.id",
+        "delete": "CASCADE"
+      }
+    },
+    "indexes": [],
+    "source": "server/schema.sql"
+  },
+  "reports": {
+    "fields": [
+      {
+        "name": "id",
+        "type": "INT",
+        "tail": "AUTO_INCREMENT PRIMARY KEY"
+      },
+      {
+        "name": "reporter_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "comment_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "reason",
+        "type": "TEXT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "tail": "DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "primary": [
+      "id"
+    ],
+    "unique": [],
+    "fks": {
+      "reporter_id": {
+        "target": "users.id",
+        "delete": "CASCADE"
+      },
+      "comment_id": {
+        "target": "comments.id",
+        "delete": "CASCADE"
+      }
+    },
+    "indexes": [],
+    "source": "server/schema.sql"
+  },
+  "genres": {
+    "fields": [
+      {
+        "name": "id",
+        "type": "INT",
+        "tail": "AUTO_INCREMENT PRIMARY KEY"
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(100)",
+        "tail": "UNIQUE NOT NULL"
+      }
+    ],
+    "primary": [
+      "id"
+    ],
+    "unique": [
+      [
+        "name"
+      ]
+    ],
+    "fks": {},
+    "indexes": [],
+    "source": "server/schema.sql"
+  },
+  "events": {
+    "fields": [
+      {
+        "name": "id",
+        "type": "INT",
+        "tail": "AUTO_INCREMENT PRIMARY KEY"
+      },
+      {
+        "name": "title",
+        "type": "VARCHAR(255)",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "description",
+        "type": "TEXT",
+        "tail": "NULL"
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "tail": "DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "status",
+        "type": "VARCHAR(50)",
+        "tail": "NOT NULL DEFAULT 'draft'"
+      },
+      {
+        "name": "content",
+        "type": "TEXT",
+        "tail": "NULL DEFAULT NULL"
+      }
+    ],
+    "primary": [
+      "id"
+    ],
+    "unique": [],
+    "fks": {},
+    "indexes": [],
+    "source": "server/schema.sql"
+  },
+  "announcements": {
+    "fields": [
+      {
+        "name": "id",
+        "type": "INT",
+        "tail": "AUTO_INCREMENT PRIMARY KEY"
+      },
+      {
+        "name": "novel_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "text",
+        "type": "TEXT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "tail": "DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "primary": [
+      "id"
+    ],
+    "unique": [],
+    "fks": {
+      "novel_id": {
+        "target": "novels.id",
+        "delete": "CASCADE"
+      }
+    },
+    "indexes": [],
+    "source": "server/schema.sql"
+  },
+  "notifications": {
+    "fields": [
+      {
+        "name": "id",
+        "type": "INT",
+        "tail": "AUTO_INCREMENT PRIMARY KEY"
+      },
+      {
+        "name": "user_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "text",
+        "type": "TEXT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "is_read",
+        "type": "BOOLEAN",
+        "tail": "DEFAULT FALSE"
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "tail": "DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "primary": [
+      "id"
+    ],
+    "unique": [],
+    "fks": {
+      "user_id": {
+        "target": "users.id",
+        "delete": "CASCADE"
+      }
+    },
+    "indexes": [
+      {
+        "name": "idx_notifications_user_created",
+        "fields": "user_id, created_at DESC"
+      }
+    ],
+    "source": "server/schema.sql"
+  },
+  "forum_posts": {
+    "fields": [
+      {
+        "name": "id",
+        "type": "INT",
+        "tail": "AUTO_INCREMENT PRIMARY KEY"
+      },
+      {
+        "name": "title",
+        "type": "VARCHAR(255)",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "content",
+        "type": "TEXT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "author_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "category",
+        "type": "VARCHAR(50)",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "restrict_comments",
+        "type": "TINYINT(1)",
+        "tail": "DEFAULT 0"
+      },
+      {
+        "name": "image_url",
+        "type": "VARCHAR(500)",
+        "tail": "NULL DEFAULT NULL"
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "tail": "DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "primary": [
+      "id"
+    ],
+    "unique": [],
+    "fks": {
+      "author_id": {
+        "target": "users.id",
+        "delete": "CASCADE"
+      }
+    },
+    "indexes": [
+      {
+        "name": "idx_forum_posts_created",
+        "fields": "created_at DESC"
+      },
+      {
+        "name": "idx_forum_posts_author",
+        "fields": "author_id"
+      }
+    ],
+    "source": "server/schema.sql"
+  },
+  "forum_comments": {
+    "fields": [
+      {
+        "name": "id",
+        "type": "INT",
+        "tail": "AUTO_INCREMENT PRIMARY KEY"
+      },
+      {
+        "name": "post_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "user_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "parent_id",
+        "type": "INT",
+        "tail": "NULL DEFAULT NULL"
+      },
+      {
+        "name": "text",
+        "type": "TEXT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "tail": "DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "primary": [
+      "id"
+    ],
+    "unique": [],
+    "fks": {
+      "post_id": {
+        "target": "forum_posts.id",
+        "delete": "CASCADE"
+      },
+      "user_id": {
+        "target": "users.id",
+        "delete": "CASCADE"
+      },
+      "parent_id": {
+        "target": "forum_comments.id",
+        "delete": "CASCADE"
+      }
+    },
+    "indexes": [],
+    "source": "server/schema.sql"
+  },
+  "friends": {
+    "fields": [
+      {
+        "name": "user_id_1",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "user_id_2",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "status",
+        "type": "VARCHAR(20)",
+        "tail": "DEFAULT 'pending'"
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "tail": "DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "primary": [
+      "user_id_1",
+      "user_id_2"
+    ],
+    "unique": [],
+    "fks": {
+      "user_id_1": {
+        "target": "users.id",
+        "delete": "CASCADE"
+      },
+      "user_id_2": {
+        "target": "users.id",
+        "delete": "CASCADE"
+      }
+    },
+    "indexes": [],
+    "source": "server/schema.sql"
+  },
+  "messages": {
+    "fields": [
+      {
+        "name": "id",
+        "type": "INT",
+        "tail": "AUTO_INCREMENT PRIMARY KEY"
+      },
+      {
+        "name": "sender_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "receiver_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "message_text",
+        "type": "TEXT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "is_read",
+        "type": "BOOLEAN",
+        "tail": "DEFAULT FALSE"
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "tail": "DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "primary": [
+      "id"
+    ],
+    "unique": [],
+    "fks": {
+      "sender_id": {
+        "target": "users.id",
+        "delete": "CASCADE"
+      },
+      "receiver_id": {
+        "target": "users.id",
+        "delete": "CASCADE"
+      }
+    },
+    "indexes": [
+      {
+        "name": "idx_messages_unread",
+        "fields": "receiver_id, is_read"
+      }
+    ],
+    "source": "server/schema.sql"
+  },
+  "forum_post_likes": {
+    "fields": [
+      {
+        "name": "post_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "user_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      }
+    ],
+    "primary": [
+      "post_id",
+      "user_id"
+    ],
+    "unique": [],
+    "fks": {
+      "post_id": {
+        "target": "forum_posts.id",
+        "delete": "CASCADE"
+      },
+      "user_id": {
+        "target": "users.id",
+        "delete": "CASCADE"
+      }
+    },
+    "indexes": [],
+    "source": "server/schema.sql"
+  },
+  "read_cooldowns": {
+    "fields": [
+      {
+        "name": "ip_address",
+        "type": "VARCHAR(45)",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "novel_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "last_read_at",
+        "type": "TIMESTAMP",
+        "tail": "DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+      }
+    ],
+    "primary": [
+      "ip_address",
+      "novel_id"
+    ],
+    "unique": [],
+    "fks": {
+      "novel_id": {
+        "target": "novels.id",
+        "delete": "CASCADE"
+      }
+    },
+    "indexes": [],
+    "source": "server/schema.sql"
+  },
+  "deleted_novels": {
+    "fields": [
+      {
+        "name": "id",
+        "type": "INT",
+        "tail": "PRIMARY KEY"
+      },
+      {
+        "name": "title",
+        "type": "VARCHAR(255)",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "reason",
+        "type": "TEXT",
+        "tail": "NULL"
+      },
+      {
+        "name": "deleted_at",
+        "type": "TIMESTAMP",
+        "tail": "DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "primary": [
+      "id"
+    ],
+    "unique": [],
+    "fks": {},
+    "indexes": [],
+    "source": "server/schema.sql"
+  },
+  "rules": {
+    "fields": [
+      {
+        "name": "id",
+        "type": "INT",
+        "tail": "AUTO_INCREMENT PRIMARY KEY"
+      },
+      {
+        "name": "title",
+        "type": "VARCHAR(255)",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "content",
+        "type": "TEXT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "order_index",
+        "type": "INT",
+        "tail": "DEFAULT 0"
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "tail": "DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "updated_at",
+        "type": "TIMESTAMP",
+        "tail": "DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+      }
+    ],
+    "primary": [
+      "id"
+    ],
+    "unique": [],
+    "fks": {},
+    "indexes": [],
+    "source": "server/db.ts"
+  },
+  "revoked_tokens": {
+    "fields": [
+      {
+        "name": "token_hash",
+        "type": "CHAR(64)",
+        "tail": "PRIMARY KEY"
+      },
+      {
+        "name": "user_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "expires_at",
+        "type": "BIGINT",
+        "tail": "NOT NULL"
+      }
+    ],
+    "primary": [
+      "token_hash"
+    ],
+    "unique": [],
+    "fks": {
+      "user_id": {
+        "target": "users.id",
+        "delete": "CASCADE"
+      }
+    },
+    "indexes": [
+      {
+        "name": "idx_revoked_tokens_expiry",
+        "fields": "expires_at"
+      }
+    ],
+    "source": "server/readerSchema.ts"
+  },
+  "email_otps": {
+    "fields": [
+      {
+        "name": "email",
+        "type": "VARCHAR(150)",
+        "tail": "PRIMARY KEY"
+      },
+      {
+        "name": "code_hash",
+        "type": "CHAR(64)",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "expires_at",
+        "type": "BIGINT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "sent_at",
+        "type": "BIGINT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "attempts",
+        "type": "INT",
+        "tail": "NOT NULL DEFAULT 0"
+      }
+    ],
+    "primary": [
+      "email"
+    ],
+    "unique": [],
+    "fks": {},
+    "indexes": [
+      {
+        "name": "idx_email_otps_expiry",
+        "fields": "expires_at"
+      }
+    ],
+    "source": "server/readerSchema.ts"
+  },
+  "reading_progress": {
+    "fields": [
+      {
+        "name": "user_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "novel_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "chapter_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "scroll_ratio",
+        "type": "DOUBLE",
+        "tail": "NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "paragraph_index",
+        "type": "INT",
+        "tail": "NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "paragraph_offset",
+        "type": "DOUBLE",
+        "tail": "NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "client_updated_at",
+        "type": "BIGINT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "type": "TIMESTAMP(3)",
+        "tail": "DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)"
+      }
+    ],
+    "primary": [
+      "user_id",
+      "novel_id"
+    ],
+    "unique": [],
+    "fks": {
+      "user_id": {
+        "target": "users.id",
+        "delete": "CASCADE"
+      },
+      "novel_id": {
+        "target": "novels.id",
+        "delete": "CASCADE"
+      },
+      "chapter_id": {
+        "target": "chapters.id",
+        "delete": "CASCADE"
+      }
+    },
+    "indexes": [],
+    "source": "server/readerSchema.ts"
+  },
+  "chapter_reads": {
+    "fields": [
+      {
+        "name": "user_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "chapter_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "completed_at",
+        "type": "TIMESTAMP",
+        "tail": "DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "primary": [
+      "user_id",
+      "chapter_id"
+    ],
+    "unique": [],
+    "fks": {
+      "user_id": {
+        "target": "users.id",
+        "delete": "CASCADE"
+      },
+      "chapter_id": {
+        "target": "chapters.id",
+        "delete": "CASCADE"
+      }
+    },
+    "indexes": [],
+    "source": "server/readerSchema.ts"
+  },
+  "reading_sessions": {
+    "fields": [
+      {
+        "name": "user_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "chapter_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "session_id",
+        "type": "CHAR(32)",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "started_at",
+        "type": "TIMESTAMP(3)",
+        "tail": "DEFAULT CURRENT_TIMESTAMP(3)"
+      }
+    ],
+    "primary": [
+      "user_id",
+      "chapter_id"
+    ],
+    "unique": [],
+    "fks": {
+      "user_id": {
+        "target": "users.id",
+        "delete": "CASCADE"
+      },
+      "chapter_id": {
+        "target": "chapters.id",
+        "delete": "CASCADE"
+      }
+    },
+    "indexes": [],
+    "source": "server/readerSchema.ts"
+  },
+  "library_collections": {
+    "fields": [
+      {
+        "name": "id",
+        "type": "INT",
+        "tail": "AUTO_INCREMENT PRIMARY KEY"
+      },
+      {
+        "name": "user_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(80)",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "description",
+        "type": "VARCHAR(280)",
+        "tail": "NOT NULL DEFAULT ''"
+      },
+      {
+        "name": "cover_novel_id",
+        "type": "INT",
+        "tail": "NULL"
+      },
+      {
+        "name": "is_public",
+        "type": "BOOLEAN",
+        "tail": "NOT NULL DEFAULT FALSE"
+      },
+      {
+        "name": "share_id",
+        "type": "CHAR(32)",
+        "tail": "NOT NULL UNIQUE"
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "tail": "DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "primary": [
+      "id"
+    ],
+    "unique": [
+      [
+        "share_id"
+      ]
+    ],
+    "fks": {
+      "user_id": {
+        "target": "users.id",
+        "delete": "CASCADE"
+      },
+      "cover_novel_id": {
+        "target": "novels.id",
+        "delete": "SET NULL"
+      }
+    },
+    "indexes": [],
+    "source": "server/readerSchema.ts"
+  },
+  "collection_novels": {
+    "fields": [
+      {
+        "name": "collection_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "novel_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      }
+    ],
+    "primary": [
+      "collection_id",
+      "novel_id"
+    ],
+    "unique": [],
+    "fks": {
+      "collection_id": {
+        "target": "library_collections.id",
+        "delete": "CASCADE"
+      },
+      "novel_id": {
+        "target": "novels.id",
+        "delete": "CASCADE"
+      }
+    },
+    "indexes": [],
+    "source": "server/readerSchema.ts"
+  },
+  "chapter_versions": {
+    "fields": [
+      {
+        "name": "id",
+        "type": "INT",
+        "tail": "AUTO_INCREMENT PRIMARY KEY"
+      },
+      {
+        "name": "chapter_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "editor_id",
+        "type": "INT",
+        "tail": "NULL"
+      },
+      {
+        "name": "volume_name",
+        "type": "VARCHAR(100)",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "title",
+        "type": "VARCHAR(255)",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "content",
+        "type": "LONGTEXT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "word_count",
+        "type": "INT",
+        "tail": "NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "source",
+        "type": "VARCHAR(20)",
+        "tail": "NOT NULL DEFAULT 'save'"
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP(3)",
+        "tail": "DEFAULT CURRENT_TIMESTAMP(3)"
+      }
+    ],
+    "primary": [
+      "id"
+    ],
+    "unique": [],
+    "fks": {
+      "chapter_id": {
+        "target": "chapters.id",
+        "delete": "CASCADE"
+      },
+      "editor_id": {
+        "target": "users.id",
+        "delete": "SET NULL"
+      }
+    },
+    "indexes": [
+      {
+        "name": "idx_chapter_versions",
+        "fields": "chapter_id, id"
+      }
+    ],
+    "source": "server/readerSchema.ts"
+  },
+  "elections": {
+    "fields": [
+      {
+        "name": "id",
+        "type": "INT",
+        "tail": "AUTO_INCREMENT PRIMARY KEY"
+      },
+      {
+        "name": "title",
+        "type": "VARCHAR(160)",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "description",
+        "type": "TEXT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "rules",
+        "type": "JSON",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "status",
+        "type": "VARCHAR(20)",
+        "tail": "NOT NULL DEFAULT 'draft'"
+      },
+      {
+        "name": "nomination_closes_at",
+        "type": "BIGINT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "voting_closes_at",
+        "type": "BIGINT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "result_snapshot",
+        "type": "JSON",
+        "tail": "NULL"
+      },
+      {
+        "name": "created_by",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "tail": "DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "published_at",
+        "type": "TIMESTAMP",
+        "tail": "NULL"
+      }
+    ],
+    "primary": [
+      "id"
+    ],
+    "unique": [],
+    "fks": {
+      "created_by": {
+        "target": "users.id",
+        "delete": "RESTRICT"
+      }
+    },
+    "indexes": [
+      {
+        "name": "idx_elections_status",
+        "fields": "status, id"
+      }
+    ],
+    "source": "server/electionSchema.ts"
+  },
+  "election_candidates": {
+    "fields": [
+      {
+        "name": "id",
+        "type": "INT",
+        "tail": "AUTO_INCREMENT PRIMARY KEY"
+      },
+      {
+        "name": "election_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "user_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "nominated_by",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "status",
+        "type": "VARCHAR(20)",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "motivation",
+        "type": "TEXT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "experience",
+        "type": "TEXT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "availability",
+        "type": "VARCHAR(280)",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "scenario_answer",
+        "type": "TEXT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "supplement",
+        "type": "TEXT",
+        "tail": "NULL"
+      },
+      {
+        "name": "verification_reason",
+        "type": "TEXT",
+        "tail": "NULL"
+      },
+      {
+        "name": "decision",
+        "type": "VARCHAR(20)",
+        "tail": "NOT NULL DEFAULT 'pending'"
+      },
+      {
+        "name": "public_reason",
+        "type": "TEXT",
+        "tail": "NULL"
+      },
+      {
+        "name": "internal_note",
+        "type": "TEXT",
+        "tail": "NULL"
+      },
+      {
+        "name": "override_reason",
+        "type": "TEXT",
+        "tail": "NULL"
+      },
+      {
+        "name": "decided_by",
+        "type": "INT",
+        "tail": "NULL"
+      },
+      {
+        "name": "probation_ends_at",
+        "type": "BIGINT",
+        "tail": "NULL"
+      },
+      {
+        "name": "term_ends_at",
+        "type": "BIGINT",
+        "tail": "NULL"
+      },
+      {
+        "name": "confirmed_at",
+        "type": "BIGINT",
+        "tail": "NULL"
+      },
+      {
+        "name": "ended_at",
+        "type": "BIGINT",
+        "tail": "NULL"
+      },
+      {
+        "name": "end_reason",
+        "type": "TEXT",
+        "tail": "NULL"
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "tail": "DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "primary": [
+      "id"
+    ],
+    "unique": [
+      [
+        "election_id",
+        "user_id"
+      ]
+    ],
+    "fks": {
+      "election_id": {
+        "target": "elections.id",
+        "delete": "RESTRICT"
+      },
+      "user_id": {
+        "target": "users.id",
+        "delete": "RESTRICT"
+      },
+      "nominated_by": {
+        "target": "users.id",
+        "delete": "RESTRICT"
+      }
+    },
+    "indexes": [
+      {
+        "name": "idx_election_candidate_term",
+        "fields": "user_id,decision,ended_at,term_ends_at"
+      },
+      {
+        "name": "idx_election_term_expiry",
+        "fields": "decision,ended_at,term_ends_at,election_id"
+      }
+    ],
+    "source": "server/electionSchema.ts"
+  },
+  "election_voters": {
+    "fields": [
+      {
+        "name": "election_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "user_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "can_vote",
+        "type": "BOOLEAN",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "can_review",
+        "type": "BOOLEAN",
+        "tail": "NOT NULL"
+      }
+    ],
+    "primary": [
+      "election_id",
+      "user_id"
+    ],
+    "unique": [],
+    "fks": {
+      "election_id": {
+        "target": "elections.id",
+        "delete": "RESTRICT"
+      },
+      "user_id": {
+        "target": "users.id",
+        "delete": "RESTRICT"
+      }
+    },
+    "indexes": [],
+    "source": "server/electionSchema.ts"
+  },
+  "election_ballots": {
+    "fields": [
+      {
+        "name": "election_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "voter_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "candidate_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "type": "TIMESTAMP(3)",
+        "tail": "DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)"
+      }
+    ],
+    "primary": [
+      "election_id",
+      "voter_id",
+      "candidate_id"
+    ],
+    "unique": [],
+    "fks": {
+      "election_id": {
+        "target": "elections.id",
+        "delete": "RESTRICT"
+      },
+      "voter_id": {
+        "target": "users.id",
+        "delete": "RESTRICT"
+      },
+      "candidate_id": {
+        "target": "election_candidates.id",
+        "delete": "RESTRICT"
+      }
+    },
+    "indexes": [
+      {
+        "name": "idx_ballot_candidate",
+        "fields": "candidate_id"
+      }
+    ],
+    "source": "server/electionSchema.ts"
+  },
+  "election_reviews": {
+    "fields": [
+      {
+        "name": "election_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "candidate_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "reviewer_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "verdict",
+        "type": "VARCHAR(12)",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "criteria",
+        "type": "JSON",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "comment",
+        "type": "TEXT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "type": "TIMESTAMP(3)",
+        "tail": "DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)"
+      }
+    ],
+    "primary": [
+      "election_id",
+      "candidate_id",
+      "reviewer_id"
+    ],
+    "unique": [],
+    "fks": {
+      "election_id": {
+        "target": "elections.id",
+        "delete": "RESTRICT"
+      },
+      "candidate_id": {
+        "target": "election_candidates.id",
+        "delete": "RESTRICT"
+      },
+      "reviewer_id": {
+        "target": "users.id",
+        "delete": "RESTRICT"
+      }
+    },
+    "indexes": [],
+    "source": "server/electionSchema.ts"
+  },
+  "election_complaints": {
+    "fields": [
+      {
+        "name": "id",
+        "type": "INT",
+        "tail": "AUTO_INCREMENT PRIMARY KEY"
+      },
+      {
+        "name": "election_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "user_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "message",
+        "type": "TEXT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "status",
+        "type": "VARCHAR(12)",
+        "tail": "NOT NULL DEFAULT 'open'"
+      },
+      {
+        "name": "resolution",
+        "type": "TEXT",
+        "tail": "NULL"
+      },
+      {
+        "name": "resolved_by",
+        "type": "INT",
+        "tail": "NULL"
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "tail": "DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "primary": [
+      "id"
+    ],
+    "unique": [],
+    "fks": {
+      "election_id": {
+        "target": "elections.id",
+        "delete": "RESTRICT"
+      },
+      "user_id": {
+        "target": "users.id",
+        "delete": "RESTRICT"
+      }
+    },
+    "indexes": [],
+    "source": "server/electionSchema.ts"
+  },
+  "election_audit": {
+    "fields": [
+      {
+        "name": "id",
+        "type": "INT",
+        "tail": "AUTO_INCREMENT PRIMARY KEY"
+      },
+      {
+        "name": "election_id",
+        "type": "INT",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "actor_id",
+        "type": "INT",
+        "tail": "NULL"
+      },
+      {
+        "name": "action",
+        "type": "VARCHAR(50)",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "details",
+        "type": "JSON",
+        "tail": "NOT NULL"
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP(3)",
+        "tail": "DEFAULT CURRENT_TIMESTAMP(3)"
+      }
+    ],
+    "primary": [
+      "id"
+    ],
+    "unique": [],
+    "fks": {
+      "election_id": {
+        "target": "elections.id",
+        "delete": "RESTRICT"
+      }
+    },
+    "indexes": [
+      {
+        "name": "idx_election_audit",
+        "fields": "election_id, id"
+      }
+    ],
+    "source": "server/electionSchema.ts"
+  }
+}

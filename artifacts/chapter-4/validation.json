@@ -1,0 +1,166 @@
+{
+  "document": "C:\\Users\\VTS\\.gemini\\antigravity\\scratch\\mugenbunko-react\\artifacts\\chapter-4\\Chuong_4_Trien_khai_he_thong_MugenBunko.docx",
+  "title": "CHƯƠNG 4: TRIỂN KHAI HỆ THỐNG",
+  "body_font": "Times New Roman 13 pt",
+  "table_and_caption_font": "Times New Roman 12 pt",
+  "code_font": "Consolas 10 pt",
+  "line_spacing_body": 1.5,
+  "paper": "A4 portrait",
+  "margins_cm": {
+    "left": 3,
+    "right": 2,
+    "top": 2,
+    "bottom": 2
+  },
+  "main_sections": 6,
+  "word_tables": 8,
+  "figure_captions": 9,
+  "embedded_images": 10,
+  "images_byte_identical_to_sources": true,
+  "words_whitespace": 5364,
+  "characters": 26019,
+  "test_snapshot": {
+    "date": "2026-10-22",
+    "commit": "2d7d95c",
+    "PASS": 48,
+    "NOT_RUN": 20
+  },
+  "scope": "Local implementation; mobile screenshots are Expo web; no VPS/native-release claim",
+  "source_files": [
+    "package-lock.json",
+    "server/package-lock.json",
+    "mobile/package-lock.json",
+    "server/server.ts",
+    "server/config.ts",
+    "server/db.ts",
+    "server/createAdmin.ts",
+    "server/routes/auth.ts",
+    "server/routes/reader.ts",
+    "server/routes/chapters.ts",
+    "server/routes/mod.ts",
+    "server/routes/admin.ts",
+    "server/routes/elections.ts",
+    "server/routes/upload.ts",
+    "server/realtime.ts",
+    "server/utils/sessions.ts",
+    "src/App.tsx",
+    "src/hooks/useStudioEditor.ts",
+    "mobile/README.md",
+    "mobile/src/services/storage/authToken.ts",
+    "mobile/src/services/api/client.ts",
+    "artifacts/test-report/all-test-cases.json",
+    "artifacts/test-report/evidence/quality-checks.jsonl",
+    "artifacts/test-report/evidence/frontend-mobile-summary.json",
+    "artifacts/test-report/evidence/web-browser.log",
+    "artifacts/test-report/mobile-browser-case.json"
+  ],
+  "figures": [
+    {
+      "path": "artifacts/auth/register-washi-1440.png",
+      "pixels": [
+        1440,
+        1050
+      ],
+      "caption": "Giao diện đăng ký tài khoản và xác thực email trên web",
+      "sha256": "57fc5b4d6f9c70fad55c4783e1ed9659ec739127529a291e3b49c4bebea56a5c"
+    },
+    {
+      "path": "artifacts/hero/washi-1440.png",
+      "pixels": [
+        1440,
+        1000
+      ],
+      "caption": "Trang chủ MugenBunko với giao diện Washi",
+      "sha256": "e36a01b96c02f6d9f161495bfdb18f94ee6aaa92c89c367586626817820a5183"
+    },
+    {
+      "path": "artifacts/upgrades/library.png",
+      "pixels": [
+        1440,
+        1000
+      ],
+      "caption": "Tủ sách cá nhân và quản lý kệ sách trong môi trường thử nghiệm",
+      "sha256": "6f7770186be41d07e1c1ba69b7219cfc73bcabbf64f6ef6ea97afc4a23a00a67"
+    },
+    {
+      "path": "artifacts/studio/studio-washi-1440.png",
+      "pixels": [
+        1440,
+        1000
+      ],
+      "caption": "Studio tác giả với mục lục chương và vùng soạn thảo",
+      "sha256": "370da48488f309c117bfd78f1c67d80a9dbe4903c119ed22e2f3c5b35998b3cb"
+    },
+    {
+      "path": "artifacts/upgrades/forum-washi.png",
+      "pixels": [
+        1440,
+        1000
+      ],
+      "caption": "Giao diện diễn đàn và các khu vực nội dung cộng đồng",
+      "sha256": "654126622f2282d5ce9a158530c5497d4051483e7d2db6a84e0b55427a566e53"
+    },
+    {
+      "path": "artifacts/upgrades/mod-pending-washi-1440.png",
+      "pixels": [
+        1440,
+        1000
+      ],
+      "caption": "Hàng chờ chương và thao tác kiểm duyệt trên web",
+      "sha256": "7924a50bc70eec04fa32441404dd3a198c8c0b61f30cf258cfc82348ad128231"
+    },
+    {
+      "path": "artifacts/upgrades/admin-overview.png",
+      "pixels": [
+        1440,
+        1000
+      ],
+      "caption": "Trang tổng quan dành cho quản trị viên",
+      "sha256": "9387740af0438551bca5d6133aff2bf13bd00c67db08663e0a983f3ac87eb35a"
+    },
+    {
+      "path": "artifacts/elections/community-results.png",
+      "pixels": [
+        1440,
+        1000
+      ],
+      "caption": "Trang kỳ tuyển chọn và công bố kết quả cho cộng đồng",
+      "sha256": "453a07506d14dc4719f3688f4d1e7f57558e6f98f9db02ed208de438986b5243"
+    },
+    {
+      "path": "artifacts/mobile/reader.png",
+      "pixels": [
+        390,
+        844
+      ],
+      "caption": "Trình đọc và trò chuyện trên Expo web/Edge ở kích thước điện thoại",
+      "sha256": "2687fb7c81f0aaadfee21cfb2be5a4be8198685d9468eddba6b393784ddd9733"
+    },
+    {
+      "path": "artifacts/mobile/chat.png",
+      "pixels": [
+        390,
+        844
+      ],
+      "caption": "Trình đọc và trò chuyện trên Expo web/Edge ở kích thước điện thoại",
+      "sha256": "540b5ecd8cef3d6e12a37349c06871028c336b0ab562807dc51680c98a4bd5fc"
+    }
+  ],
+  "opened_and_exported_in_microsoft_word": true,
+  "pages_microsoft_word": 21,
+  "section_headings_and_captions_present_in_pdf": true,
+  "preview_selected_pages": [
+    1,
+    9,
+    17,
+    18,
+    19,
+    21
+  ],
+  "visual_layout_reviewed": true,
+  "code_and_evidence_cross_checked": true,
+  "document_date": "2026-10-23",
+  "download_path": "C:\\Users\\VTS\\Downloads\\Chuong_4_Trien_khai_he_thong_MugenBunko.docx",
+  "file_bytes": 1852736,
+  "document_sha256": "1bae66209be523d273848b8271f12138c112dda9b8bc892ea7de22f77b381d40"
+}

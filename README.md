@@ -268,7 +268,7 @@ mugenbunko-react/
 - Thiết bị di động cài đặt app **Expo Go** (nếu muốn test Mobile App)
 
 ### 9.2. Cấu hình biến môi trường (.env)
-Tạo file `.env` tại thư mục gốc của dự án:
+Chạy local: sao chép `server/.env.example` thành `server/.env` và điền cấu hình tại đó; backend đọc file này cả khi chạy từ thư mục gốc. Các biến dành cho frontend/Vite đặt ở `.env` tại thư mục gốc. Chạy Docker production dùng `.env.production` theo phần triển khai production bên dưới.
 
 ```env
 # Server Configuration
@@ -284,14 +284,24 @@ DB_PASSWORD=your_mysql_password
 DB_NAME=mugenbunko
 
 # Mailer OTP Verification (Gmail App Password)
-EMAIL_USER=your_email@gmail.com
-EMAIL_PASS=your_gmail_app_password
+DEV_OTP=false
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_gmail_app_password
 
 # Cloudinary Storage
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
 ```
+
+OTP gửi email thật cần đủ `SMTP_USER` và `SMTP_PASS`; tên cũ `EMAIL_USER`/`EMAIL_PASS` không được backend sử dụng. Với Gmail, dùng [App Password theo hướng dẫn Google](https://support.google.com/accounts/answer/185833) của tài khoản đã bật xác minh hai bước. Điền thông tin trực tiếp trong `server/.env` (file đã được Git bỏ qua), sau đó khởi động lại backend. Nếu dùng cổng `465`, đặt `SMTP_SECURE=true`; cổng `587` dùng `false` để nâng cấp kết nối qua STARTTLS.
+
+Chạy `npm run check:smtp` từ thư mục gốc để kiểm tra cấu hình, kết nối và xác thực SMTP mà không gửi email. Lệnh không in mật khẩu hoặc mã OTP; kết nối thành công chưa bảo đảm email sẽ vào hộp thư đến. Nếu chỉ thử local khi chưa có SMTP, có thể chủ động đặt `DEV_OTP=true`: mã được điền sẵn trên web và giao diện nói rõ chưa gửi email thật. Khi có SMTP hợp lệ, OTP chỉ được gửi qua email và không trả về JSON, kể cả khi cờ thử nghiệm đang bật. Production không cho phép lấy OTP qua chế độ thử nghiệm.
+
+Mẫu thư xác thực ở `server/emails/registrationOtp.ts`, gồm HTML có thương hiệu MugenBunko và bản văn bản thuần chứa cùng mã. Thư dùng tên người gửi “MugenBunko” cùng địa chỉ SMTP đã cấu hình; bố cục bảng, CSS nội tuyến và điều chỉnh màn hình nhỏ. Mã được giữ thành một chuỗi 6 số để sao chép; không chèn vào tiêu đề hoặc phần xem trước hộp thư. Mẫu không tải ảnh/font ngoài và không có mã theo dõi. Thay mẫu áp dụng cho email gửi mới, không thay đổi email đã nhận.
 
 ---
 
@@ -352,6 +362,18 @@ cd mobile && npm install && cd ..
 
 Đăng nhập và đăng ký web là hai trang riêng tại `#/login` và `#/register`. Các liên kết cần tài khoản giữ trang đích trong `returnTo`; đăng nhập/đăng ký thành công quay về trang đó. Biểu mẫu đăng ký giữ OTP email, kiểm tra mật khẩu nhập lại và thời gian chờ gửi lại mã; lỗi hiển thị ngay trong trang. Mật khẩu chỉ được giữ trong bộ nhớ của biểu mẫu.
 
+Khôi phục mật khẩu tại `#/forgot-password`, mở từ “Quên mật khẩu?” trên trang đăng nhập và giữ `returnTo` khi quay lại. Nhập email đã đăng ký, nhận mã 6 số rồi nhập mật khẩu mới hai lần; mã có hạn 5 phút, chờ 60 giây trước khi gửi lại và tối đa 5 lần thử mỗi mã. `POST /api/auth/forgot-password` trả thông báo chung cho email tồn tại, không tồn tại, bị khóa hoặc đang chờ gửi lại; xử lý gửi SMTP ở nền để thời gian gửi thư không làm lộ tài khoản. Email chưa đăng ký vẫn đi qua cùng bước lưu challenge/thời gian chờ nhưng không nhận thư. Chế độ thử nghiệm chỉ trả `devOtp` ở local khi không có SMTP. `POST /api/auth/reset-password` dùng `{ email, otp, newPassword }`; mã đăng ký và khôi phục có `purpose` riêng, không dùng thay nhau. Việc cập nhật mật khẩu và xóa mã diễn ra trong cùng transaction.
+
+Đổi mật khẩu chủ động trong Hồ sơ → Thông tin cơ bản → Mật khẩu & bảo mật. `POST /api/auth/change-password` yêu cầu đăng nhập và `{ currentPassword, newPassword }`, kiểm tra mật khẩu hiện tại, mật khẩu mới khác mật khẩu cũ và cùng chính sách với đăng ký. Giới hạn thử đổi theo tài khoản; luồng khôi phục có giới hạn theo IP và theo challenge. Cả hai luồng tăng `users.auth_version`, xóa challenge khôi phục còn chờ và yêu cầu đăng nhập lại; token/cookie cũ hết hiệu lực, socket đang kết nối trên tiến trình xử lý được ngắt ngay. Kết nối ở tiến trình khác phải xác thực lại phiên khi gửi thao tác. Tài khoản có email nhận thư thông báo thay đổi, không chứa mật khẩu. Tài khoản chưa có email vẫn đổi được bằng mật khẩu hiện tại; khôi phục qua email cần email đã được gắn với tài khoản.
+
+Migration bổ sung `users.auth_version` và chuyển khóa chính OTP sang `(email, purpose)`; mã đăng ký đang còn hạn được giữ nguyên. Production chạy migration trước khi khởi động bản mới. Chạy `npm run test:passwords` cho kiểm tra API, mã một lần, hết hạn, cập nhật đồng thời, rollback và thu hồi phiên; `npm run test:auth:browser` kiểm tra các biểu mẫu và điều hướng web. Các bộ kiểm tra dùng database tách biệt và không gửi email thật.
+
+Quy định cộng đồng công khai tại `#/rules`, hỗ trợ mục lục, tìm kiếm không dấu và liên kết đến điều khoản `#/rules?section=<id>`. Admin soạn tại `#/manage-rules`; xem trước dùng cùng cách trình bày với trang công khai. Bản đang soạn được khôi phục từ trình duyệt theo tài khoản, chỉ nút “Công bố” mới cập nhật nội dung cho độc giả. Đây là bản lưu trên thiết bị, chưa đồng bộ giữa các thiết bị. API sửa/xóa yêu cầu `baseRule` gồm `title`, `content`, `order_index` để đối chiếu bản gốc; khi có cập nhật đồng thời trả `409` cùng bản mới, khi điều khoản đã bị xóa trả `404`. Xóa hết quy định sẽ giữ tài liệu rỗng qua các lần khởi động lại, không tự khôi phục dữ liệu mẫu.
+
+Bộ mặc định gồm 25 điều tại `server/communityRules.ts`: giữ 5 chủ đề ban đầu và bổ sung 20 điều về tài khoản, phân loại tác phẩm, AI, đăng lại, ứng xử, quyền riêng tư, đánh giá, spoiler, diễn đàn, spam, số liệu, tin nhắn, bầu chọn, báo cáo, kiểm duyệt, chế tài và khiếu nại. Các tiểu mục có tiêu đề riêng khi đọc hoặc xem trước. Đây là quy định để thành viên và người quản lý áp dụng; thời hạn xử lý, cảnh báo và mở khóa cần được người quản lý thực hiện, chưa phải cơ chế chế tài tự động.
+
+Khi khởi tạo hoặc chạy migration, `server/communityRulesMigration.ts` tạo bộ 25 điều cho bảng mới, hoặc nâng cấp nguyên tử nếu tài liệu hiện tại khớp chính xác cả 5 điều mặc định cũ; giữ ID của 5 điều để bảo toàn liên kết. Nếu admin đã sửa, thêm, xóa hoặc cố ý để trống, migration giữ nguyên toàn bộ tài liệu đó. Chạy lại không nhân bản hay ghi đè nội dung. Production áp dụng qua quy trình migration hiện có, không tự thay dữ liệu khi khởi động với `migrate: false`.
+
 Kiểm tra tĩnh và build frontend trước khi bàn giao thay đổi:
 
 ```bash
@@ -381,6 +403,8 @@ npm run test:studio
 npm run test:studio:browser
 npm run test:auth
 npm run test:auth:browser
+npm run test:rules
+npm run test:rules:browser
 ```
 
 Bộ test dùng database riêng có tên `mugenbunko_test_*`, yêu cầu tài khoản MySQL có quyền tạo/xóa database và tự dọn sau khi chạy. Kiểm thử trình duyệt sử dụng Edge headless trên Windows; có thể đặt `UPGRADE_BROWSER_PATH` để chọn executable Chromium khác. Ảnh kiểm tra nằm trong `artifacts/upgrades/` và được Git bỏ qua.
@@ -434,6 +458,8 @@ Mật khẩu admin phải có ít nhất 16 ký tự, tối đa 72 byte. Lệnh 
 Với **database đang có dữ liệu**, backup và thử migration trên bản sao trước, kể cả bước nâng MySQL 8.0 lên 8.4. Đặt `DB_ADMIN_PASSWORD` khớp mật khẩu root hiện tại; đổi biến môi trường không tự đổi mật khẩu trong volume cũ. Volume MySQL cũ không tự tạo user từ `MYSQL_USER`: cần tạo tài khoản `DB_APP_USER` với mật khẩu `DB_PASSWORD` trước khi chạy migration. Nếu chuyển từ Compose cũ, sao chép ảnh từ thư mục bind `server/uploads` sang volume `uploads_data` trước khi chuyển traffic. Khi thay JWT secret, các phiên đăng nhập và OTP đang chờ sẽ hết hiệu lực. Không import trực tiếp `server/schema.sql` lên production vì file đó vẫn chứa seed dành cho development/test.
 
 Ứng dụng có `/healthz`, giới hạn payload và tốc độ request, CORS allowlist, CSP, OTP lưu hash trong DB và xác thực quyền từ DB ở mỗi request. Upload tối đa 5 MB, kiểm tra MIME/signature và dùng tên file UUID. Backup cả database lẫn volume `uploads_data`; nếu sử dụng Cloudinary thì quản lý backup media tại dịch vụ đó.
+
+Migration nâng bảng `email_otps` cũ có `otp_code` và thời gian `TIMESTAMP` sang `code_hash`, thời gian mili giây, thời điểm gửi và số lần thử. Mã cũ bị vô hiệu hóa; người dùng cần yêu cầu mã mới. Chạy lại migration giữ nguyên mã mới và thời gian chờ gửi lại. Production kiểm tra đủ cột OTP khi khởi động; lỗi gửi mã được log theo bước xử lý và mã lỗi, không log email, OTP, mật khẩu hoặc tham số SQL. `npm --prefix server run test:security` bao gồm kiểm tra nâng cấp từ bảng OTP cũ.
 
 Cấu hình hiện tại dành cho một instance. Presence socket và các rate limiter HTTP nằm trong bộ nhớ tiến trình; cần shared store/Socket.IO adapter khi chạy nhiều instance. API danh mục và diễn đàn đã phân trang, nhưng các view hiện tại vẫn ghép các trang để giữ tìm kiếm/lọc toàn bộ dữ liệu. Khi dữ liệu lớn cần chuyển tìm kiếm/lọc sang server, phân trang chương/bình luận và kiểm thử tải trên staging trước khi quyết định cấu hình máy.
 

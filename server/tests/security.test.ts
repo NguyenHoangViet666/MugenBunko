@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { io as connectSocket } from 'socket.io-client';
+import nodemailer from 'nodemailer';
+import { getSmtpOptions } from '../utils/mailer.js';
 import { startFixture } from './fixture.js';
 
 describe('Production security regressions', () => {
@@ -14,7 +16,7 @@ describe('Production security regressions', () => {
             body: body === undefined ? undefined : JSON.stringify(body) });
         return { status: response.status, data: await response.json(), response };
     };
-    before(async () => { fixture = await startFixture(); });
+    before(async () => { fixture = await startFixture({ legacyOtpSchema: true }); });
     after(async () => { if (fixture) await fixture.close(); });
 
     it('rejects unauthenticated mutations, forged requester IDs and cross-account profile changes', async () => {
@@ -114,6 +116,63 @@ describe('Production security regressions', () => {
             const unavailable = await request('/auth/send-otp', 'POST', { email: 'no-smtp@example.test' }, null);
             assert.equal(unavailable.status, 503); assert.equal(unavailable.data.devOtp, undefined);
         } finally { process.env.DEV_OTP = 'true'; }
+    });
+    it('validates SMTP settings and sends OTPs without exposing them or contacting a real mail service', async context => {
+        assert.equal(getSmtpOptions({}), null);
+        assert.throws(() => getSmtpOptions({ SMTP_USER: 'test@example.test' }), /SMTP_USER.*SMTP_PASS/);
+        const credentials = { SMTP_USER: 'sender@example.test', SMTP_PASS: 'test-only' };
+        assert.equal(getSmtpOptions({ ...credentials, SMTP_PORT: '465' })?.secure, true);
+        assert.throws(() => getSmtpOptions({ ...credentials, SMTP_PORT: '465', SMTP_SECURE: 'false' }), /SMTP_SECURE=true/);
+        assert.throws(() => getSmtpOptions({ ...credentials, SMTP_PORT: 'not-a-port' }), /SMTP_PORT/);
+        assert.throws(() => getSmtpOptions({ ...credentials, SMTP_SECURE: 'yes' }), /SMTP_SECURE/);
+        assert.throws(() => getSmtpOptions({ ...credentials, SMTP_HOST: 'https://smtp.example.test' }), /SMTP_HOST/);
+
+        const keys = ['SMTP_USER', 'SMTP_PASS', 'SMTP_PORT', 'SMTP_SECURE', 'DEV_OTP'] as const;
+        const original = Object.fromEntries(keys.map(key => [key, process.env[key]]));
+        type OtpMessage = { text: string; html: string; subject: string; from: { name: string; address: string }; to: string };
+        const messages: OtpMessage[] = [];
+        let failDelivery = false, closed = 0;
+        const stub = context.mock.method(nodemailer, 'createTransport', (() => ({
+            async sendMail(message: OtpMessage) {
+                messages.push(message);
+                if (failDelivery) throw new Error('Simulated SMTP rejection');
+                return {};
+            },
+            close() { closed++; }
+        })) as typeof nodemailer.createTransport);
+        try {
+            Object.assign(process.env, credentials, { SMTP_PORT: '587', SMTP_SECURE: 'false', DEV_OTP: 'true' });
+            const sent = await request('/auth/send-otp', 'POST', { email: 'smtp-success@example.test' }, null);
+            assert.equal(sent.status, 200);
+            assert.equal(sent.data.devOtp, undefined);
+            assert.equal(messages[0].to, 'smtp-success@example.test');
+            assert.deepEqual(messages[0].from, { name: 'MugenBunko', address: credentials.SMTP_USER });
+            assert.match(messages[0].subject, /MugenBunko/);
+            const code = messages[0].text.match(/\b\d{6}\b/)?.[0];
+            assert.ok(code);
+            assert.ok(messages[0].html.includes(code), 'The HTML and plain-text versions must contain the same OTP');
+            assert.match(messages[0].html, /lang="vi"/);
+            assert.doesNotMatch(messages[0].html, /<script\b|<img\b|<iframe\b|<link\b|<form\b/i);
+            assert.ok(!JSON.stringify(sent.data).includes(code));
+            assert.equal(closed, 1);
+
+            failDelivery = true;
+            const failed = await request('/auth/send-otp', 'POST', { email: 'smtp-failure@example.test' }, null);
+            assert.equal(failed.status, 503);
+            assert.equal(failed.data.devOtp, undefined);
+            assert.deepEqual(await fixture.db.query('SELECT email FROM email_otps WHERE email = ?', ['smtp-failure@example.test']), []);
+            assert.equal(closed, 2);
+
+            process.env.SMTP_PASS = '';
+            assert.equal((await request('/auth/send-otp', 'POST', { email: 'smtp-partial@example.test' }, null)).status, 503);
+            assert.equal(messages.length, 2);
+        } finally {
+            stub.mock.restore();
+            for (const key of keys) {
+                if (original[key] === undefined) delete process.env[key];
+                else process.env[key] = original[key];
+            }
+        }
     });
     it('requires upload auth and rejects traversal, spoofed image bytes and oversized requests', async () => {
         const image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jS1cAAAAASUVORK5CYII=';

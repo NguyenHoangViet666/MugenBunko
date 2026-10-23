@@ -12,7 +12,13 @@ export function registerRealtime(io: Server) {
         }
     };
     sessionEvents.on('revoked', disconnectRevoked);
-    io.httpServer?.once('close', () => sessionEvents.off('revoked', disconnectRevoked));
+    const disconnectUser = (userId: number) => {
+        for (const socket of io.of('/').sockets.values()) {
+            if (socket.data.user.id === userId) socket.disconnect(true);
+        }
+    };
+    sessionEvents.on('user-revoked', disconnectUser);
+    io.httpServer?.once('close', () => { sessionEvents.off('revoked', disconnectRevoked); sessionEvents.off('user-revoked', disconnectUser); });
     io.use(async (socket, next) => {
         const token = socket.handshake.auth?.token || cookieToken(socket.handshake.headers.cookie);
         if (typeof token !== 'string' || token.length > 4096) return next(new Error('Yêu cầu đăng nhập.'));

@@ -1,0 +1,100 @@
+{
+  "document": "C:\\Users\\VTS\\.gemini\\antigravity\\scratch\\mugenbunko-react\\artifacts\\chapter-5\\Chuong_5_Ket_luan_va_huong_phat_trien_MugenBunko.docx",
+  "document_date": "2026-10-23",
+  "title": "CHƯƠNG 5: KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN",
+  "main_sections": [
+    "5.1. Kết quả đạt được",
+    "5.2. Hạn chế của hệ thống",
+    "5.3. Hướng phát triển"
+  ],
+  "subsections_5_3": 7,
+  "tables": 3,
+  "paper": "A4 portrait",
+  "body_font": "Times New Roman 13 pt",
+  "table_and_reference_font": "Times New Roman 12 pt",
+  "line_spacing_body": 1.5,
+  "words_whitespace": 3599,
+  "characters": 16774,
+  "recorded_test_results": {
+    "date": "2026-10-22",
+    "commit": "2d7d95c",
+    "PASS": 48,
+    "NOT_RUN": 20
+  },
+  "current_payment_state": "deposit-coins and cashout approval are disabled; no verified real-money subsystem",
+  "payment_content_status": "Proposed research and design, not implemented or deployed functionality",
+  "local_sources": [
+    "artifacts/chapter-4/chapter4_text.txt",
+    "artifacts/test-report/all-test-cases.json",
+    "server/routes/auth.ts",
+    "server/routes/admin.ts",
+    "server/realtime.ts",
+    "server/middleware/security.ts",
+    "mobile/README.md"
+  ],
+  "external_sources": [
+    {
+      "number": 1,
+      "author": "OWASP",
+      "title": "Third Party Payment Gateway Integration Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Third_Party_Payment_Gateway_Integration_Cheat_Sheet.html",
+      "accessed": "2026-10-23"
+    },
+    {
+      "number": 2,
+      "author": "OWASP",
+      "title": "Webhook Security Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Webhook_Security_Cheat_Sheet.html",
+      "accessed": "2026-10-23"
+    },
+    {
+      "number": 3,
+      "author": "OWASP",
+      "title": "Transaction Authorization Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Transaction_Authorization_Cheat_Sheet.html",
+      "accessed": "2026-10-23"
+    },
+    {
+      "number": 4,
+      "author": "SePay Developer",
+      "title": "Secure your webhook endpoint",
+      "url": "https://developer.sepay.vn/en/sepay-webhooks/bao-mat",
+      "accessed": "2026-10-23"
+    },
+    {
+      "number": 5,
+      "author": "MySQL",
+      "title": "MySQL 8.4 Reference Manual: Fixed-Point Types (Exact Value) – DECIMAL, NUMERIC",
+      "url": "https://dev.mysql.com/doc/refman/8.4/en/fixed-point-types.html",
+      "accessed": "2026-10-23"
+    },
+    {
+      "number": 6,
+      "author": "OWASP",
+      "title": "Business Logic Security Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Business_Logic_Security_Cheat_Sheet.html",
+      "accessed": "2026-10-23"
+    }
+  ],
+  "cited_paragraph_words_by_source": {
+    "1": 89,
+    "4": 105,
+    "5": 75,
+    "6": 94,
+    "2": 80,
+    "3": 77
+  },
+  "opened_and_exported_in_microsoft_word": true,
+  "pages_microsoft_word": 8,
+  "all_headings_captions_and_references_present_in_pdf": true,
+  "preview_selected_pages": [
+    1,
+    5,
+    6,
+    8
+  ],
+  "visual_layout_reviewed": true,
+  "download_path": "C:\\Users\\VTS\\Downloads\\Chuong_5_Ket_luan_va_huong_phat_trien_MugenBunko.docx",
+  "file_bytes": 46659,
+  "document_sha256": "c6e40a768eb7caebfbf5e64251fedc67b5b979fea2e5255b09720a2ddb93dca1"
+}
