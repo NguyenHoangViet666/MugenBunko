@@ -14,6 +14,17 @@ server/dist/
 server/uploads/
 .git/
 .gitignore
+.agents/
+.agent/
+.codex/
+.claude/
+.gemini/
+.cache/
+**/.cache/
+**/__pycache__/
+**/*.py[cod]
+**/*.log
+**/*.tsbuildinfo
 npm-debug.log
 yarn-debug.log
 yarn-error.log

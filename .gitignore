@@ -11,6 +11,18 @@ node_modules
 dist
 dist-ssr
 *.local
+*.tsbuildinfo
+.cache/
+.expo/
+coverage/
+
+# Local AI tooling and runtime uploads
+.agents/
+.agent/
+.codex/
+.claude/
+.gemini/
+/server/uploads/
 
 # Editor directories and files
 .vscode/*
@@ -39,6 +51,9 @@ artifacts/header/
 artifacts/rules/
 artifacts/hero/
 artifacts/about/
+artifacts/reader/
+# Cover generation workspaces stay local; published images live in public/assets/covers.
+artifacts/covers-*/
 artifacts/email/
 artifacts/auth/
 artifacts/studio/
@@ -47,6 +62,7 @@ artifacts/studio/
 artifacts/chapter-*/preview_*
 artifacts/database-design/preview_*
 artifacts/database-design/probe_*
+artifacts/database-design/*_preview.pdf
 
 # Mobile browser validation artifacts
 artifacts/mobile/
