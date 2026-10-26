@@ -61,6 +61,13 @@ artifacts/email/
 artifacts/auth/
 artifacts/studio/
 
+# Report documents are kept locally; their content is included in the submitted report.
+/docs/SO_DO_TUAN_TU_HE_THONG.md
+/docs/ELECTIONS.md
+/artifacts/chapter-2/
+/artifacts/chapter-4/
+/artifacts/chapter-5/
+
 # Generated report previews and layout experiments
 artifacts/chapter-*/preview_*
 artifacts/database-design/preview_*

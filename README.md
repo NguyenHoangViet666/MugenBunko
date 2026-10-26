@@ -231,7 +231,7 @@ Bộ mặc định tại [server/communityRules.ts](server/communityRules.ts) g�
 
 Migration chỉ nâng cấp khi toàn bộ 5 điều hiện có khớp chính xác bản mặc định cũ, giữ ID để bảo toàn liên kết. Tài liệu đã được admin sửa/thêm/xóa hoặc cố ý để trống được giữ nguyên; chạy lại không nhân bản nội dung. Bảng mới được khởi tạo bộ 25 điều.
 
-Bầu chọn mod mở tại `#/elections`, tab **Bầu chọn mod** trong Admin và **Hội đồng bầu chọn** trong Mod. Hai luồng phiếu cộng đồng/hội đồng được chốt riêng; admin quyết định bổ nhiệm, có giải trình, khiếu nại và nhật ký. Quyền mod gắn với nhiệm kỳ được kiểm tra ở backend. Chi tiết thể lệ, phân quyền và dữ liệu ở [docs/ELECTIONS.md](docs/ELECTIONS.md).
+Bầu chọn mod mở tại `#/elections`, tab **Bầu chọn mod** trong Admin và **Hội đồng bầu chọn** trong Mod. Hai luồng phiếu cộng đồng/hội đồng được chốt riêng; admin quyết định bổ nhiệm, có giải trình, khiếu nại và nhật ký. Quyền mod gắn với nhiệm kỳ được kiểm tra ở backend.
 
 ## 6. Dữ liệu và bảo mật
 
@@ -348,8 +348,8 @@ MugenBunko/
 ├── mobile/                   # Expo / React Native; có README riêng
 ├── shared/                   # Hợp đồng/nhãn bầu chọn dùng chung
 ├── tests/                    # Unit và kiểm thử trình duyệt
-├── docs/                     # Sơ đồ tuần tự và tài liệu nghiệp vụ
-├── artifacts/                # Báo cáo, ERD, script dựng tài liệu
+├── docs/                     # Hướng dẫn vận hành và kế hoạch cộng đồng
+├── artifacts/                # ERD, báo cáo kiểm thử, script dựng tài liệu
 ├── public/                   # Tài nguyên tĩnh
 ├── Dockerfile
 ├── docker-compose.yml
@@ -358,13 +358,8 @@ MugenBunko/
 
 | Tài liệu | Đường dẫn |
 | --- | --- |
-| Sơ đồ tuần tự hệ thống | [docs/SO_DO_TUAN_TU_HE_THONG.md](docs/SO_DO_TUAN_TU_HE_THONG.md) |
-| Nghiệp vụ bầu chọn mod | [docs/ELECTIONS.md](docs/ELECTIONS.md) |
 | Cài đặt và kiểm thử mobile | [mobile/README.md](mobile/README.md) |
-| Chương 2 — Cơ sở lý thuyết | [Word](artifacts/chapter-2/Chuong_2_Co_so_ly_thuyet_MugenBunko.docx) |
 | Thiết kế cơ sở dữ liệu | [Word](artifacts/database-design/Muc_3_6_Thiet_ke_co_so_du_lieu_MugenBunko.docx), [ERD](artifacts/database-design/ERD_MugenBunko_word.png) |
-| Chương 4 — Triển khai hệ thống | [Word](artifacts/chapter-4/Chuong_4_Trien_khai_he_thong_MugenBunko.docx), [PDF](artifacts/chapter-4/Chuong_4_Trien_khai_he_thong_MugenBunko.pdf) |
-| Chương 5 — Kết luận và hướng phát triển | [Word](artifacts/chapter-5/Chuong_5_Ket_luan_va_huong_phat_trien_MugenBunko.docx), [PDF](artifacts/chapter-5/Chuong_5_Ket_luan_va_huong_phat_trien_MugenBunko.pdf) |
 | Báo cáo test case và kết quả | [Word](artifacts/test-report/MugenBunko_TestCase_KetQua_NguyenHoangViet.docx) |
 
 Các tài liệu báo cáo phản ánh thời điểm xuất bản; lệnh chạy và cấu hình hiện tại được mô tả trong README này. `.env`, secret SMTP/JWT, ảnh test và file tạm không được đưa vào Git.
