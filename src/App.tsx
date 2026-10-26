@@ -14,20 +14,21 @@ import ChatWidget from './components/ChatWidget';
 import MobileGateOverlay from './components/MobileGateOverlay';
 import { Icons } from './components/Icons';
 
-import Home from './pages/Home';
-import NovelDetail from './pages/NovelDetail';
-import ChapterReader from './pages/ChapterReader';
-import Explore from './pages/Explore';
 import ErrorBoundary from './components/ErrorBoundary';
 import { PageLoading, PageError } from './components/LoadState';
 import { useReadingSync } from './hooks/useReadingSync';
+import { useRecentNovels } from './hooks/useRecentNovels';
 import { useDialogFocus } from './hooks/useDialogFocus';
 
-import { User, Novel, Comment, Review, SystemEvent, Report, ForumPost, Message, UserRole } from './types';
+import { User, Novel, Comment, Review, SystemEvent, Report, ForumPost, Message, UserRole, HomeFeed } from './types';
 import { compressImage } from './utils/imageCompressor';
 import { formatDate } from './utils/dateFormatter';
 
 const AuthorStudio = lazy(() => import('./pages/AuthorStudio'));
+const Home = lazy(() => import('./pages/Home'));
+const NovelDetail = lazy(() => import('./pages/NovelDetail'));
+const ChapterReader = lazy(() => import('./pages/ChapterReader'));
+const Explore = lazy(() => import('./pages/Explore'));
 const ModDashboard = lazy(() => import('./pages/ModDashboard'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const UserProfile = lazy(() => import('./pages/UserProfile'));
@@ -300,6 +301,9 @@ export default function App() {
     const [dashboardLoading, setDashboardLoading] = useState(true);
     const [dashboardError, setDashboardError] = useState('');
     const [novels, setNovels] = useState<Novel[]>([]);
+    const [homeFeed, setHomeFeed] = useState<HomeFeed | null>(null);
+    const novelLoadSequence = useRef(0);
+    const detailRequests = useRef(new Map<string, Promise<Novel>>());
     const [novelsLoading, setNovelsLoading] = useState(true);
     const [novelsError, setNovelsError] = useState('');
     const [exploreType, setExploreType] = useState<string>('all');
@@ -337,7 +341,9 @@ export default function App() {
     };
     // Keep callbacks consumed by existing reading/community screens while routing to full pages.
     const setLoginModalOpen = (open: boolean) => { if (open) openAuth('login'); };
-    const readingSync = useReadingSync(currentUser, novels, API_BASE, fetchWithAuth);
+    const recentNovels = useRecentNovels(currentUser, API_BASE, fetchWithAuth);
+    const readingNovels = React.useMemo(() => [...new Map([...recentNovels, ...novels].map(novel => [novel.id, novel])).values()], [recentNovels, novels]);
+    const readingSync = useReadingSync(currentUser, readingNovels, API_BASE, fetchWithAuth);
 
     // ----------------------------------------------------
     // Mobile Gate State (Standalone clean rendering)
@@ -491,6 +497,11 @@ export default function App() {
     // INITIAL MOUNT LOAD & BOOTSTRAP
     // ----------------------------------------------------
     useEffect(() => {
+        novelLoadSequence.current++;
+        setNovels([]); setHomeFeed(null); setNovelsLoading(true); setNovelsError('');
+    }, [currentUser?.id]);
+
+    useEffect(() => {
         // Load preferences
         const savedTheme = localStorage.getItem(DB_KEYS.theme) || 'washi';
         setTheme(savedTheme);
@@ -526,28 +537,31 @@ export default function App() {
     // Lazy loading data based on currentView to optimize performance
     useEffect(() => {
         if (currentView === 'home') {
-            fetchNovels();
             fetchAnnouncements();
             fetchEvents();
             fetchLatestComments();
             fetchLatestReviews();
             fetchWibuRanking();
             fetchForumPosts();
-        } else if (currentView === 'explore' || currentView === 'library' || currentView === 'studio' || currentView === 'reader' || currentView === 'collection' || currentView === 'detail' || currentView === 'admin-dashboard' || currentView === 'mod-dashboard') {
+        } else if (currentView === 'library' || currentView === 'studio' || currentView === 'reader' || currentView === 'detail' || currentView === 'admin-dashboard' || currentView === 'mod-dashboard') {
             fetchNovels();
-        } else if (currentView === 'forum') {
-            fetchForumPosts();
+
         } else if (currentView === 'event-detail') {
             fetchEvents();
         } else if (currentView === 'profile') {
             fetchNovels();
-            fetchForumPosts();
         }
-    }, [currentView, currentUser?.id]);
+    }, [currentView, currentUser?.id, activeNovelId, profileViewingUsername]);
+
+    useEffect(() => {
+        if (currentView !== 'home') return;
+        const timer = window.setTimeout(() => { void fetchNovels(); }, 180);
+        return () => window.clearTimeout(timer);
+    }, [currentView, currentUser?.id, filterGenre, filterType, filterStatus, selectedTags.join(','), activeBannerId]);
 
     // Complete the document entrance once; route changes never recreate it.
     useEffect(() => {
-        const needsNovels = ['home', 'explore', 'library', 'studio', 'reader', 'collection', 'detail', 'profile', 'admin-dashboard', 'mod-dashboard'].includes(currentView);
+        const needsNovels = ['home', 'library', 'studio', 'reader', 'detail', 'profile', 'admin-dashboard', 'mod-dashboard'].includes(currentView);
         if (isMobileDevice && !mobileBypassed) signalStartupReady();
         else if ((!needsNovels || !novelsLoading) && (currentView !== 'event-detail' || !eventsLoading)) signalStartupReady();
     }, [currentView, novelsLoading, eventsLoading, isMobileDevice, mobileBypassed]);
@@ -816,27 +830,71 @@ export default function App() {
     // ----------------------------------------------------
     // FETCH HELPER METHOD INTEGRATIONS WITH REST API
     // ----------------------------------------------------
-    const fetchNovels = async (forceRefresh = false): Promise<Novel[]> => {
+    const loadNovel = async (id: number, forceRefresh = false): Promise<Novel> => {
+        const key = `${CACHE_KEYS.novels}:${currentUser?.id || 'guest'}:detail:${id}`;
         if (!forceRefresh) {
-            const cached = getCachedData(CACHE_KEYS.novels + ':' + (currentUser?.id || 'guest'), 120000);
-            if (cached) {
-                setNovels(cached);
-                setNovelsLoading(false); setNovelsError('');
-                return cached;
-            }
+            const cached = getCachedData(key, 30000);
+            if (cached) return cached;
+            const pending = detailRequests.current.get(key);
+            if (pending) return pending;
         }
+        const task = fetchWithAuth(`${API_BASE}/novels/${id}`).then(async response => {
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Không thể tải tác phẩm.');
+            setCachedData(key, data);
+            return data as Novel;
+        }).finally(() => { if (detailRequests.current.get(key) === task) detailRequests.current.delete(key); });
+        detailRequests.current.set(key, task);
+        return task;
+    };
+
+    const fetchNovels = async (forceRefresh = false): Promise<Novel[]> => {
+        const sequence = ++novelLoadSequence.current;
+        const params = new URLSearchParams();
+        if (currentView === 'home') {
+            params.set('genre', filterGenre); params.set('type', filterType || 'all'); params.set('status', filterStatus || 'all');
+            if (selectedTags.length) params.set('tags', selectedTags.join(','));
+        } else if (currentView === 'studio') params.set('scope', 'mine');
+        else if (currentView === 'library') params.set('scope', 'library');
+        else if (currentView === 'profile') params.set('author', profileViewingUsername || currentUser?.username || '');
+        const cacheKey = `${CACHE_KEYS.novels}:${currentUser?.id || 'guest'}:${currentView}:${params}:${activeNovelId || ''}`;
         setNovelsLoading(true); setNovelsError('');
         try {
-            const list = await fetchArrayPages<Novel>(fetchWithAuth, `${API_BASE}/novels`);
+            const cached = !forceRefresh ? getCachedData(cacheKey, 30000) : null;
+            let list: Novel[];
+            if (currentView === 'home') {
+                const response = cached ? null : await fetchWithAuth(`${API_BASE}/novels/home?${params}`);
+                const feed: HomeFeed = cached || await response!.json();
+                if (response && !response.ok) throw new Error('Không thể tải thư viện.');
+                if (sequence !== novelLoadSequence.current) return novels;
+                setHomeFeed(feed); setCachedData(cacheKey, feed);
+                const extraIds = new Set<number>();
+                try {
+                    const history = JSON.parse(localStorage.getItem(`mugen_reading_history_${currentUser?.username || 'guest'}`) || '[]');
+                    if (Array.isArray(history)) history.slice(0, 20).forEach(item => { if (Number.isSafeInteger(item.novelId) && item.novelId > 0) extraIds.add(item.novelId); });
+                } catch { /* Ignore malformed local history. */ }
+                if (activeBannerId) extraIds.add(activeBannerId);
+                const extras: Novel[] = [];
+                if (extraIds.size) {
+                    const response = await fetchWithAuth(`${API_BASE}/novels/catalog?limit=30&ids=${[...extraIds].join(',')}`);
+                    if (response.ok) extras.push(...(await response.json()).novels);
+                }
+                list = [...new Map([...feed.novels, ...extras].map(novel => [novel.id, novel])).values()];
+            } else if ((currentView === 'detail' || currentView === 'reader') && activeNovelId !== null) {
+                list = [await loadNovel(activeNovelId, forceRefresh)];
+            } else {
+                list = cached || await fetchArrayPages<Novel>(fetchWithAuth, `${API_BASE}/novels?${params}`);
+                setCachedData(cacheKey, list);
+            }
+            if (sequence !== novelLoadSequence.current) return list;
             setNovels(list);
-            setCachedData(CACHE_KEYS.novels + ':' + (currentUser?.id || 'guest'), list);
             return list;
         } catch (err) {
             console.error("Error fetching novels:", err);
-            setNovelsError(err instanceof Error ? err.message : 'Không thể kết nối đến thư viện.');
+            if (sequence === novelLoadSequence.current) setNovelsError(err instanceof Error ? err.message : 'Không thể kết nối đến thư viện.');
             return novels;
         } finally {
-            setNovelsLoading(false);
+            if (sequence === novelLoadSequence.current) setNovelsLoading(false);
         }
     };
 
@@ -904,7 +962,9 @@ export default function App() {
             }
         }
         try {
-            const list = await fetchArrayPages<ForumPost>(fetchWithAuth, `${API_BASE}/forum/posts?comments=none`);
+            const response = await fetchWithAuth(`${API_BASE}/forum/posts?comments=none&limit=8&sort=hot`);
+            if (!response.ok) throw new Error('Không thể tải bài thảo luận.');
+            const list: ForumPost[] = await response.json();
             setForumPosts(list);
             setCachedData(CACHE_KEYS.forumPosts + ':' + (currentUser?.id || 'guest'), list);
         } catch (err) {
@@ -1269,9 +1329,9 @@ export default function App() {
             const sum = list.reduce((acc, r) => acc + r.stars, 0);
             return (sum / list.length).toFixed(1);
         }
-        const n = novels.find(x => x.id === novelId);
+        const n = readingNovels.find(x => x.id === novelId);
         if (!n) return "N/A";
-        if (n.bookmarks_count > 0 && n.rating) {
+        if ((n.reviewsCount || 0) > 0 && n.rating) {
             return parseFloat(n.rating as string).toFixed(1);
         }
         return "N/A";
@@ -1338,11 +1398,12 @@ export default function App() {
     // IMMERSIVE READER WORKFLOWS
     // ----------------------------------------------------
     const startReading = async (novelId: number, chapterIndex: number) => {
-        const novel = novels.find(n => n.id === novelId);
-        if (!novel) {
-            openNovelDetail(novelId);
-            return;
-        }
+        const route = window.location.hash;
+        let novel: Novel;
+        try { novel = await loadNovel(novelId); }
+        catch (error) { showToast(error instanceof Error ? error.message : 'Không thể tải tác phẩm.'); return; }
+        if (window.location.hash !== route) return;
+        setNovels(previous => [...previous.filter(item => item.id !== novelId), novel]);
 
         const publishedChapters = (novel.chapters || []).filter(ch => ch.status === 'published');
         if (publishedChapters.length === 0) {
@@ -2404,6 +2465,11 @@ export default function App() {
         }
     };
 
+    const missingDetail = ['detail', 'reader'].includes(currentView) && !novels.some(novel => novel.id === activeNovelId && novel.detailsLoaded !== false);
+    const needsNovelList = ['home', 'library', 'studio'].includes(currentView);
+    const pageNovelError = Boolean(novelsError && (missingDetail || (needsNovelList && !novels.length)));
+    const pageNovelLoading = !pageNovelError && (missingDetail || (needsNovelList && novelsLoading && !novels.length) || (currentView === 'reader' && !readingSync.initialized));
+
     // If visiting from a mobile device and not bypassed, render ONLY the Mobile Gate Splash Screen
     if (isMobileDevice && !mobileBypassed) {
         return (
@@ -2548,7 +2614,7 @@ export default function App() {
             {currentView !== 'reader' && (
                 <Header
                     currentUser={currentUser}
-                    novels={novels}
+                    novels={readingNovels}
                     progressRevision={readingSync.revision}
                     categoryDrawerOpen={categoryDrawerOpen}
                     currentView={currentView}
@@ -2604,16 +2670,17 @@ export default function App() {
                 <ErrorBoundary key={currentView}>
                 <Suspense fallback={<PageLoading reader={currentView === 'reader'} />}>
                 {novelsError && novels.length > 0 && <div className="inline-notice" role="alert">{novelsError} <button className="text-action" onClick={() => void fetchNovels(true)}>Thử lại</button></div>}
-                {(['home', 'explore', 'library', 'detail', 'reader', 'studio'].includes(currentView) && novelsLoading && !novels.length) || (currentView === 'reader' && novels.length > 0 && !readingSync.initialized)
+                {pageNovelLoading
                     ? <PageLoading reader={currentView === 'reader'} />
-                    : ['home', 'explore', 'library', 'detail', 'reader', 'studio'].includes(currentView) && novelsError && !novels.length
+                    : pageNovelError
                         ? <PageError message={novelsError} onRetry={() => void fetchNovels(true)} /> : <>
                 {currentView === 'collection' && activeCollectionShareId && <PublicCollection key={activeCollectionShareId} shareId={activeCollectionShareId} API_BASE={API_BASE} openNovelDetail={openNovelDetail} />}
                 {/* ================= PAGES RENDERING ================= */}
                 {currentView === 'home' && (
                     <Home
+                        feed={homeFeed}
                         progressRevision={readingSync.revision}
-                        novels={novels}
+                        novels={readingNovels}
                         currentUser={currentUser}
                         activeNovelId={activeNovelId}
                         setActiveNovelId={setActiveNovelId}
@@ -2892,6 +2959,8 @@ export default function App() {
 
                 {currentView === 'explore' && (
                     <Explore
+                        API_BASE={API_BASE}
+                        fetchWithAuth={fetchWithAuth}
                         novels={novels}
                         currentUser={currentUser}
                         exploreType={exploreType}

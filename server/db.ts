@@ -4,6 +4,9 @@ import { electionSchema } from './electionSchema.js';
 import { initializeCommunityRules } from './communityRulesMigration.js';
 import { migrateEmailOtpSchema } from './otpSchemaMigration.js';
 import { production } from './config.js';
+import { invalidatePublicReads } from './utils/readCache.js';
+import { databaseMetrics } from './metrics.js';
+import { performance } from 'node:perf_hooks';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -28,6 +31,7 @@ const dbConfig = {
 let pool: Pool | null = null;
 
 export async function initializeDbConnection(options: { migrate?: boolean } = {}): Promise<void> {
+    invalidatePublicReads();
     const database = process.env.DB_NAME || 'mugenbunko';
     if (!/^[a-zA-Z0-9_]{1,64}$/.test(database)) throw new Error('Invalid DB_NAME');
     const migrate = options.migrate ?? !production;
@@ -339,6 +343,8 @@ export async function initializeDbConnection(options: { migrate?: boolean } = {}
         await ensureIndexExists('messages', 'idx_messages_conversation', 'CREATE INDEX idx_messages_conversation ON messages (sender_id, receiver_id, id)');
         await ensureIndexExists('messages', 'idx_messages_sender_created', 'CREATE INDEX idx_messages_sender_created ON messages (sender_id, created_at)');
         await ensureIndexExists('novels', 'idx_novels_reads', 'CREATE INDEX idx_novels_reads ON novels (`reads` DESC, id DESC)');
+        await ensureIndexExists('forum_posts', 'idx_forum_category_created', 'CREATE INDEX idx_forum_category_created ON forum_posts (category, created_at, id)');
+        await ensureIndexExists('novel_tags', 'idx_novel_tags_tag', 'CREATE INDEX idx_novel_tags_tag ON novel_tags (tag, novel_id)');
         console.log("Performance indexes verification completed.");
 
         const [chapterOrderColumns] = await connectionWithDb.query<any[]>("SHOW COLUMNS FROM chapters LIKE 'sort_order'");
@@ -346,6 +352,7 @@ export async function initializeDbConnection(options: { migrate?: boolean } = {}
             await connectionWithDb.query('ALTER TABLE chapters ADD COLUMN sort_order INT NOT NULL DEFAULT 0');
             await connectionWithDb.query('UPDATE chapters SET sort_order = id');
         }
+        await ensureIndexExists('chapters', 'idx_chapters_public_order', 'CREATE INDEX idx_chapters_public_order ON chapters (novel_id, status, sort_order, id)');
         await connectionWithDb.query(readerSchema);
         if (await migrateEmailOtpSchema(connectionWithDb)) console.log('Legacy email OTP schema upgraded; old codes invalidated.');
         await connectionWithDb.query(electionSchema);
@@ -367,27 +374,43 @@ export async function query<T = any>(sql: string, params?: any[]): Promise<T> {
     if (!pool) {
         throw new Error("Database pool not initialized. Call initializeDbConnection first.");
     }
-    const [results] = await pool.execute({ sql, timeout: 15000 }, params);
-    return results as T;
+    const connection = await acquireConnection();
+    const start = performance.now(); databaseMetrics.queries++;
+    try {
+        const [results] = await connection.execute({ sql, timeout: 15000 }, params);
+        return results as T;
+    } catch (error) { databaseMetrics.errors++; throw error; }
+    finally { databaseMetrics.durationMs += performance.now() - start; databaseMetrics.active--; connection.release(); }
+}
+
+async function acquireConnection() {
+    if (!pool) throw new Error('Database pool not initialized.');
+    const start = performance.now(); databaseMetrics.waiting++;
+    try { const connection = await pool.getConnection(); databaseMetrics.active++; return connection; }
+    finally { databaseMetrics.waiting--; databaseMetrics.waitMs += performance.now() - start; }
 }
 
 export async function transaction<T>(work: (connection: PoolConnection) => Promise<T>): Promise<T> {
     if (!pool) throw new Error('Database pool not initialized.');
-    const connection = await pool.getConnection();
+    const connection = await acquireConnection();
+    const start = performance.now(); databaseMetrics.transactions++;
     try {
         await connection.beginTransaction();
         const result = await work(connection);
         await connection.commit();
         return result;
     } catch (error) {
+        databaseMetrics.errors++;
         await connection.rollback();
         throw error;
     } finally {
+        databaseMetrics.active--; databaseMetrics.durationMs += performance.now() - start;
         connection.release();
     }
 }
 
 export async function closeDbConnection() {
+    invalidatePublicReads();
     if (pool) { await pool.end(); pool = null; }
 }
 

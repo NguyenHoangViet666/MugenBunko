@@ -1,8 +1,9 @@
 import React from 'react';
-import { Novel, User, ForumPost, SystemEvent } from '../types';
+import { Novel, User, ForumPost, SystemEvent, HomeFeed } from '../types';
 import { calculateUserLevel } from '../utils/levelHelper';
 import { getReadingProgress } from '../utils/readingProgress';
 import '../styles/hero-motion.css';
+import { publishedChapterCount } from '../utils/novelSummary';
 
 // ================= MONOCHROME PROFESSIONAL SVG ICONS =================
 const Icons = {
@@ -242,6 +243,7 @@ interface ReadingHistoryItem {
 }
 
 interface HomeProps {
+    feed?: HomeFeed | null;
     progressRevision?: number;
     novels: Novel[];
     currentUser: User | null;
@@ -284,6 +286,7 @@ interface HomeProps {
 }
 
 export default function Home({
+    feed,
     progressRevision,
     novels,
     currentUser,
@@ -528,38 +531,44 @@ export default function Home({
     }, [novels, filterGenre, filterType, filterStatus, selectedTags]);
 
     const trendingNovels = React.useMemo(() => {
+        if (feed) return feed.sections["trending"].map(id => novels.find(novel => novel.id === id)).filter((novel): novel is Novel => Boolean(novel));
         return [...filteredPublishedNovels].sort((a, b) => (parseInt(String(b.reads)) || 0) - (parseInt(String(a.reads)) || 0)).slice(0, 10);
-    }, [filteredPublishedNovels]);
+    }, [filteredPublishedNovels, feed]);
 
     const newestNovels = React.useMemo(() => {
+        if (feed) return feed.sections["newest"].map(id => novels.find(novel => novel.id === id)).filter((novel): novel is Novel => Boolean(novel));
         return [...filteredPublishedNovels].sort((a, b) => b.id - a.id).slice(0, 10);
-    }, [filteredPublishedNovels]);
+    }, [filteredPublishedNovels, feed]);
 
     const topRatedNovels = React.useMemo(() => {
+        if (feed) return feed.sections["top-rated"].map(id => novels.find(novel => novel.id === id)).filter((novel): novel is Novel => Boolean(novel));
         return [...filteredPublishedNovels].sort((a, b) => {
             const starsA = parseFloat(computeAverageStars(a.id)) || 0;
             const starsB = parseFloat(computeAverageStars(b.id)) || 0;
             if (starsB !== starsA) return starsB - starsA;
             return (parseInt(String(b.reads)) || 0) - (parseInt(String(a.reads)) || 0);
         }).slice(0, 10);
-    }, [filteredPublishedNovels, computeAverageStars]);
+    }, [filteredPublishedNovels, computeAverageStars, feed]);
 
     const completedNovels = React.useMemo(() => {
+        if (feed) return feed.sections["completed"].map(id => novels.find(novel => novel.id === id)).filter((novel): novel is Novel => Boolean(novel));
         return [...filteredPublishedNovels]
             .filter(novel => novel.status === 'completed')
             .sort((a, b) => (parseInt(String(b.reads)) || 0) - (parseInt(String(a.reads)) || 0))
             .slice(0, 10);
-    }, [filteredPublishedNovels]);
+    }, [filteredPublishedNovels, feed]);
 
     const oneshotFilteredNovels = React.useMemo(() => {
+        if (feed) return feed.sections["oneshot"].map(id => novels.find(novel => novel.id === id)).filter((novel): novel is Novel => Boolean(novel));
         return [...filteredPublishedNovels]
             .filter(novel => novel.type === 'oneshot')
             .sort((a, b) => (parseInt(String(b.reads)) || 0) - (parseInt(String(a.reads)) || 0))
             .slice(0, 10);
-    }, [filteredPublishedNovels]);
+    }, [filteredPublishedNovels, feed]);
 
     // Live Chapter Feed: newly published chapters across novels
     const latestChapters = React.useMemo(() => {
+        if (feed) return feed.recent.flatMap(chapter => { const novel = novels.find(item => item.id === chapter.novel_id); return novel ? [{novel, chapter, chapterIndex: chapter.publishedIndex || 0, timeAgo: chapter.date || 'Gần đây'}] : []; });
         const items: Array<{
             novel: Novel;
             chapter: any;
@@ -582,7 +591,7 @@ export default function Home({
 
         items.sort((a, b) => (b.chapter.id || 0) - (a.chapter.id || 0));
         return items.slice(0, 6);
-    }, [novels]);
+    }, [novels, feed]);
 
     // Spotlight Novel for Literary Bento
     const spotlightNovel = React.useMemo(() => {
@@ -664,7 +673,7 @@ export default function Home({
                 filterGenre: 'Tất cả',
                 filterType: 'oneshot',
                 filterStatus: 'all',
-                matcher: (n: Novel) => n.type === 'oneshot' || (n.chapters || []).filter(c => c.status === 'published').length === 1
+                matcher: (n: Novel) => n.type === 'oneshot' || publishedChapterCount(n) === 1
             },
             {
                 id: 'adventure-action',
@@ -772,16 +781,18 @@ export default function Home({
 
     // Genre & Tag Discovery Counts
     const genreDiscoveryCounts = React.useMemo(() => {
+        if (feed) return feed.genres.map(item => ({ name: item.genre, count: Number(item.count) })).filter(item => item.count > 0).slice(0, 12);
         const standardList = ['Isekai', 'Fantasy', 'Romance', 'Slice of Life', 'Sci-Fi', 'Hài hước', 'Học đường', 'Trinh thám', 'Phiêu lưu', 'Cooking', 'Mecha', 'Drama'];
         const allList = Array.from(new Set([...standardList, ...(genres || [])]));
         return allList.map(g => {
             const count = novels.filter(n => n.genre === g || (n.tags && n.tags.some(t => t.toLowerCase() === g.toLowerCase()))).length;
             return { name: g, count };
         }).filter(item => item.count > 0).slice(0, 12);
-    }, [genres, novels]);
+    }, [genres, novels, feed]);
 
     // Multi-criteria sidebar rankings
     const sidebarRankings = React.useMemo(() => {
+        if (feed?.rankings) return (feed.rankings[activeRankingTab] || []).map(id => novels.find(n => n.id === id)).filter((novel): novel is Novel => Boolean(novel));
         const published = novels.filter(n => (n.chapters || []).some(ch => ch.status === 'published'));
         if (activeRankingTab === 'stars') {
             return [...published].sort((a, b) => {
@@ -796,10 +807,11 @@ export default function Home({
         }
         // default: reads
         return [...published].sort((a, b) => (parseInt(String(b.reads)) || 0) - (parseInt(String(a.reads)) || 0)).slice(0, 5);
-    }, [novels, activeRankingTab, computeAverageStars]);
+    }, [novels, activeRankingTab, computeAverageStars, feed]);
 
     // Platform Pulse stats
     const platformStats = React.useMemo(() => {
+        if (feed) return feed.stats;
         const totalNovels = novels.length;
         let totalChapters = 0;
         let totalReads = 0;
@@ -808,7 +820,7 @@ export default function Home({
             totalReads += parseInt(String(n.reads)) || 0;
         });
         return { totalNovels, totalChapters, totalReads };
-    }, [novels]);
+    }, [novels, feed]);
 
     // Render helper for Novel Card 2.5
     const renderNovelCard = (novel: Novel) => {
@@ -833,7 +845,7 @@ export default function Home({
                     </div>
 
                     <span className="novel-badge-chapters">
-                        <Icons.Book /> {publishedChapters.length} ch
+                        <Icons.Book /> {publishedChapterCount(novel)} ch
                     </span>
 
                     {hasChapters && (
@@ -981,7 +993,7 @@ export default function Home({
                                     </span>
                                     <span className="meta-sep">•</span>
                                     <span className="featured-meta-item">
-                                        <Icons.Book /> {heroPublishedChapters.length} chương
+                                        <Icons.Book /> {publishedChapterCount(currentHero)} chương
                                     </span>
                                 </div>
 
@@ -1198,7 +1210,7 @@ export default function Home({
                                     {readingHistory.slice(0, 4).map((item, idx) => {
                                         const n = novels.find(x => x.id === item.novelId);
                                         const pubChs = n?.chapters?.filter(ch => ch.status === 'published') || [];
-                                        const total = pubChs.length || 1;
+                                        const total = n ? publishedChapterCount(n) || 1 : pubChs.length || 1;
                                         const saved = n ? getReadingProgress(currentUser?.username, n) : null;
                                         const resumeIndex = saved?.chapterIndex ?? item.chapterIndex;
                                         const readCount = saved?.completedChapterIds.length || 0;

@@ -1,4 +1,3 @@
-import { fetchArrayPages } from '../utils/pagedFetch';
 import React, { useState, useEffect } from 'react';
 import { calculateUserLevel } from '../utils/levelHelper';
 import { User, ForumPost, ForumComment, Message } from '../types';
@@ -278,6 +277,12 @@ export default function Forum({
     viewPublicProfile
 }: ForumProps) {
     const [posts, setPosts] = useState<ForumPost[]>([]);
+    const [feedPage, setFeedPage] = useState(1);
+    const [postTotal, setPostTotal] = useState(0);
+    const [feedHasMore, setFeedHasMore] = useState(false);
+    const [communityStats, setCommunityStats] = useState<any>(null);
+    const postsRequest = React.useRef(0);
+    const postsAbort = React.useRef<AbortController | null>(null);
     
     const showAlert = (msg: string) => {
         if (showToast) {
@@ -377,6 +382,8 @@ export default function Forum({
     const [activeChatFriend, setActiveChatFriend] = useState<SocialUser | null>(null);
     const [chatMessages, setChatMessages] = useState<Message[]>([]);
     const [chatInputText, setChatInputText] = useState('');
+    const chatFriendRef = React.useRef(activeChatFriend);
+    chatFriendRef.current = activeChatFriend;
 
     // Socket.io Connection & Listeners Effect
     useEffect(() => {
@@ -407,19 +414,15 @@ export default function Forum({
         });
 
         newSocket.on('receive_message', (message: Message) => {
-            setActiveChatFriend(currentFriend => {
-                if (currentFriend && (currentFriend.id === message.sender_id || currentFriend.id === message.receiver_id)) {
-                    setChatMessages(prev => {
-                        if (prev.some(m => m.id === message.id)) return prev;
-                        return [...prev, message];
-                    });
-                    setTimeout(() => {
-                        const chatBoxBody = document.getElementById("fb-chat-body-container");
-                        if (chatBoxBody) chatBoxBody.scrollTop = chatBoxBody.scrollHeight;
-                    }, 100);
-                }
-                return currentFriend;
-            });
+            const currentFriend = chatFriendRef.current;
+            if (currentFriend && (currentFriend.id === message.sender_id || currentFriend.id === message.receiver_id)) {
+                setChatMessages(previous => previous.some(item => item.id === message.id) ? previous : [...previous, message]);
+                setTimeout(() => {
+                    const body = document.getElementById('fb-chat-body-container');
+                    if (body) body.scrollTop = body.scrollHeight;
+                }, 100);
+                if (message.receiver_id === currentUser.id && !document.hidden) newSocket.emit('read_messages', { friendId: currentFriend.id });
+            }
         });
 
         newSocket.on('friend_status_change', (data: { userId: number, status: 'online' | 'offline' }) => {
@@ -432,7 +435,7 @@ export default function Forum({
         return () => {
             newSocket.disconnect();
         };
-    }, [currentUser]);
+    }, [currentUser?.id, API_BASE]);
 
     useEffect(() => {
         if (socket && forumFriends.length > 0) {
@@ -456,9 +459,12 @@ export default function Forum({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [lightboxImage]);
  
+    useEffect(() => { setFeedPage(1); }, [activeCategory, forumSort, forumSearch, savedPostIds.join(',')]);
     useEffect(() => {
-        fetchPosts();
-    }, []);
+        setLoading(true);
+        const timer = window.setTimeout(() => { void fetchPosts(feedPage); }, 220);
+        return () => { window.clearTimeout(timer); postsAbort.current?.abort(); postsRequest.current++; };
+    }, [feedPage, activeCategory, forumSort, forumSearch, savedPostIds.join(','), currentUser?.id]);
 
     useEffect(() => {
         if (initialPostId) {
@@ -508,22 +514,28 @@ export default function Forum({
         fetchChatMessages();
     }, [activeChatFriend]);
 
-    const fetchPosts = async () => {
-        setLoading(true);
-        setPostsError('');
+    const fetchPosts = async (page = feedPage) => {
+        postsAbort.current?.abort();
+        const controller = new AbortController(); postsAbort.current = controller;
+        const request = ++postsRequest.current;
+        setLoading(true); setPostsError('');
+        const params = new URLSearchParams({ comments: 'none', limit: '20', page: String(page), sort: forumSort, q: forumSearch.trim(),
+            category: activeCategory === 'saved' ? 'all' : activeCategory });
+        if (activeCategory === 'saved') params.set('ids', savedPostIds.join(','));
         try {
-            const data = await fetchArrayPages<ForumPost>(fetchWithAuth, `${API_BASE}/forum/posts?comments=none`);
-            if (Array.isArray(data)) {
-                setPosts(data);
-                setLoadedPostComments({});
-                setExpandedPostComments({});
-            }
-        } catch (err) {
-            console.error("Error loading forum posts:", err);
-            setPostsError('Không thể tải bài thảo luận. Kiểm tra kết nối rồi thử lại nhé.');
-        } finally {
-            setLoading(false);
-        }
+            const response = await fetchWithAuth(API_BASE + '/forum/posts?' + params, { signal: controller.signal });
+            const data = await response.json();
+            if (!response.ok || !Array.isArray(data)) throw new Error(data.error || 'Không thể tải bài thảo luận.');
+            if (request !== postsRequest.current) return;
+            setPosts(data); setPostTotal(Number(response.headers.get('X-Total-Count')) || 0);
+            setFeedHasMore(Boolean(response.headers.get('X-Next-Page')));
+            setLoadedPostComments({}); setExpandedPostComments({});
+            void fetchWithAuth(API_BASE + '/forum/stats', { signal: controller.signal }).then(async response => {
+                if (response.ok && request === postsRequest.current) setCommunityStats(await response.json());
+            }).catch(() => {});
+        } catch (error) {
+            if (!controller.signal.aborted && request === postsRequest.current) setPostsError(error instanceof Error ? error.message : 'Không thể tải bài thảo luận.');
+        } finally { if (request === postsRequest.current) setLoading(false); }
     };
 
     const fetchPostDetail = async (id: number) => {
@@ -1037,6 +1049,7 @@ export default function Forum({
 
     // Top Active Community Creators Leaderboard for Right Sidebar
     const topCreators = React.useMemo(() => {
+        if (communityStats) return communityStats.creators as Array<{username: string; displayname: string; avatarSeed: string; xp: number; postsCount: number; likesReceived: number}>;
         const map = new Map<string, {
             username: string;
             displayname: string;
@@ -1067,10 +1080,11 @@ export default function Forum({
         return Array.from(map.values())
             .sort((a, b) => (b.likesReceived + b.postsCount * 5) - (a.likesReceived + a.postsCount * 5))
             .slice(0, 5);
-    }, [posts]);
+    }, [posts, communityStats]);
 
     // Count posts per category accurately
     const categoryCounts = React.useMemo(() => {
+        if (communityStats) return { ...communityStats.categories, all: communityStats.totalPosts, saved: savedPostIds.length } as Record<string, number>;
         const counts: Record<string, number> = { all: posts.length, saved: savedPostIds.length };
         CATEGORIES.forEach(c => {
             if (c.id !== 'all') {
@@ -1078,18 +1092,19 @@ export default function Forum({
             }
         });
         return counts;
-    }, [posts, savedPostIds]);
+    }, [posts, savedPostIds, communityStats]);
 
     // Current user stats in forum
     const myForumStats = React.useMemo(() => {
+        if (communityStats) return communityStats.mine as { myPosts: number; myLikes: number };
         if (!currentUser) return { myPosts: 0, myLikes: 0 };
         const mine = posts.filter(p => p.author_id === currentUser.id || p.author_username === currentUser.username);
         const myLikes = mine.reduce((sum, p) => sum + (p.likes_count || 0), 0);
         return { myPosts: mine.length, myLikes };
-    }, [posts, currentUser]);
+    }, [posts, currentUser, communityStats]);
 
-    const totalCommentsCount = React.useMemo(() => posts.reduce((acc, p) => acc + (p.comments_count || 0), 0), [posts]);
-    const totalLikesCount = React.useMemo(() => posts.reduce((acc, p) => acc + (p.likes_count || 0), 0), [posts]);
+    const totalCommentsCount = communityStats?.totalComments ?? posts.reduce((acc, p) => acc + (p.comments_count || 0), 0);
+    const totalLikesCount = communityStats?.totalLikes ?? posts.reduce((acc, p) => acc + (p.likes_count || 0), 0);
 
     return (
         <div className="page-view active forum-page-wrap social-hub-v3">
@@ -1107,7 +1122,7 @@ export default function Forum({
                     </p>
                     <div className="forum-hero-metrics">
                         <span className="forum-metric-item">
-                            <Icons.Review /> <strong>{posts.length}</strong> bài đăng
+                            <Icons.Review /> <strong>{communityStats?.totalPosts ?? postTotal}</strong> bài đăng
                         </span>
                         <span className="forum-metric-item">
                             <Icons.Comment /> <strong>{totalCommentsCount}</strong> bình luận
@@ -1204,7 +1219,7 @@ export default function Forum({
                                 <p>Đăng bài thảo luận, thả tim, lưu bài viết hay và kết bạn cùng hàng ngàn Wibu khác.</p>
                                 <div className="social-profile-stats-grid" style={{ marginTop: '12px' }}>
                                     <div className="social-stat-box">
-                                        <strong>{posts.length}</strong>
+                                        <strong>{communityStats?.totalPosts ?? postTotal}</strong>
                                         <span>Bài viết</span>
                                     </div>
                                     <div className="social-stat-box">
@@ -1625,7 +1640,7 @@ export default function Forum({
                                         </span>
                                     )}
                                     <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
-                                        ({displayedPosts.length} kết quả)
+                                        ({postTotal} kết quả)
                                     </span>
                                 </div>
                                 <button 
@@ -1974,6 +1989,11 @@ export default function Forum({
                                 })}
                             </div>
                         )}
+                        {!postsError && (feedPage > 1 || feedHasMore) && <nav aria-label="Phân trang thảo luận" className="forum-feed-pagination" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '24px 0' }}>
+                            <button className="outline-btn" disabled={loading || feedPage === 1} onClick={() => { setFeedPage(page => page - 1); window.scrollTo({ top: 0, behavior: 'instant' }); }}>Trang trước</button>
+                            <span>Trang {feedPage} / {Math.max(1, Math.ceil(postTotal / 20))}</span>
+                            <button className="outline-btn" disabled={loading || !feedHasMore} onClick={() => { setFeedPage(page => page + 1); window.scrollTo({ top: 0, behavior: 'instant' }); }}>Trang sau</button>
+                        </nav>}
                     </div>
 
                     {/* ================= RIGHT SIDEBAR (STICKY): TOP CREATORS, HOT THREADS, FRIENDS ================= */}

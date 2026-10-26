@@ -3,6 +3,7 @@ import db from '../db.js';
 import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.js';
 
 import { sendMessage } from '../utils/messages.js';
+import { messagesRead } from '../utils/messageEvents.js';
 const router = Router();
 
 // Lấy bảng xếp hạng wibu tuần (top users theo XP)
@@ -279,17 +280,28 @@ router.get('/messages/chat/:friendId', authenticateToken, async (req: Authentica
         );
 
         // Đánh dấu đã đọc các tin nhắn do friendId gửi tới mình
-        await db.query(
+        const updated = await db.query<any>(
             `UPDATE messages SET is_read = TRUE 
              WHERE sender_id = ? AND receiver_id = ? AND is_read = FALSE`,
             [friendId, userId]
         );
+        if (updated.affectedRows) messagesRead(userId, Number(friendId));
 
         res.json(messages.reverse());
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Lỗi tải tin nhắn." });
     }
+});
+
+router.post('/messages/chat/:friendId/read', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    const friendId = Number(req.params.friendId);
+    if (!Number.isSafeInteger(friendId) || friendId < 1) return res.status(400).json({ error: 'Người nhận không hợp lệ.' });
+    try {
+        const result = await db.query<any>('UPDATE messages SET is_read=TRUE WHERE sender_id=? AND receiver_id=? AND is_read=FALSE', [friendId, req.user!.id]);
+        if (result.affectedRows) messagesRead(req.user!.id, friendId);
+        res.json({ success: true });
+    } catch { res.status(503).json({ error: 'Không thể cập nhật tin nhắn.' }); }
 });
 
 router.post('/messages/send', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {

@@ -5,21 +5,78 @@ import { checkRole } from '../middleware/roles.js';
 import { positiveId } from '../utils/novelAccess.js';
 
 import { pagination } from '../utils/pagination.js';
+import { catalogQuery, readCatalog, readHome } from '../utils/catalog.js';
 const router = Router();
+
+// Public payloads are identical for guests and members; drafts are never included.
+router.get(['/catalog', '/home'], async (req, res) => {
+    const query = catalogQuery(req.query);
+    if (!query) return res.status(400).json({ error: 'Bộ lọc hoặc phân trang không hợp lệ.' });
+    try {
+        res.set('Cache-Control', 'private, no-cache');
+        const data = req.path === '/home' ? await readHome(query) : await readCatalog(query);
+        res.json(data);
+    } catch { res.status(503).json({ error: 'Không thể tải danh mục truyện.' }); }
+});
+
+router.get('/personal', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+        const rows = await db.query<any[]>(`SELECT novel_id FROM reading_progress WHERE user_id=? ORDER BY client_updated_at DESC LIMIT 20`, [req.user!.id]);
+        const bookmarks = await db.query<any[]>('SELECT novel_id FROM bookmarks WHERE user_id=? ORDER BY novel_id DESC LIMIT 10', [req.user!.id]);
+        const ids = [...new Set([...rows, ...bookmarks].map(row => Number(row.novel_id)))].slice(0, 30);
+        if (!ids.length) return res.json([]);
+        const query = catalogQuery({ ids: ids.join(','), limit: '30' })!;
+        res.json((await readCatalog(query)).novels);
+    } catch { res.status(503).json({ error: 'Không thể tải truyện đọc gần đây.' }); }
+});
+
+router.get('/:id', optionalAuthentication, async (req: AuthenticatedRequest, res) => {
+    if (!positiveId(req.params.id)) return res.status(400).json({ error: 'Mã tác phẩm không hợp lệ.' });
+    try {
+        const novels = await db.query<any[]>(`SELECT n.*,u.username authorId,u.displayname author,u.avatar_seed authorAvatarSeed,u.bio authorBio,
+            (SELECT COUNT(*) FROM reviews r WHERE r.novel_id=n.id) reviewsCount FROM novels n JOIN users u ON u.id=n.author_id
+            WHERE n.id=? AND (n.author_id=? OR ?=1 OR (n.status<>'suspended' AND EXISTS(SELECT 1 FROM chapters c WHERE c.novel_id=n.id AND c.status='published')))`,
+            [req.params.id, req.user?.id || 0, req.user?.roles.some(role => ['admin', 'moderator'].includes(role)) || false]);
+        if (!novels.length) return res.status(404).json({ error: 'Không tìm thấy tác phẩm.' });
+        const novel = novels[0];
+        const [tags, chapters] = await Promise.all([
+            db.query<any[]>('SELECT tag FROM novel_tags WHERE novel_id=?', [novel.id]),
+            db.query<any[]>(`SELECT id,novel_id,volume_name,title,status,word_count,scheduled_release,created_at,sort_order,DATE_FORMAT(created_at,'%d/%m/%Y %H:%i') date FROM chapters
+                WHERE novel_id=? AND (status='published' OR ?=1) ORDER BY sort_order,id`, [novel.id, novel.author_id === req.user?.id || req.user?.roles.some(role => ['admin', 'moderator'].includes(role)) || false]),
+        ]);
+        res.set('Cache-Control', 'private, no-store');
+        res.json({ ...novel, reads: Number(novel.reads), bookmarksCount: Number(novel.bookmarks_count), detailsLoaded: true,
+            chapters_count: chapters.filter(chapter => chapter.status === 'published').length, tags: tags.map(tag => tag.tag), chapters });
+    } catch { res.status(503).json({ error: 'Không thể tải tác phẩm.' }); }
+});
 
 router.get('/', optionalAuthentication, async (req: AuthenticatedRequest, res: Response) => {
         const paging = pagination(req, 100);
         if (!paging) return res.status(400).json({ error: 'Phân trang không hợp lệ.' });
         const userId = req.user?.id || 0;
         const staff = req.user?.roles.some(role => ['admin', 'moderator'].includes(role)) || false;
+        const scope = req.query.scope;
+        if (scope !== undefined && (typeof scope !== 'string' || !['mine', 'library'].includes(scope))) return res.status(400).json({ error: 'Phạm vi không hợp lệ.' });
+        if (scope && !req.user) return res.status(401).json({ error: 'Yêu cầu đăng nhập.' });
+        const extra: string[] = []; const extraValues: unknown[] = [];
+        if (scope === 'mine') { extra.push('n.author_id=?'); extraValues.push(userId); }
+        if (scope === 'library') {
+            extra.push('(EXISTS(SELECT 1 FROM bookmarks b WHERE b.user_id=? AND b.novel_id=n.id) OR EXISTS(SELECT 1 FROM reading_progress p WHERE p.user_id=? AND p.novel_id=n.id) OR EXISTS(SELECT 1 FROM collection_novels cn JOIN library_collections co ON co.id=cn.collection_id WHERE co.user_id=? AND cn.novel_id=n.id))');
+            extraValues.push(userId, userId, userId);
+        }
+        if (req.query.author !== undefined) {
+            if (typeof req.query.author !== 'string' || req.query.author.length > 100) return res.status(400).json({ error: 'Tác giả không hợp lệ.' });
+            extra.push('u.username=?'); extraValues.push(req.query.author);
+        }
         try {
             const novels = await db.query<any[]>(                `SELECT n.*, u.username AS authorId, u.displayname AS author, u.avatar_seed AS authorAvatarSeed, u.bio AS authorBio,
                 (SELECT COUNT(*) FROM chapters c WHERE c.novel_id = n.id AND c.status = 'published') AS chapters_count,
                 (SELECT COUNT(*) FROM reviews r WHERE r.novel_id = n.id) AS reviews_count
                 FROM novels n JOIN users u ON n.author_id = u.id
                 WHERE (n.author_id = ? OR ? = 1 OR (n.status <> 'suspended' AND EXISTS(SELECT 1 FROM chapters c WHERE c.novel_id = n.id AND c.status = 'published')))
+                ${extra.length ? 'AND ' + extra.join(' AND ') : ''}
                 ORDER BY n.reads DESC, n.id DESC LIMIT ? OFFSET ?`,
-                [userId, staff, paging.limit + 1, paging.offset]);
+                [userId, staff, ...extraValues, paging.limit + 1, paging.offset]);
             const hasMore = novels.length > paging.limit;
             novels.splice(paging.limit);
             res.set('Cache-Control', 'private, no-store');

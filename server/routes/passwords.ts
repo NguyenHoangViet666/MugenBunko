@@ -2,6 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import nodemailer from 'nodemailer';
 import rateLimit from 'express-rate-limit';
+import { limitStore } from '../middleware/limits.js';
 import db from '../db.js';
 import { production } from '../config.js';
 import { authenticateToken, type AuthenticatedRequest } from '../middleware/auth.js';
@@ -13,11 +14,11 @@ import { clearSessionCookie, sessionEvents } from '../utils/sessions.js';
 import { passwordResetOtpEmail, passwordChangedEmail } from '../emails/registrationOtp.js';
 
 const router = Router();
-const requestLimiter = rateLimit({ windowMs: 15 * 60000, limit: 20, standardHeaders: true, legacyHeaders: false,
+const requestLimiter = rateLimit({ windowMs: 15 * 60000, limit: 20, store: limitStore('password-request'), standardHeaders: true, legacyHeaders: false,
     message: { error: 'Bạn đã gửi quá nhiều yêu cầu khôi phục. Vui lòng thử lại sau 15 phút.' } });
-const resetLimiter = rateLimit({ windowMs: 15 * 60000, limit: 20, standardHeaders: true, legacyHeaders: false,
+const resetLimiter = rateLimit({ windowMs: 15 * 60000, limit: 20, store: limitStore('password-reset'), standardHeaders: true, legacyHeaders: false,
     message: { error: 'Bạn đã thử quá nhiều lần. Vui lòng thử lại sau 15 phút.' } });
-const changeLimiter = rateLimit({ windowMs: 15 * 60000, limit: 5, standardHeaders: true, legacyHeaders: false,
+const changeLimiter = rateLimit({ windowMs: 15 * 60000, limit: 5, store: limitStore('password-change'), standardHeaders: true, legacyHeaders: false,
     keyGenerator: req => String((req as AuthenticatedRequest).user!.id),
     message: { error: 'Bạn đã thử đổi mật khẩu quá nhiều lần. Vui lòng thử lại sau 15 phút.' } });
 const emailValue = (value: unknown) => typeof value === 'string' ? value.trim().toLowerCase() : '';

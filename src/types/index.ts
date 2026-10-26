@@ -30,6 +30,9 @@ export interface User {
 }
 
 export interface Novel {
+    detailsLoaded?: boolean;
+    chapters_count?: number;
+    reviewsCount?: number;
     id: number;
     title: string;
     author_id: number;
@@ -55,6 +58,7 @@ export interface Novel {
 }
 
 export interface Chapter {
+    publishedIndex?: number;
     id: number;
     novel_id: number;
     volume_name: string;
@@ -66,6 +70,16 @@ export interface Chapter {
     created_at: string;
     date?: string;
     word_count?: number;
+}
+
+export interface HomeFeed {
+    rankings: Record<string, number[]>;
+    novels: Novel[];
+    featured: number[];
+    sections: Record<string, number[]>;
+    stats: { totalNovels: number; totalChapters: number; totalReads: number };
+    genres: Array<{ genre: string; count: number }>;
+    recent: Chapter[];
 }
 
 export interface Comment {

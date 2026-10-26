@@ -9,11 +9,24 @@ Object.defineProperty(globalThis, 'localStorage', { value: { getItem: (key: stri
 const novel = { id: 1, title: 'Test', status: 'ongoing', chapters: [{ id: 10, status: 'published' }, { id: 20, status: 'published' }], cover: 'cover' } as Novel;
 describe('Reading progress migration and shelf semantics', () => {
     beforeEach(() => values.clear());
+    it('keeps a middle-chapter position when the catalog contains only first/last previews', () => {
+        values.set('mugen_readprogress_reader_1', JSON.stringify({ version: 2, chapterId: 80, chapterIndex: 7, scrollRatio: .6, paragraphIndex: 12, completedChapterIds: [10, 20, 80], pending: true }));
+        const summary = { ...novel, detailsLoaded: false, chapters_count: 50, chapters: [{ id: 10, status: 'published' }, { id: 500, status: 'published' }] } as Novel;
+        const progress = getReadingProgress('reader', summary)!;
+        assert.equal(progress.chapterId, 80); assert.equal(progress.chapterIndex, 7);
+        assert.equal(progress.paragraphIndex, 12); assert.equal(progress.scrollRatio, .6);
+        assert.deepEqual(progress.completedChapterIds, [10, 20, 80]); assert.equal(progress.pending, true);
+    });
     it('migrates the last opened chapter without falsely marking it completed', () => {
         values.set('mugen_readprogress_reader_1', JSON.stringify({ chapterIndex: 1, readChaptersList: [0, 1] }));
         const progress = getReadingProgress('reader', novel)!;
         assert.equal(progress.chapterId, 20); assert.deepEqual(progress.completedChapterIds, []);
         assert.equal(getShelfStatus({ ...novel, status: 'completed' }, progress), 'reading');
+    });
+    it('uses canonical preview indices when a cached index is stale', () => {
+        const summary = { ...novel, detailsLoaded: false, chapters_count: 50, chapters: [{ id: 10, status: 'published', publishedIndex: 0 }, { id: 500, status: 'published', publishedIndex: 49 }] } as Novel;
+        values.set('mugen_readprogress_reader_1', JSON.stringify({ version: 2, chapterId: 500, chapterIndex: 1 }));
+        assert.equal(getReadingProgress('reader', summary)?.chapterIndex, 49);
     });
     it('uses chapter IDs when chapters are inserted or reordered', () => {
         values.set('mugen_readprogress_reader_1', JSON.stringify({ version: 2, chapterId: 20, chapterIndex: 1, completedChapterIds: [10, 20], scrollRatio: .4, paragraphIndex: 8, paragraphOffset: .2 }));
@@ -49,6 +62,14 @@ describe('Reading progress migration and shelf semantics', () => {
 
 describe('Header reading continuation', () => {
     beforeEach(() => values.clear());
+    it('keeps Header resume available when the saved chapter is outside the catalog previews', () => {
+        const summary = { ...novel, status: 'completed', detailsLoaded: false, chapters_count: 50, chapters: [{ id: 10, status: 'published' }, { id: 500, status: 'published' }] } as Novel;
+        values.set('mugen_readprogress_reader_1', JSON.stringify({ version: 2, chapterId: 80, chapterIndex: 7, completedChapterIds: [10, 500], updatedAt: 100 }));
+        const continuation = getLastReading([summary], 'reader');
+        assert.equal(continuation?.chapterIndex, 7); assert.equal(continuation?.chapter.id, 80);
+        assert.equal(continuation?.chapter.title, 'Chương 8');
+        assert.equal(getShelfStatus(summary, getReadingProgress('reader', summary)), 'reading');
+    });
     it('selects the newest readable story and follows chapter IDs after reordering', () => {
         values.set('mugen_readprogress_reader_1', JSON.stringify({ chapterId: 20, chapterIndex: 99, updatedAt: 100 }));
         const newer = { ...novel, id: 2, title: 'Newer story' };

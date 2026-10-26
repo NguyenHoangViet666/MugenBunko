@@ -4,6 +4,8 @@ import { authenticateToken, optionalAuthentication, AuthenticatedRequest } from 
 import { checkRole } from '../middleware/roles.js';
 import { cleanHtml } from '../utils/html.js';
 import { snapshotChapter } from '../utils/chapterVersions.js';
+import { createHash } from 'node:crypto';
+import { cachedRead } from '../utils/readCache.js';
 
 const router = Router();
 
@@ -21,7 +23,12 @@ router.get('/:id', optionalAuthentication, async (req: AuthenticatedRequest, res
             return res.status(404).json({ error: "Không tìm thấy chương truyện." });
         }
         res.set('Cache-Control', 'private, no-cache');
-        res.json({ ...chapters[0], content: cleanHtml(chapters[0].content) });
+        const chapter = chapters[0];
+        // Authorization is always checked above. Only the pure HTML transformation
+        // is reused; edits get a new content key and unpublished chapters stay private.
+        const digest = createHash('sha256').update(chapter.content || '').digest('hex');
+        const content = await cachedRead('chapter-html:' + chapter.id + ':' + digest, async () => cleanHtml(chapter.content), 60000);
+        res.json({ ...chapter, content });
     } catch (err) {
         console.error("Fetch chapter content error:", err);
         res.status(500).json({ error: "Lỗi tải nội dung chương truyện." });

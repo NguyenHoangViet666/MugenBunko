@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { io, type Socket } from 'socket.io-client';
 import { getTierName } from '../utils/levelHelper';
 import { User, Message } from '../types';
 
@@ -13,7 +14,6 @@ interface ChatMessage extends Message {
 }
 
 export default function ChatWidget({ currentUser, fetchWithAuth, API_BASE }: ChatWidgetProps) {
-    if (!currentUser) return null;
 
     const [isOpen, setIsOpen] = useState(false);
     const [friends, setFriends] = useState<User[]>([]);
@@ -25,128 +25,135 @@ export default function ChatWidget({ currentUser, fetchWithAuth, API_BASE }: Cha
 
     const messageEndRef = useRef<HTMLDivElement | null>(null);
 
-    // 1. Fetch unread count and friends list
-    const fetchUnreadCount = async () => {
-        try {
-            const res = await fetchWithAuth(`${API_BASE}/social/messages/unread-count`);
-            if (res.ok) {
-                const data = await res.json();
-                setUnreadCount(data.unreadCount);
-            }
-        } catch (err) {
-            console.error("Error fetching unread count:", err);
-        }
-    };
-
-    const fetchFriends = async () => {
-        try {
-            const res = await fetchWithAuth(`${API_BASE}/social/friends`);
-            if (res.ok) {
-                const data = await res.json();
-                setFriends(data.friends || []);
-            }
-        } catch (err) {
-            console.error("Error fetching friends:", err);
-        }
-    };
-
-    // Poll unread count and friends list periodically
+    const [sending, setSending] = useState(false);
+    const [chatError, setChatError] = useState('');
+    const live = useRef({ currentUser, fetchWithAuth, activeFriend, isOpen });
+    live.current = { currentUser, fetchWithAuth, activeFriend, isOpen };
+    const socketRef = useRef<Socket | null>(null);
+    const historyRequest = useRef<AbortController | null>(null);
+    const seenMessages = useRef(new Set<number>());
+    const scrollFrame = useRef(0);
+    const unreadInFlight = useRef(false);
     useEffect(() => {
-        fetchUnreadCount();
-        fetchFriends();
-
-        const interval = setInterval(() => {
-            fetchUnreadCount();
-        }, 5000);
-
-        return () => clearInterval(interval);
-    }, [currentUser]);
-
-    // 2. Fetch messages for the active friend
-    const fetchMessages = async (friendId: number) => {
-        try {
-            const res = await fetchWithAuth(`${API_BASE}/social/messages/chat/${friendId}`);
-            if (res.ok) {
-                const data = await res.json();
-                setMessages(data);
-                scrollToBottom();
-            }
-        } catch (err) {
-            console.error("Error fetching messages:", err);
-        }
-    };
-
-    // Polling messages when chat window is active
-    useEffect(() => {
-        if (!activeFriend) return;
-
-        fetchMessages(activeFriend.id);
-        const interval = setInterval(() => {
-            fetchMessages(activeFriend.id);
-        }, 5000);
-
-        return () => clearInterval(interval);
-    }, [activeFriend]);
-
-    // Scroll to bottom helper
+        setIsOpen(false); setActiveFriend(null); setFriends([]); setMessages([]);
+        setUnreadCount(0); setInputText(''); setChatError(''); seenMessages.current.clear();
+    }, [currentUser?.id]);
     const scrollToBottom = () => {
-        setTimeout(() => {
-            messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
+        cancelAnimationFrame(scrollFrame.current);
+        scrollFrame.current = requestAnimationFrame(() => {
+            const body = messageEndRef.current?.closest<HTMLElement>('.chat-body');
+            body?.scrollTo({ top: body.scrollHeight, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+        });
     };
-
-    const handleOpenChat = () => {
-        setIsOpen(!isOpen);
-        if (!isOpen) {
-            fetchFriends();
-            fetchUnreadCount();
-        }
-    };
-
-    const handleSelectFriend = (friend: User) => {
-        setActiveFriend(friend);
-        setMessages([]);
-        fetchMessages(friend.id);
-    };
-
-    const handleBackToFriends = () => {
-        setActiveFriend(null);
-        setMessages([]);
-        fetchFriends();
-        fetchUnreadCount();
-    };
-
-    const handleSendMessage = async (e?: React.FormEvent) => {
-        if (e) e.preventDefault();
-        if (!inputText.trim() || !activeFriend) return;
-
-        const textToSend = inputText.trim();
-        setInputText("");
-
+    const fetchUnreadCount = async () => {
+        const userId = live.current.currentUser?.id;
+        if (!userId || unreadInFlight.current) return;
+        unreadInFlight.current = true;
         try {
-            const res = await fetchWithAuth(`${API_BASE}/social/messages/send`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    receiverId: activeFriend.id,
-                    messageText: textToSend
-                })
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                setMessages((prev) => [...prev, data.message]);
+            const response = await live.current.fetchWithAuth(API_BASE + '/social/messages/unread-count');
+            if (response.ok && live.current.currentUser?.id === userId) setUnreadCount(Number((await response.json()).unreadCount) || 0);
+        } catch { /* Reconnect/visibility reconciles the badge. */ }
+        finally { unreadInFlight.current = false; }
+    };
+    const fetchFriends = async () => {
+        const userId = live.current.currentUser?.id;
+        if (!userId) return;
+        try {
+            const response = await live.current.fetchWithAuth(API_BASE + '/social/friends');
+            if (response.ok && live.current.currentUser?.id === userId) setFriends((await response.json()).friends || []);
+        } catch { setChatError('Không thể tải bạn bè. Hãy thử mở lại cửa sổ chat.'); }
+    };
+    const markRead = async (friendId: number) => {
+        try { await live.current.fetchWithAuth(API_BASE + '/social/messages/chat/' + friendId + '/read', { method: 'POST', body: '{}' }); }
+        catch { /* Opening the conversation again reconciles unread state. */ }
+    };
+    const fetchMessages = async (friendId: number) => {
+        historyRequest.current?.abort();
+        const controller = new AbortController(); historyRequest.current = controller;
+        const userId = live.current.currentUser?.id;
+        try {
+            const response = await live.current.fetchWithAuth(API_BASE + '/social/messages/chat/' + friendId, { signal: controller.signal });
+            if (!response.ok) throw new Error();
+            const data: ChatMessage[] = await response.json();
+            if (controller.signal.aborted || live.current.currentUser?.id !== userId || live.current.activeFriend?.id !== friendId) return;
+            setMessages(previous => [...new Map([...data, ...previous.filter(message => (message.sender_id === friendId || message.receiver_id === friendId) && !data.some(item => item.id === message.id))].map(message => [message.id, message])).values()].sort((a, b) => a.id - b.id));
+            scrollToBottom();
+            void fetchUnreadCount();
+        } catch { if (!controller.signal.aborted) setChatError('Không thể tải hội thoại. Hãy thử mở lại.'); }
+    };
+    useEffect(() => {
+        if (!currentUser) return;
+        const userId = currentUser.id;
+        const token = localStorage.getItem('mugen_token');
+        const socket = io(API_BASE.replace(/\/api\/?$/, ''), { auth: token ? { token } : {}, withCredentials: true, reconnectionDelayMax: 10000 });
+        socketRef.current = socket;
+        seenMessages.current.clear(); setMessages([]); setUnreadCount(0);
+        const reconcile = () => {
+            if (document.hidden) return;
+            void fetchUnreadCount();
+            if (live.current.isOpen && live.current.activeFriend) void fetchMessages(live.current.activeFriend.id);
+        };
+        socket.on('connect', reconcile);
+        socket.on('receive_message', (message: ChatMessage) => {
+            if (live.current.currentUser?.id !== userId || seenMessages.current.has(message.id)) return;
+            seenMessages.current.add(message.id);
+            if (seenMessages.current.size > 500) seenMessages.current.delete(seenMessages.current.values().next().value!);
+            const friend = live.current.activeFriend;
+            const visible = live.current.isOpen && !document.hidden && friend && (friend.id === message.sender_id || friend.id === message.receiver_id);
+            if (visible) {
+                setMessages(previous => previous.some(item => item.id === message.id) ? previous : [...previous, message]);
                 scrollToBottom();
-            } else {
-                const errData = await res.json();
-                alert(errData.error || "Gửi tin nhắn thất bại!");
+                if (message.receiver_id === userId) void markRead(message.sender_id);
+            } else if (message.receiver_id === userId) setUnreadCount(count => count + 1);
+        });
+        socket.on('messages_read', (data: { userId: number; friendId: number }) => {
+            if (data.userId === userId) void fetchUnreadCount();
+            else if (data.friendId === userId) setMessages(previous => previous.map(message => message.receiver_id === data.userId ? { ...message, is_read: true } : message));
+        });
+        // HTTP is a slow fallback only; healthy sockets generate no polling requests.
+        let timer = 0;
+        const fallback = () => {
+            if (!socket.connected) reconcile();
+            timer = window.setTimeout(fallback, 60000 + Math.random() * 15000);
+        };
+        void fetchUnreadCount();
+        timer = window.setTimeout(fallback, 60000 + Math.random() * 15000);
+        document.addEventListener('visibilitychange', reconcile);
+        window.addEventListener('online', reconcile);
+        return () => {
+            socket.disconnect(); socketRef.current = null; historyRequest.current?.abort();
+            window.clearTimeout(timer); cancelAnimationFrame(scrollFrame.current);
+            document.removeEventListener('visibilitychange', reconcile); window.removeEventListener('online', reconcile);
+        };
+    }, [API_BASE, currentUser?.id]);
+    useEffect(() => { if (isOpen) { void fetchFriends(); void fetchUnreadCount(); } }, [isOpen, currentUser?.id]);
+    useEffect(() => {
+        if (isOpen && activeFriend) { setMessages([]); setChatError(''); void fetchMessages(activeFriend.id); }
+        else historyRequest.current?.abort();
+    }, [activeFriend?.id, isOpen]);
+    const handleOpenChat = () => setIsOpen(open => !open);
+    const handleSelectFriend = (friend: User) => { setActiveFriend(friend); setMessages([]); };
+    const handleBackToFriends = () => { setActiveFriend(null); setMessages([]); void fetchFriends(); void fetchUnreadCount(); };
+    const handleSendMessage = async (event?: React.FormEvent) => {
+        event?.preventDefault();
+        if (!inputText.trim() || !activeFriend || sending) return;
+        const text = inputText.trim(), friendId = activeFriend.id;
+        const senderId = currentUser?.id;
+        setSending(true); setChatError('');
+        try {
+            const response = await fetchWithAuth(API_BASE + '/social/messages/send', { method: 'POST', body: JSON.stringify({ receiverId: friendId, messageText: text }) });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Gửi tin nhắn thất bại.');
+            if (live.current.currentUser?.id === senderId && live.current.activeFriend?.id === friendId) {
+                setMessages(previous => previous.some(message => message.id === data.message.id) ? previous : [...previous, data.message]);
+                setInputText(value => value.trim() === text ? '' : value); scrollToBottom();
             }
-        } catch (err) {
-            console.error("Error sending message:", err);
-        }
+        } catch (error) { setChatError(error instanceof Error ? error.message : 'Gửi tin nhắn thất bại. Nội dung vẫn được giữ lại.'); }
+        finally { setSending(false); }
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
+        if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault();
             handleSendMessage();
         }
@@ -157,6 +164,7 @@ export default function ChatWidget({ currentUser, fetchWithAuth, API_BASE }: Cha
         f.username.toLowerCase().includes(searchFriendQuery.toLowerCase())
     );
 
+    if (!currentUser) return null;
     return (
         <div className="mugen-chat-widget">
             <style>{`
@@ -540,7 +548,8 @@ export default function ChatWidget({ currentUser, fetchWithAuth, API_BASE }: Cha
                                 </div>
                             </div>
 
-                            <form className="chat-input-area" onSubmit={handleSendMessage}>
+                            {chatError && <p role="alert" style={{ padding: '8px 14px', color: 'var(--sakura-pink)', fontSize: '.8rem' }}>{chatError}</p>}
+                            <form className="chat-input-area" onSubmit={handleSendMessage} aria-busy={sending}>
                                 <input
                                     type="text"
                                     className="chat-textarea"
@@ -549,7 +558,7 @@ export default function ChatWidget({ currentUser, fetchWithAuth, API_BASE }: Cha
                                     onChange={(e) => setInputText(e.target.value)}
                                     onKeyDown={handleKeyDown}
                                 />
-                                <button type="submit" className="chat-send-btn" title="Gửi">
+                                <button type="submit" className="chat-send-btn" title="Gửi" aria-label={sending ? 'Đang gửi' : 'Gửi tin nhắn'} disabled={sending || !inputText.trim()}>
                                     <svg viewBox="0 0 24 24">
                                         <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
                                     </svg>

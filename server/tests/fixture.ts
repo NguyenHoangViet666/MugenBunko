@@ -17,6 +17,11 @@ export async function startFixture(options: { webRoot?: string; legacyOtpSchema?
     // Tests never contact SMTP or send real messages.
     process.env.SMTP_USER = ''; process.env.SMTP_PASS = ''; process.env.DEV_OTP = 'true';
     const database = `mugenbunko_test_${randomBytes(8).toString('hex')}`;
+    // A deployed REDIS_URL in .env must never make local tests publish session
+    // revocations or consume rate limits in the application's real namespace.
+    process.env.REDIS_URL = process.env.TEST_REDIS_URL || '';
+    process.env.REDIS_PREFIX = 'mugenbunko:test:' + database.slice(-16);
+    process.env.API_REPLICAS = '1';
     const admin = await mysql.createConnection({ host: process.env.DB_HOST || 'localhost', port: Number(process.env.DB_PORT || 3306),
         user: process.env.DB_USER || 'root', password: process.env.DB_PASSWORD || '', multipleStatements: true });
     await admin.query(`CREATE DATABASE \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
@@ -54,6 +59,7 @@ export async function startFixture(options: { webRoot?: string; legacyOtpSchema?
     const { registerRealtime } = await import('../realtime.js');
     const uploadDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'mugenbunko-upload-test-'));
     const app = express(); configureSecurity(app);
+    app.get('/metrics', (await import('../metrics.js')).metricsHandler);
     app.use('/api/upload', uploadRouter(uploadDirectory, false));
     for (const name of ['reader', 'library', 'chapters', 'auth', 'novels', 'events', 'announcements', 'comments', 'reviews', 'social', 'forum', 'policies', 'elections']) {
         const route = await import(`../routes/${name}.js`); app.use(`/api/${name}`, route.default);
@@ -67,7 +73,7 @@ export async function startFixture(options: { webRoot?: string; legacyOtpSchema?
     app.use(express.static(path.join(root, 'public'))); app.use(express.static(options.webRoot || path.join(root, 'dist')));
     if (options.webRoot) app.get(/^\/(?!api(?:\/|$))/, (_req, res) => res.sendFile(path.join(options.webRoot!, 'index.html')));
     const server = app.listen(0, '127.0.0.1'); await new Promise<void>(resolve => server.once('listening', resolve));
-    const io = new Server(server); registerRealtime(io);
+    const io = new Server(server); await registerRealtime(io);
     const address = server.address(); if (!address || typeof address === 'string') throw new Error('No fixture port');
     const url = `http://127.0.0.1:${address.port}`;
     const token = (id: number) => jwt.sign({ id, username: id === 2 ? 'upgrade_reader' : 'upgrade_other', roles: id === 2 ? ['reader', 'author'] : ['reader'] },

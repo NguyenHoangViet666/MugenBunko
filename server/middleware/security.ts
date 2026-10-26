@@ -1,8 +1,9 @@
 import express, { Express, NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
+import { createApiLimiter, createAuthLimiters } from './limits.js';
 import { isAllowedOrigin, production, allowedOrigins } from '../config.js';
+import { invalidatePublicReads } from '../utils/readCache.js';
 
 export function configureSecurity(app: Express) {
     app.disable('x-powered-by');
@@ -21,12 +22,18 @@ export function configureSecurity(app: Express) {
     });
     app.use(cors({ origin: (origin, callback) => callback(null, isAllowedOrigin(origin)), credentials: true,
         exposedHeaders: ['X-Next-Page', 'X-Total-Count'] }));
-    app.use('/api', rateLimit({ windowMs: 15 * 60000, limit: Number(process.env.API_RATE_LIMIT || 600), standardHeaders: true, legacyHeaders: false }));
-    const authLimiter = rateLimit({ windowMs: 5 * 60000, limit: 15, standardHeaders: true, legacyHeaders: false });
-    app.use(['/api/auth/login', '/api/auth/register'], authLimiter);
+    app.use('/api', (req, res, next) => {
+        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && /^\/(novels|chapters|reviews|admin|mod|forum|events|announcements)(\/|$)/.test(req.path)
+            && !/\/(read-increment|bookmark|like)$/.test(req.path)) {
+            res.on('finish', () => { if (res.statusCode < 400) invalidatePublicReads(); });
+        }
+        next();
+    });
+    app.use('/api', createApiLimiter());
     app.use('/api/upload', express.json({ limit: '7mb' }));
     app.use(express.json({ limit: '1mb' }));
     app.use(express.urlencoded({ limit: '64kb', extended: false }));
+    app.use(['/api/auth/login', '/api/auth/register'], createAuthLimiters());
     app.use('/api', (req, res, next) => {
         if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
             if (req.body === undefined) req.body = {};

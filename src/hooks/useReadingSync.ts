@@ -11,6 +11,7 @@ export function useReadingSync(user: User | null, novels: Novel[], api: string, 
     const inputs = useRef({ user, novels, fetcher });
     useEffect(() => { inputs.current = { user, novels, fetcher }; });
     const userId = user?.id;
+    const syncRequests = useRef(new Map<string, Promise<void>>());
 
     const syncNovel = useCallback(async (novel: Novel, keepalive = false) => {
         const activeUser = user;
@@ -20,6 +21,10 @@ export function useReadingSync(user: User | null, novels: Novel[], api: string, 
         const local = getReadingProgress(activeUser.username, novel);
         if (!local?.pending) return;
         if (!navigator.onLine) { setStatus('offline'); return; }
+        const key = `${activeUser.id}:${novel.id}`;
+        const existing = syncRequests.current.get(key);
+        if (existing) return existing;
+        const task = (async () => {
         setStatus('syncing');
         try {
             const response = await fetch(`${api}/reader/progress/${novel.id}`, { method: 'PUT',
@@ -34,6 +39,9 @@ export function useReadingSync(user: User | null, novels: Novel[], api: string, 
             }
             setStatus(getReadingProgress(activeUser.username, novel)?.pending ? 'syncing' : 'synced'); setRevision(r => r + 1);
         } catch { if (inputs.current.user?.id === activeUser.id) setStatus(navigator.onLine ? 'error' : 'offline'); }
+        })();
+        syncRequests.current.set(key, task);
+        try { await task; } finally { syncRequests.current.delete(key); }
     }, [api, userId]);
 
     const refresh = useCallback(async () => {
@@ -54,7 +62,8 @@ export function useReadingSync(user: User | null, novels: Novel[], api: string, 
                 if (!novel) continue;
                 const local = getReadingProgress(activeUser.username, novel);
                 const chapters = (novel.chapters || []).filter(c => c.status === 'published');
-                const chapterIndex = chapters.findIndex(c => c.id === remote.chapterId);
+                const chapterIndex = novel.detailsLoaded === false && Number.isSafeInteger(remote.chapterIndex)
+                    ? remote.chapterIndex : chapters.findIndex(c => c.id === remote.chapterId);
                 if (chapterIndex < 0) continue;
                 if (!local || (!local.pending && remote.updatedAt >= local.updatedAt)) {
                     storeReadingProgress(activeUser.username, novel, { ...remote, version: 2, chapterIndex,
@@ -102,7 +111,7 @@ export function useReadingSync(user: User | null, novels: Novel[], api: string, 
             document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('storage', onStorage);
         };
     }, [refresh]);
-    const ready = novels.length > 0;
-    useEffect(() => { void refresh(); }, [userId, ready, refresh]);
+    const availableIds = novels.map(novel => novel.id).sort((a, b) => a - b).join(',');
+    useEffect(() => { void refresh(); }, [userId, availableIds, refresh]);
     return { revision, status, refresh, savePosition, syncNovel, markCompleted, initialized: !user || initializedFor === user.id };
 }

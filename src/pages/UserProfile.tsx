@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Icons from '../components/Icons';
+import { PageError, PageLoading } from '../components/LoadState';
 import { calculateUserLevel, getTierName, getTierClassName } from '../utils/levelHelper';
 import { User, Novel, ForumPost } from '../types';
 import { formatDate } from '../utils/dateFormatter';
@@ -100,6 +101,32 @@ export default function UserProfile({
     const [loadingPublic, setLoadingPublic] = useState(false);
     const [publicFriends, setPublicFriends] = useState<SocialUser[]>([]);
 
+
+    const [ownPosts, setOwnPosts] = useState<ForumPost[]>([]);
+    const [postPage, setPostPage] = useState(1);
+    const [postTotal, setPostTotal] = useState(0);
+    const [postsLoading, setPostsLoading] = useState(false);
+    const [postsError, setPostsError] = useState('');
+    const [postRetry, setPostRetry] = useState(0);
+    const postOwner = viewingUsername || currentUser?.username;
+    const postFetcher = useRef(fetchWithAuth);
+    postFetcher.current = fetchWithAuth;
+    useEffect(() => { setPostPage(1); setOwnPosts([]); }, [postOwner]);
+    useEffect(() => {
+        if (profileActiveTab !== 'profile-tab-posts' || !postOwner) return;
+        const controller = new AbortController();
+        setPostsLoading(true); setPostsError('');
+        const query = new URLSearchParams({ author: postOwner, page: String(postPage), limit: '20', comments: 'none' });
+        void postFetcher.current(API_BASE + '/forum/posts?' + query, { signal: controller.signal }).then(async response => {
+            if (!response.ok) throw new Error('Không thể tải bài viết. Hãy thử lại.');
+            const data = await response.json();
+            if (controller.signal.aborted) return;
+            setOwnPosts(data); setPostTotal(Number(response.headers.get('X-Total-Count') || data.length));
+        }).catch(error => { if (!controller.signal.aborted) setPostsError(error.message); })
+          .finally(() => { if (!controller.signal.aborted) setPostsLoading(false); });
+        return () => controller.abort();
+    }, [API_BASE, postOwner, postPage, postRetry, profileActiveTab]);
+
     const isPublic = !!publicUser;
 
     useEffect(() => {
@@ -191,7 +218,7 @@ export default function UserProfile({
 
     const targetUserLevel = calculateUserLevel(targetUser.xp || 0);
     const filteredNovels = novels ? novels.filter(n => n.authorId === targetUser.username) : [];
-    const filteredPosts = forumPosts ? forumPosts.filter(p => p.author_username === targetUser.username) : [];
+    const filteredPosts = ownPosts;
 
     const isFriend = socialFriends.some(f => f.id === targetUser.id);
     const isReceivedPending = receivedRequests.some(r => r.id === targetUser.id);
@@ -389,7 +416,7 @@ export default function UserProfile({
                                 onClick={() => setProfileActiveTab('profile-tab-posts')}
                                 style={{ background: 'none', border: 'none', borderBottom: profileActiveTab === 'profile-tab-posts' ? '2.5px solid var(--sakura-pink)' : '', color: profileActiveTab === 'profile-tab-posts' ? 'var(--sakura-pink)' : 'var(--text-muted)', paddingBottom: '8px', fontWeight: 600 }}
                             >
-                                Bài viết diễn đàn ({filteredPosts.length})
+                                Bài viết diễn đàn ({postTotal})
                             </button>
                             <button
                                 className={`profile-tab-btn ${profileActiveTab === 'profile-tab-social' ? 'active' : ''}`}
@@ -514,7 +541,7 @@ export default function UserProfile({
                         {/* Tab 3: Forum Posts List */}
                         {profileActiveTab === 'profile-tab-posts' && (
                             <div className="profile-tab-content active" style={{ animation: 'slideUpChat 0.25s ease' }}>
-                                {filteredPosts.length === 0 ? (
+                                {postsLoading ? <PageLoading /> : postsError ? <PageError message={postsError} onRetry={() => setPostRetry(r => r + 1)} /> : filteredPosts.length === 0 ? (
                                     <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--text-muted)', background: 'var(--bg-base)', borderRadius: 'var(--border-radius-md)', border: '1px dashed var(--border-color)' }}>
                                         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px', opacity: 0.5 }}><Icons.MessageSquare size={36} /></div>
                                         <p style={{ fontSize: '0.85rem' }}>
@@ -577,6 +604,11 @@ export default function UserProfile({
                                         ))}
                                     </div>
                                 )}
+                                {postTotal > 20 && <nav className="pagination" aria-label="Trang bài viết cá nhân">
+                                    <button className="outline-btn small" disabled={postsLoading || postPage <= 1} onClick={() => setPostPage(p => p - 1)}>Trang trước</button>
+                                    <span>{postPage} / {Math.ceil(postTotal / 20)}</span>
+                                    <button className="outline-btn small" disabled={postsLoading || postPage * 20 >= postTotal} onClick={() => setPostPage(p => p + 1)}>Trang sau</button>
+                                </nav>}
                             </div>
                         )}
 

@@ -5,8 +5,34 @@ import { positiveId, validText } from '../utils/novelAccess.js';
 import { contentLimit } from '../middleware/contentLimit.js';
 import { pagination } from '../utils/pagination.js';
 import { addXpToUser } from '../utils/level.js';
+import { cachedRead } from '../utils/readCache.js';
 
 const router = Router();
+const categorySql = `CASE LOWER(TRIM(p.category))
+    WHEN 'thảo luận chung' THEN 'general' WHEN 'thảo luận' THEN 'general'
+    WHEN 'thông báo' THEN 'announcement' WHEN 'thông báo hệ thống' THEN 'announcement'
+    WHEN 'review truyện' THEN 'review' WHEN 'review tác phẩm' THEN 'review' WHEN 'đánh giá' THEN 'review'
+    WHEN 'spoil tình tiết' THEN 'spoil' WHEN 'spoil nội dung' THEN 'spoil'
+    WHEN 'q&a' THEN 'qa' WHEN 'hỏi đáp' THEN 'qa' WHEN 'hỏi đáp thắc mắc' THEN 'qa'
+    WHEN 'linh tinh' THEN 'misc' WHEN 'linh tinh khác' THEN 'misc' ELSE LOWER(TRIM(p.category)) END`;
+
+router.get('/stats', optionalAuthentication, async (req: AuthenticatedRequest, res) => {
+    try {
+        const common = await cachedRead('forum:stats', async () => {
+            const [categories, totals, creators] = await Promise.all([
+                db.query<any[]>(`SELECT ${categorySql} category,COUNT(*) count FROM forum_posts p GROUP BY 1`),
+                db.query<any[]>('SELECT (SELECT COUNT(*) FROM forum_comments) totalComments,(SELECT COUNT(*) FROM forum_post_likes) totalLikes'),
+                db.query<any[]>(`SELECT u.username,u.displayname,u.avatar_seed avatarSeed,u.xp,COUNT(p.id) postsCount,
+                    SUM((SELECT COUNT(*) FROM forum_post_likes l WHERE l.post_id=p.id)) likesReceived
+                    FROM forum_posts p JOIN users u ON u.id=p.author_id GROUP BY u.id ORDER BY likesReceived+postsCount*5 DESC,u.id LIMIT 5`),
+            ]);
+            return { categories: Object.fromEntries(categories.map(row => [row.category, Number(row.count)])), totalPosts: categories.reduce((sum, row) => sum + Number(row.count), 0),
+                totalComments: Number(totals[0].totalComments), totalLikes: Number(totals[0].totalLikes), creators };
+        }, 30000);
+        const mine = req.user ? await db.query<any[]>(`SELECT COUNT(*) myPosts,COALESCE(SUM((SELECT COUNT(*) FROM forum_post_likes l WHERE l.post_id=p.id)),0) myLikes FROM forum_posts p WHERE p.author_id=?`, [req.user.id]) : [{ myPosts: 0, myLikes: 0 }];
+        res.set('Cache-Control', 'private, no-store'); res.json({ ...common, mine: { myPosts: Number(mine[0].myPosts), myLikes: Number(mine[0].myLikes) } });
+    } catch { res.status(503).json({ error: 'Không thể tải thống kê cộng đồng.' }); }
+});
 
 // Get all forum posts (Public route with optional token)
 router.get('/posts', optionalAuthentication, async (req: AuthenticatedRequest, res: Response) => {
@@ -14,14 +40,32 @@ router.get('/posts', optionalAuthentication, async (req: AuthenticatedRequest, r
     if (!paging) return res.status(400).json({ error: 'Phân trang không hợp lệ.' });
     if (req.query.comments !== undefined && !['all', 'none'].includes(String(req.query.comments))) return res.status(400).json({ error: 'Chế độ bình luận không hợp lệ.' });
     const userId = req.user?.id || null;
+    const q = req.query.q === undefined ? '' : req.query.q;
+    const category = req.query.category === undefined ? 'all' : req.query.category;
+    const sort = req.query.sort === undefined ? 'newest' : req.query.sort;
+    const author = req.query.author;
+    const ids = typeof req.query.ids === 'string' ? req.query.ids.split(',').filter(Boolean).map(Number) : [];
+    if (typeof q !== 'string' || q.length > 160 || typeof category !== 'string' || category.length > 60 || typeof sort !== 'string' || !['newest', 'hot', 'pinned', 'media'].includes(sort) ||
+        (req.query.ids !== undefined && typeof req.query.ids !== 'string') || ids.length > 500 || ids.some(id => !Number.isSafeInteger(id) || id < 1)) return res.status(400).json({ error: 'Bộ lọc diễn đàn không hợp lệ.' });
+    if (author !== undefined && (typeof author !== 'string' || !author.trim() || author.length > 100)) return res.status(400).json({ error: 'Tác giả không hợp lệ.' });
+    const filters: string[] = []; const params: unknown[] = [];
+    if (author) { filters.push('u.username=?'); params.push(author); }
+    if (q.trim()) { const term = '%' + q.trim().replace(/!/g, '!!').replace(/%/g, '!%').replace(/_/g, '!_') + '%'; filters.push("(p.title LIKE ? ESCAPE '!' OR p.content LIKE ? ESCAPE '!' OR u.displayname LIKE ? ESCAPE '!' OR u.username LIKE ? ESCAPE '!')"); params.push(term, term, term, term); }
+    if (category !== 'all') { filters.push(`(${categorySql})=?`); params.push(category); }
+    if (sort === 'media') filters.push("(p.image_url IS NOT NULL AND p.image_url<>'' OR p.content LIKE '%[img]%')");
+    if (req.query.ids !== undefined) { filters.push(ids.length ? `p.id IN (${ids.map(() => '?').join(',')})` : '1=0'); params.push(...ids); }
+    const where = filters.length ? 'WHERE ' + filters.join(' AND ') : '';
+    const order = sort === 'hot' ? '(likes_count*2+comments_count*3) DESC,p.id DESC' : sort === 'pinned' ? `CASE WHEN (${categorySql})='announcement' THEN 1 ELSE 0 END DESC,(likes_count+comments_count) DESC,p.id DESC` : 'p.created_at DESC,p.id DESC';
     try {
+        const count = await db.query<any[]>(`SELECT COUNT(*) total FROM forum_posts p JOIN users u ON p.author_id=u.id ${where}`, params);
+        res.set('X-Total-Count', String(count[0].total));
         const posts = await db.query<any[]>(`SELECT p.*, u.username AS author_username, u.displayname AS author_displayname, u.avatar_seed AS author_avatar_seed,
             u.level AS author_level, u.xp AS author_xp, u.bio AS author_bio,
             (SELECT COUNT(*) FROM forum_comments c WHERE c.post_id = p.id) AS comments_count,
             (SELECT COUNT(*) FROM forum_post_likes l WHERE l.post_id = p.id) AS likes_count,
             EXISTS(SELECT 1 FROM forum_post_likes l WHERE l.post_id = p.id AND l.user_id = ?) AS is_liked
-            FROM forum_posts p JOIN users u ON p.author_id = u.id ORDER BY p.created_at DESC, p.id DESC LIMIT ? OFFSET ?`,
-            [userId, paging.limit + 1, paging.offset]);
+            FROM forum_posts p JOIN users u ON p.author_id = u.id ${where} ORDER BY ${order} LIMIT ? OFFSET ?`,
+            [userId, ...params, paging.limit + 1, paging.offset]);
         res.set('X-Next-Page', posts.length > paging.limit ? String(paging.page + 1) : '');
         res.set('Cache-Control', 'private, no-store');
         posts.splice(paging.limit);

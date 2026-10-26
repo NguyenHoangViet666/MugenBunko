@@ -11,7 +11,10 @@ async function getProgress(userId: number, novelId?: number) {
     const rows = await db.query<any[]>(`
         SELECT p.novel_id AS novelId, p.chapter_id AS chapterId, p.scroll_ratio AS scrollRatio,
         p.paragraph_index AS paragraphIndex, p.paragraph_offset AS paragraphOffset,
-        p.client_updated_at AS updatedAt FROM reading_progress p
+        p.client_updated_at AS updatedAt,
+        (SELECT COUNT(*) FROM chapters preceding WHERE preceding.novel_id=c.novel_id AND preceding.status='published'
+            AND (preceding.sort_order<c.sort_order OR (preceding.sort_order=c.sort_order AND preceding.id<c.id))) AS chapterIndex
+        FROM reading_progress p
         JOIN chapters c ON c.id = p.chapter_id JOIN novels n ON n.id = p.novel_id
         WHERE p.user_id = ? AND c.status = 'published' AND n.status <> 'suspended'
         ${novelId ? 'AND p.novel_id = ?' : ''}`, novelId ? [userId, novelId] : [userId]);
@@ -23,7 +26,7 @@ async function getProgress(userId: number, novelId?: number) {
         const ids = completedByNovel.get(chapter.novelId) || [];
         ids.push(chapter.chapterId); completedByNovel.set(chapter.novelId, ids);
     }
-    return rows.map(row => ({ ...row, updatedAt: Number(row.updatedAt),
+    return rows.map(row => ({ ...row, updatedAt: Number(row.updatedAt), chapterIndex: Number(row.chapterIndex),
         completedChapterIds: completedByNovel.get(row.novelId) || [] }));
 }
 

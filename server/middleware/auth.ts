@@ -46,7 +46,7 @@ export async function authenticateToken(req: AuthenticatedRequest, res: Response
         }
         req.user = user;
         req.authToken = token;
-        next();
+        accountLimiter(req, res, next);
     } catch (error) {
         if (error instanceof jwt.JsonWebTokenError || error instanceof jwt.TokenExpiredError || (error instanceof Error && error.message === 'Invalid token subject')) {
             if (!header) clearSessionCookie(res);
@@ -61,3 +61,4 @@ export function optionalAuthentication(req: AuthenticatedRequest, res: Response,
     if (req.get('authorization') || cookieToken(req.get('cookie'))) return authenticateToken(req, res, next);
     next();
 }
+import { accountLimiter } from './limits.js';

@@ -136,7 +136,7 @@ function ReaderChapter(props: ChapterReaderProps & { novel: Novel; chapterId: nu
         };
         void restore();
         const localTimer = window.setInterval(capture, 2000);
-        const cloudTimer = window.setInterval(() => { capture(true); void callbacks.current.syncNovel(callbacks.current.novel); }, 8000);
+        const cloudTimer = window.setInterval(() => { capture(true); void callbacks.current.syncNovel(callbacks.current.novel); }, 8000 + Math.random() * 4000);
         const flush = () => { capture(true); void callbacks.current.syncNovel(callbacks.current.novel, true); };
         const onScroll = () => capture();
         const onVisibility = () => { if (document.visibilityState === 'hidden') flush(); };

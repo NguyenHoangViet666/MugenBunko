@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import rateLimit from 'express-rate-limit';
+import { limitStore } from '../middleware/limits.js';
 import { randomUUID } from 'node:crypto';
 import db from '../db.js';
 import { JWT_SECRET, production } from '../config.js';
@@ -22,7 +23,7 @@ router.use(passwordRoutes);
 const emailPattern = /^[a-zA-Z0-9.!#$%&'*+\-/=?^_`{|}~]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+$/;
 const emailValue = (value: unknown) => typeof value === 'string' ? value.trim().toLowerCase() : '';
 const limitedText = (value: unknown, max: number) => typeof value === 'string' && value.length <= max;
-const otpLimiter = rateLimit({ windowMs: 15 * 60000, limit: 20, standardHeaders: true, legacyHeaders: false });
+const otpLimiter = rateLimit({ windowMs: 15 * 60000, limit: 20, store: limitStore('otp'), standardHeaders: true, legacyHeaders: false });
 const tokenFor = (user: any, authVersion = 0) => jwt.sign({ id: user.id, username: user.username, sv: authVersion }, JWT_SECRET, { algorithm: 'HS256', expiresIn: '1d', jwtid: randomUUID() });
 
 async function userSession(id: number, knownRoles?: string[]) {

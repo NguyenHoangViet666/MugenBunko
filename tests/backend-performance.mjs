@@ -30,6 +30,7 @@ try {
     const endpoints = [
         ['/novels?limit=100', 'catalog'], ['/forum/posts?limit=100', 'forum-full'],
         ['/forum/posts?limit=100&comments=none', 'forum-feed'], ['/chapters/1', 'chapter'], ['/auth/refresh/2', 'session'],
+        ['/novels/catalog?limit=12', 'catalog-page'], ['/novels/home', 'home-feed'], ['/forum/posts?limit=20&comments=none', 'forum-page'],
     ];
     const results = [];
     for (const [endpoint, name] of endpoints) {

@@ -4,6 +4,9 @@ import { Server } from 'socket.io';
 import { registerRealtime } from './realtime.js';
 import { configureSecurity, apiErrorHandler } from './middleware/security.js';
 import { isAllowedOrigin } from './config.js';
+import { closeShared, connectShared, schedulerTick, sharedReady } from './shared.js';
+import { metricsHandler } from './metrics.js';
+import { invalidatePublicReads } from './utils/readCache.js';
 import { uploadRouter } from './routes/upload.js';
 import fs from 'fs';
 import path from 'path';
@@ -63,11 +66,12 @@ const io = new Server(httpServer, {
     });
     configureSecurity(app);
 app.use(requestLogger);
+app.get('/livez', (_req, res) => res.json({ status: 'ok' }));
+app.get('/metrics', metricsHandler);
 app.get('/healthz', async (_req, res) => {
-    try { await db.query('SELECT 1'); res.json({ status: 'ok' }); }
+    try { if (!sharedReady()) throw new Error('Shared infrastructure unavailable'); await db.query('SELECT 1'); res.json({ status: 'ok' }); }
     catch { res.status(503).json({ status: 'unavailable' }); }
 });
-    registerRealtime(io);
     const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
@@ -123,12 +127,13 @@ const possibleDistPaths = [
 const distPath = possibleDistPaths.find(p => fs.existsSync(p));
 if (distPath) {
     console.log(`[Static] Serving frontend static assets from: ${distPath}`);
-    app.use(express.static(distPath));
+    app.use('/assets', express.static(path.join(distPath, 'assets'), { maxAge: '1y', immutable: true }));
+    app.use(express.static(distPath, { setHeaders: (res, file) => { if (file.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache'); } }));
     app.get('*', (req, res, next) => {
         if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
             return next();
         }
-        res.sendFile(path.join(distPath, 'index.html'));
+        res.set('Cache-Control', 'no-cache').sendFile(path.join(distPath, 'index.html'));
     });
 } else {
     console.log(`[Static] Frontend static assets (dist/) not found. Running in API-only mode.`);
@@ -139,24 +144,42 @@ app.use(apiErrorHandler);
 let scheduler: ReturnType<typeof setInterval> | undefined;
 async function start() {
     await initializeDbConnection();
-    await expireElectionTerms();
+    await connectShared();
+    await registerRealtime(io);
+    const runScheduled = async () => {
+        if (process.env.SCHEDULER_ENABLED === 'false' || !(await schedulerTick())) return;
+        const published = await db.query<any>("UPDATE chapters SET status = 'published' WHERE status = 'scheduled' AND scheduled_release <= CURRENT_TIMESTAMP");
+        if (published.affectedRows) invalidatePublicReads();
+        await expireElectionTerms();
+    };
+    await runScheduled();
     await new Promise<void>((resolve, reject) => {
         httpServer.once('error', reject);
         httpServer.listen(PORT, () => { httpServer.removeListener('error', reject); resolve(); });
     });
     console.log('MugenBunko server ready on port ' + PORT);
+    let scheduling = false;
     scheduler = setInterval(async () => {
-        try { await db.query("UPDATE chapters SET status = 'published' WHERE status = 'scheduled' AND scheduled_release <= CURRENT_TIMESTAMP"); await expireElectionTerms(); }
+        if (scheduling) return;
+        scheduling = true;
+        try { await runScheduled(); }
         catch { console.error('Scheduled publishing failed.'); }
+        finally { scheduling = false; }
     }, 30000);
 }
 async function shutdown() {
     clearInterval(scheduler);
     const deadline = setTimeout(() => process.exit(1), 10000); deadline.unref();
     io.close(async () => {
-        try { await db.closeDbConnection(); clearTimeout(deadline); process.exitCode = 0; }
+        try { await db.closeDbConnection(); await closeShared(); clearTimeout(deadline); process.exitCode = 0; }
         catch { process.exitCode = 1; }
     });
 }
 process.once('SIGTERM', shutdown); process.once('SIGINT', shutdown);
-start().catch(() => { console.error('Server startup failed. Check configuration and run database migrations before starting.'); process.exitCode = 1; void db.closeDbConnection(); });
+start().catch(async () => {
+    console.error('Server startup failed. Check configuration and run database migrations before starting.');
+    process.exitCode = 1;
+    clearInterval(scheduler);
+    io.close();
+    await Promise.allSettled([db.closeDbConnection(), closeShared()]);
+});

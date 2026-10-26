@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { User, Novel } from '../types';
 import { Icons } from '../components/Icons';
+import { PageLoading, PageError } from '../components/LoadState';
+import { publishedChapterCount } from '../utils/novelSummary';
 
 interface ExploreProps {
+    API_BASE: string;
+    fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>;
     novels: Novel[];
     currentUser: User | null;
     exploreType: string;
@@ -24,6 +28,7 @@ interface ExploreProps {
 const ITEMS_PER_PAGE = 12;
 
 export default function Explore({
+    API_BASE, fetchWithAuth,
     novels,
     currentUser,
     exploreType,
@@ -47,70 +52,46 @@ export default function Explore({
     const [statusFilter, setStatusFilter] = useState<'all' | 'ongoing' | 'completed'>('all');
     const [currentPage, setCurrentPage] = useState<number>(1);
 
-    const rollGacha = () => {
-        setGachaRolling(true);
-        setGachaNovel(null);
-        setTimeout(() => {
-            const publishedNovelsOnly = novels.filter(n => n.chapters && n.chapters.some(ch => ch.status === 'published'));
-            if (publishedNovelsOnly.length === 0) {
-                setGachaRolling(false);
-                return;
-            }
-            const randomIndex = Math.floor(Math.random() * publishedNovelsOnly.length);
-            setGachaNovel(publishedNovelsOnly[randomIndex]);
-            setGachaRolling(false);
-        }, 800);
-    };
 
-    const publishedNovels = useMemo(() => {
-        return novels.filter(novel => novel.chapters && novel.chapters.some(ch => ch.status === 'published'));
-    }, [novels]);
-
-    // Filtering & Sorting
-    const filteredList = useMemo(() => {
-        let list = publishedNovels.filter(novel => {
-            if (exploreGenre !== "Tất cả" && !novel.genre.split(',').map(g => g.trim()).includes(exploreGenre)) return false;
-            if (exploreType !== "all" && novel.type !== exploreType) return false;
-            if (statusFilter === 'ongoing' && novel.status === 'completed') return false;
-            if (statusFilter === 'completed' && novel.status !== 'completed') return false;
-            if (searchQuery && searchQuery.trim()) {
-                const query = searchQuery.toLowerCase().trim();
-                const matchesTitle = novel.title.toLowerCase().includes(query);
-                const matchesAuthor = (novel.author || novel.author_name || "").toLowerCase().includes(query);
-                const matchesTag = novel.tags && novel.tags.some(t => t.toLowerCase().includes(query));
-                if (!matchesTitle && !matchesAuthor && !matchesTag) return false;
-            }
-            return true;
-        });
-
-        if (exploreSort === 'reads') {
-            list.sort((a, b) => (Number(b.reads) || 0) - (Number(a.reads) || 0));
-        } else if (exploreSort === 'rating') {
-            list.sort((a, b) => {
-                const rA = computeAverageStars(a.id);
-                const rB = computeAverageStars(b.id);
-                const valA = rA === "N/A" ? 0 : parseFloat(rA);
-                const valB = rB === "N/A" ? 0 : parseFloat(rB);
-                return valB - valA;
-            });
-        } else if (exploreSort === 'new') {
-            list.sort((a, b) => b.id - a.id);
-        }
-
-        return list;
-    }, [publishedNovels, exploreGenre, exploreType, statusFilter, searchQuery, exploreSort, computeAverageStars]);
-
-    // Reset pagination when any filter changes
+    const [items, setItems] = useState<Novel[]>([]);
+    const [total, setTotal] = useState(0);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [attempt, setAttempt] = useState(0);
+    const [gachaError, setGachaError] = useState('');
+    useEffect(() => { setCurrentPage(1); }, [exploreGenre, exploreType, statusFilter, searchQuery, exploreSort]);
     useEffect(() => {
-        setCurrentPage(1);
-    }, [exploreGenre, exploreType, statusFilter, searchQuery, exploreSort]);
-
-    const totalPages = Math.ceil(filteredList.length / ITEMS_PER_PAGE) || 1;
-    const paginatedList = useMemo(() => {
-        const start = (currentPage - 1) * ITEMS_PER_PAGE;
-        return filteredList.slice(start, start + ITEMS_PER_PAGE);
-    }, [filteredList, currentPage]);
-
+        const controller = new AbortController();
+        setLoading(true); setError('');
+        const timer = window.setTimeout(async () => {
+            const params = new URLSearchParams({ page: String(currentPage), limit: String(ITEMS_PER_PAGE),
+                genre: exploreGenre, type: exploreType, status: statusFilter, sort: exploreSort, q: searchQuery.trim() });
+            try {
+                const response = await fetchWithAuth(API_BASE + '/novels/catalog?' + params, { signal: controller.signal });
+                const data = await response.json();
+                if (!response.ok || !Array.isArray(data.novels)) throw new Error(data.error || 'Không thể tải danh mục.');
+                if (controller.signal.aborted) return;
+                setItems(data.novels); setTotal(data.total);
+                setCurrentPage(page => Math.min(page, Math.max(1, Math.ceil(data.total / ITEMS_PER_PAGE))));
+            } catch (error) {
+                if (!controller.signal.aborted) setError(error instanceof Error ? error.message : 'Không thể tải danh mục.');
+            } finally { if (!controller.signal.aborted) setLoading(false); }
+        }, 220);
+        return () => { controller.abort(); window.clearTimeout(timer); };
+    }, [API_BASE, currentPage, exploreGenre, exploreType, statusFilter, searchQuery, exploreSort, attempt, currentUser?.id]);
+    const rollGacha = async () => {
+        if (gachaRolling) return;
+        setGachaRolling(true); setGachaError(''); setGachaNovel(null);
+        try {
+            const response = await fetchWithAuth(API_BASE + '/novels/catalog?random=1&limit=1');
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Chưa thể chọn tác phẩm.');
+            setGachaNovel(data.novels[0] || null);
+        } catch (error) { setGachaError(error instanceof Error ? error.message : 'Chưa thể chọn tác phẩm.'); }
+        finally { setGachaRolling(false); }
+    };
+    const totalPages = Math.max(1, Math.ceil(total / ITEMS_PER_PAGE));
+    const paginatedList = items;
     return (
         <div className="page-view active">
             <div className="studio-header">
@@ -119,7 +100,7 @@ export default function Explore({
                     <p className="subtitle">
                         {searchQuery && searchQuery.trim() ? (
                             <span>
-                                Tìm thấy {filteredList.length} tác phẩm khớp với từ khóa. 
+                                Tìm thấy {total} tác phẩm khớp với từ khóa.
                                 <button onClick={() => setSearchQuery("")} style={{background:'none', border:'none', color:'var(--text-main)', cursor:'pointer', fontWeight:600, padding:'0 8px', textDecoration:'underline'}}>Xóa tìm kiếm</button>
                             </span>
                         ) : (
@@ -334,7 +315,7 @@ export default function Explore({
                     <div className="content-box" style={{ padding: '24px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                             <h3 className="section-title" style={{ margin: 0 }}>
-                                Danh sách tác phẩm ({filteredList.length})
+                                Danh sách tác phẩm ({total})
                             </h3>
                             {totalPages > 1 && (
                                 <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
@@ -343,7 +324,7 @@ export default function Explore({
                             )}
                         </div>
 
-                        {filteredList.length === 0 ? (
+                        {error ? <PageError message={error} onRetry={() => setAttempt(value => value + 1)} /> : loading ? <PageLoading /> : total === 0 ? (
                             <div className="empty-state-card" style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
                                 <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'center' }}>
                                     <Icons.Book size={44} />
@@ -355,7 +336,7 @@ export default function Explore({
                             <div className="novel-grid">
                                 {paginatedList.map(novel => {
                                     const isSaved = currentUser && currentUser.bookmarks && currentUser.bookmarks.includes(novel.id);
-                                    const stars = computeAverageStars(novel.id);
+                                    const stars = novel.reviewsCount ? Number(novel.rating).toFixed(1) : computeAverageStars(novel.id);
                                     const hasChapters = (novel.chapters || []).some(ch => ch.status === 'published');
                                     return (
                                         <div key={novel.id} className="novel-card-v2" onClick={() => openNovelDetail(novel.id)}>
@@ -445,7 +426,7 @@ export default function Explore({
                             <div className="novel-list-view" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                                 {paginatedList.map(novel => {
                                     const isSaved = currentUser && currentUser.bookmarks && currentUser.bookmarks.includes(novel.id);
-                                    const stars = computeAverageStars(novel.id);
+                                    const stars = novel.reviewsCount ? Number(novel.rating).toFixed(1) : computeAverageStars(novel.id);
                                     const hasChapters = (novel.chapters || []).some(ch => ch.status === 'published');
                                     return (
                                         <div
@@ -510,7 +491,7 @@ export default function Explore({
                                                         <span>•</span>
                                                         <span>{novel.genre || 'Light Novel'}</span>
                                                         <span>•</span>
-                                                        <span>{novel.type === 'oneshot' ? 'Oneshot' : `${(novel.chapters || []).filter(c => c.status === 'published').length} chương`}</span>
+                                                        <span>{novel.type === 'oneshot' ? 'Oneshot' : `${publishedChapterCount(novel)} chương`}</span>
                                                     </div>
 
                                                     <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 8px 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.45 }}>
@@ -563,7 +544,7 @@ export default function Explore({
                                 >
                                     <Icons.ChevronLeft size={14} />
                                 </button>
-                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => {
+                                {Array.from({ length: Math.min(7, totalPages) }, (_, i) => Math.max(1, Math.min(currentPage - 3, totalPages - 6)) + i).map(p => {
                                     if (p === 1 || p === totalPages || (p >= currentPage - 2 && p <= currentPage + 2)) {
                                         return (
                                             <button
@@ -630,6 +611,7 @@ export default function Explore({
                             Bạn đang phân vân chưa biết đọc gì? Hãy thử vận may quay gacha tìm nhân duyên sách của bạn nhé!
                         </p>
                         
+                        {gachaError && <p role="alert">{gachaError}</p>}
                         {gachaRolling ? (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 0', gap: '8px' }}>
                                 <div style={{ animation: 'spin 1s linear infinite' }}>

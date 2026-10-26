@@ -1,14 +1,16 @@
 import type { Novel } from '../types';
 import { Icons } from './Icons';
 import type { ReadingProgress } from '../utils/readingProgress';
+import { publishedChapterCount } from '../utils/novelSummary';
 
 export function NovelShelfCard({ novel, progress, onOpen, onRead, onRemove }: {
     novel: Novel; progress?: ReadingProgress | null; onOpen: () => void;
     onRead?: () => void; onRemove?: () => void;
 }) {
     const chapters = (novel.chapters || []).filter(c => c.status === 'published');
-    const read = chapters.filter(c => progress?.completedChapterIds.includes(c.id)).length;
-    const percentage = chapters.length ? Math.round(read / chapters.length * 100) : 0;
+    const read = novel.detailsLoaded === false ? progress?.completedChapterIds.length || 0 : chapters.filter(c => progress?.completedChapterIds.includes(c.id)).length;
+    const count = publishedChapterCount(novel);
+    const percentage = count ? Math.min(100, Math.round(read / count * 100)) : 0;
     return <article className="novel-shelf-card">
         <button className="shelf-cover-button" onClick={onOpen} aria-label={`Xem ${novel.title}`}><img className="shelf-novel-cover" src={novel.cover || '/assets/default_novel_cover.png'} alt="" loading="lazy"
             onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/default_novel_cover.png'; }} /></button>

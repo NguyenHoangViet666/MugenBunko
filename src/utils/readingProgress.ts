@@ -24,6 +24,19 @@ export function getReadingProgress(username: string | undefined, novel: Novel): 
         if (!saved || typeof saved !== 'object') return null;
         const chapters = (novel.chapters || []).filter(c => c.status === 'published');
         if (!chapters.length) return null;
+        if (novel.detailsLoaded === false) {
+            // Catalogs contain only first/last chapter metadata. Never clamp a saved
+            // position against that two-item preview; the full reader validates IDs.
+            const preview = chapters.find(chapter => chapter.id === saved.chapterId);
+            const chapterIndex = preview && Number.isSafeInteger(preview.publishedIndex) ? preview.publishedIndex!
+                : Math.max(0, Math.min((novel.chapters_count || 1) - 1, Math.floor(Number(saved.chapterIndex) || 0)));
+            const completedChapterIds = saved.version === 2 && Array.isArray(saved.completedChapterIds)
+                ? [...new Set<number>(saved.completedChapterIds.filter((id: number) => Number.isSafeInteger(id) && id > 0))] : [];
+            return { version: 2, novelId: novel.id, chapterId: Number(saved.chapterId) || chapters[0].id, chapterIndex,
+                scrollRatio: Math.max(0, Math.min(1, Number(saved.scrollRatio) || 0)), paragraphIndex: Math.max(0, Math.floor(Number(saved.paragraphIndex) || 0)),
+                paragraphOffset: Math.max(0, Math.min(1, Number(saved.paragraphOffset) || 0)), completedChapterIds, readChaptersList: [],
+                updatedAt: Number(saved.updatedAt) || 0, pending: Boolean(saved.pending) };
+        }
         const found = chapters.findIndex(c => c.id === saved.chapterId);
         const chapterIndex = found >= 0 ? found : Math.max(0, Math.min(chapters.length - 1, Number(saved.chapterIndex) || 0));
         // The old list recorded opened chapters; it is not proof of completion.
@@ -47,7 +60,7 @@ export function storeReadingProgress(username: string | undefined, novel: Novel,
     try { const saved = JSON.parse(localStorage.getItem(historyKey) || '[]'); history = Array.isArray(saved) ? saved.filter(item => item && Number.isInteger(item.novelId)) : []; } catch { /* Replace malformed history. */ }
     const item = { novelId: novel.id, novelTitle: novel.title, novelCover: novel.cover,
         chapterId: progress.chapterId, chapterIndex: progress.chapterIndex,
-        chapterTitle: chapter?.title || '', updatedAt: progress.updatedAt };
+        chapterTitle: chapter?.title || `Chương ${progress.chapterIndex + 1}`, updatedAt: progress.updatedAt };
     const next = [item, ...history.filter(h => h.novelId !== novel.id)].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)).slice(0, 20);
     localStorage.setItem(historyKey, JSON.stringify(next));
 }
@@ -55,7 +68,8 @@ export function storeReadingProgress(username: string | undefined, novel: Novel,
 export function getShelfStatus(novel: Novel, progress: ReadingProgress | null): 'unread' | 'reading' | 'caught-up' | 'completed' {
     if (!progress) return 'unread';
     const published = (novel.chapters || []).filter(c => c.status === 'published');
-    const allRead = published.length > 0 && published.every(c => progress.completedChapterIds.includes(c.id));
+    const expected = novel.detailsLoaded === false ? novel.chapters_count || 0 : published.length;
+    const allRead = expected > 0 && progress.completedChapterIds.length >= expected && published.every(c => progress.completedChapterIds.includes(c.id));
     if (allRead) return novel.status === 'completed' ? 'completed' : 'caught-up';
     return 'reading';
 }

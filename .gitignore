@@ -47,6 +47,8 @@ __pycache__/
 # Screenshots from the upgrade browser smoke checks
 artifacts/upgrades/
 artifacts/performance/
+artifacts/scalability/
+tests/load/users*.json
 artifacts/header/
 artifacts/rules/
 artifacts/hero/

@@ -34,7 +34,12 @@
     "test:mobile:browser": "npm --prefix server run build && node tests/mobile-browser.mjs",
     "test:elections": "npm --prefix server run build && node --test server/dist/tests/elections.test.js",
     "test:elections:browser": "npm run build && npm --prefix server run build && node tests/browser-elections.mjs",
-    "test:elections:mobile": "npm --prefix server run build && node tests/browser-elections.mjs --mobile"
+    "test:elections:mobile": "npm --prefix server run build && node tests/browser-elections.mjs --mobile",
+    "test:scalability": "npm --prefix server run build && node --test tests/readingProgress.test.ts && node --test server/dist/tests/scalability.test.js",
+    "test:scalability:browser": "npm run build && npm --prefix server run build && node tests/browser-scalability.mjs",
+    "benchmark:backend": "npm --prefix server run build && node tests/backend-performance.mjs",
+    "test:load:local": "npm --prefix server run build && node tests/backend-load.mjs",
+    "test:shared": "npm --prefix server run build && node --test tests/shared.test.mjs"
   },
   "dependencies": {
     "dompurify": "^3.4.16",

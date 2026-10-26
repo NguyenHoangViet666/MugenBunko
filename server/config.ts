@@ -6,6 +6,10 @@ import { randomBytes } from 'node:crypto';
 const directory = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(directory, directory.endsWith('dist') ? '../.env' : '.env') });
 export const production = process.env.NODE_ENV === 'production';
+const replicas = Number(process.env.API_REPLICAS || 1);
+if (!Number.isSafeInteger(replicas) || replicas < 1 || (replicas > 1 && !process.env.REDIS_URL)) {
+    throw new Error('Multiple API replicas require REDIS_URL and a valid API_REPLICAS.');
+}
 const configuredSecret = process.env.JWT_SECRET;
 if (production && (!configuredSecret || configuredSecret.length < 32 || /fallback|super[-_]secret|change.me|your.secret/i.test(configuredSecret))) {
     throw new Error('Production requires a strong JWT_SECRET of at least 32 characters.');

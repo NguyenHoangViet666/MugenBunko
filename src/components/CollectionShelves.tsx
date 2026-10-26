@@ -23,6 +23,10 @@ export default function CollectionShelves({ currentUser, novels, API_BASE, fetch
     const [coverNovelId, setCoverNovelId] = useState<number | null>(null);
     const [novelToAdd, setNovelToAdd] = useState('');
     const [search, setSearch] = useState('');
+    const [candidates, setCandidates] = useState<Novel[]>([]);
+    const [knownNovels, setKnownNovels] = useState<Novel[]>([]);
+    const [searchError, setSearchError] = useState('');
+    const [searching, setSearching] = useState(false);
     const fetchRef = useRef(fetchWithAuth);
     useEffect(() => { fetchRef.current = fetchWithAuth; });
     const load = useCallback(async () => {
@@ -33,9 +37,32 @@ export default function CollectionShelves({ currentUser, novels, API_BASE, fetch
         finally { setLoading(false); }
     }, [API_BASE]);
     useEffect(() => { void load(); }, [load, currentUser.id]);
+    useEffect(() => {
+        setCandidates([]); setKnownNovels([]);
+    }, [currentUser.id]);
+    useEffect(() => {
+        if (!selectedId) return;
+        const controller = new AbortController();
+        setSearching(true); setSearchError(''); setCandidates([]);
+        const timer = window.setTimeout(async () => {
+            try {
+                const query = new URLSearchParams({ q: search.trim(), limit: '20' });
+                const response = await fetchRef.current(`${API_BASE}/novels/catalog?${query}`, { signal: controller.signal });
+                if (!response.ok) throw new Error('Không thể tìm tác phẩm. Hãy thử lại.');
+                const data = await response.json();
+                if (controller.signal.aborted) return;
+                setCandidates(data.novels);
+                const members = new Set(collections.flatMap(collection => collection.novelIds));
+                setKnownNovels(previous => [...new Map([...previous.filter(novel => members.has(novel.id)), ...data.novels].map(n => [n.id, n])).values()]);
+            } catch (err) { if (!controller.signal.aborted) setSearchError(err instanceof Error ? err.message : 'Không thể tìm tác phẩm.'); }
+            finally { if (!controller.signal.aborted) setSearching(false); }
+        }, 220);
+        return () => { clearTimeout(timer); controller.abort(); };
+    }, [API_BASE, selectedId, search]);
     const selected = collections.find(c => c.id === selectedId);
-    const published = novels.filter(n => n.status !== 'suspended' && n.chapters?.some(c => c.status === 'published'));
-    const available = published.filter(n => !selected?.novelIds.includes(n.id) && (!search.trim() || n.title.toLocaleLowerCase('vi').includes(search.toLocaleLowerCase('vi'))));
+    const allKnown = [...new Map([...knownNovels, ...novels].map(n => [n.id, n])).values()];
+    const published = allKnown.filter(n => n.status !== 'suspended' && n.chapters?.some(c => c.status === 'published'));
+    const available = candidates.filter(n => !selected?.novelIds.includes(n.id));
     const openEditor = (collection?: Collection) => {
         setEditing(collection || {}); setName(collection?.name || ''); setDescription(collection?.description || '');
         setIsPublic(collection?.isPublic || false); setCoverNovelId(collection?.coverNovelId || null); setNotice('');
@@ -63,7 +90,7 @@ export default function CollectionShelves({ currentUser, novels, API_BASE, fetch
         {notice && <p className="inline-notice" role="status">{notice}</p>}
         {loading ? <PageLoading /> : error ? <PageError message={error} onRetry={() => void load()} /> : <>
             <div className="collection-grid">{collections.map(collection => {
-                const cover = collection.cover || novels.find(n => collection.novelIds.includes(n.id))?.cover;
+                const cover = collection.cover || allKnown.find(n => collection.novelIds.includes(n.id))?.cover;
                 return <article key={collection.id} className={`collection-tile ${selectedId === collection.id ? 'selected' : ''}`}>
                     <button className="collection-select-button" onClick={() => { setSelectedId(selectedId === collection.id ? null : collection.id); setNovelToAdd(''); }} aria-pressed={selectedId === collection.id}>
                         <div className="collection-art">{cover ? <img src={cover} alt="" loading="lazy" /> : <Icons.Book size={36} />}<span>{collection.novelIds.length} tác phẩm</span></div>
@@ -78,10 +105,11 @@ export default function CollectionShelves({ currentUser, novels, API_BASE, fetch
             {selected && <div className="selected-collection-panel"><div className="section-heading-row"><div><h3>{selected.name}</h3><p>{selected.description}</p></div><button className="outline-btn small" onClick={() => setSelectedId(null)}>Thu gọn</button></div>
                 <form className="collection-add-form" onSubmit={async event => { event.preventDefault(); if (novelToAdd && await mutate(`collections/${selected.id}/novels/${novelToAdd}`, 'PUT')) setNovelToAdd(''); }}>
                     <input aria-label="Tìm tác phẩm để thêm" placeholder="Tìm tác phẩm…" value={search} onChange={e => { setSearch(e.target.value); setNovelToAdd(''); }} />
-                    <select aria-label="Tác phẩm cần thêm" value={novelToAdd} onChange={e => setNovelToAdd(e.target.value)}><option value="">Chọn tác phẩm để thêm vào kệ</option>{available.map(n => <option key={n.id} value={n.id}>{n.title}</option>)}</select>
-                    <button className="primary-btn small" disabled={busy || !novelToAdd}>Thêm vào kệ</button></form>
+                    <select aria-label="Tác phẩm cần thêm" disabled={searching} value={novelToAdd} onChange={e => setNovelToAdd(e.target.value)}><option value="">{searching ? 'Đang tìm tác phẩm…' : 'Chọn tác phẩm để thêm vào kệ'}</option>{available.map(n => <option key={n.id} value={n.id}>{n.title}</option>)}</select>
+                    <button className="primary-btn small" disabled={busy || searching || !novelToAdd}>Thêm vào kệ</button></form>
+                {searchError && <p role="alert">{searchError}</p>}
                 <div className="shelf-card-grid">{selected.novelIds.map(id => {
-                    const novel = novels.find(n => n.id === id); if (!novel) return null;
+                    const novel = allKnown.find(n => n.id === id); if (!novel) return null;
                     const progress = getReadingProgress(currentUser.username, novel);
                     return <NovelShelfCard key={id} novel={novel} progress={progress} onOpen={() => openNovelDetail(id)}
                         onRead={startReading ? () => startReading(id, progress?.chapterIndex || 0) : undefined}
