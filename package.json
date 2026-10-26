@@ -24,6 +24,8 @@
     "test:passwords": "npm --prefix server run test:passwords",
     "test:auth:browser": "npm run build && npm --prefix server run build && node tests/browser-auth.mjs",
     "test:header:browser": "npm run build && npm --prefix server run build && node tests/browser-header.mjs",
+    "test:navigation:browser": "npm run build && npm --prefix server run build && node tests/browser-navigation.mjs",
+    "test:preloader:browser": "npm run build && npm --prefix server run build && node tests/browser-preloader.mjs",
     "test:rules": "npm --prefix server run build && node --test server/dist/tests/rules.test.js",
     "test:rules:browser": "npm run build && npm --prefix server run build && node tests/browser-rules.mjs",
     "test:hero:browser": "npm run build && npm --prefix server run build && node tests/browser-hero.mjs",

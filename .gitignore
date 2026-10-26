@@ -50,6 +50,7 @@ artifacts/performance/
 artifacts/header/
 artifacts/rules/
 artifacts/hero/
+artifacts/preloader/
 artifacts/about/
 artifacts/reader/
 # Cover generation workspaces stay local; published images live in public/assets/covers.

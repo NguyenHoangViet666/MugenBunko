@@ -77,6 +77,8 @@ try {
         if (authenticated) await send('Page.addScriptToEvaluateOnNewDocument', { source: `localStorage.setItem('mugen_session',${JSON.stringify(JSON.stringify(fixture.user))});localStorage.setItem('mugen_token',${JSON.stringify(fixture.token(2))});` }, sessionId);
         // A query change forces a new document so the account seeding script runs.
         await send('Page.navigate', { url: fixture.url + '/?smoke=' + targetId + hash }, sessionId);
+        await send('Page.bringToFront', {}, sessionId);
+        await send('Emulation.setFocusEmulationEnabled', { enabled: true }, sessionId);
         return sessionId;
     };
     const closePage = async sid => {
@@ -139,10 +141,8 @@ try {
     await waitPaused(); await sleep(300);
     assert.equal(await activeTitle(), beforeOffscreen);
     await evaluate(page, 'window.scrollTo({top:0,behavior:"instant"});true'); await waitRunning();
-    const floatBefore = await evaluate(page, 'getComputedStyle(document.querySelector(".hero-book-float")).transform');
-    await sleep(250);
-    assert.notEqual(await evaluate(page, 'getComputedStyle(document.querySelector(".hero-book-float")).transform'), floatBefore);
-    console.log('PASS: real automatic advance, hover/focus/manual/offscreen pauses, continuous progress and floating cover');
+    assert.equal(await evaluate(page, 'document.querySelectorAll(".hero-petal,.hero-book-rank-ribbon").length'), 0);
+    console.log('PASS: automatic advance, hover/focus/manual/offscreen pauses, and continuous progress');
 
     // Freeze the carousel while inspecting layout, keeping the current animation frame.
     await evaluate(page, 'document.querySelector(".hero-motion-toggle").click();true'); await waitPaused();
@@ -153,6 +153,8 @@ try {
             await sleep(150);
             const viewport = await evaluate(page, '({layout:innerWidth,visual:visualViewport.width,scroll:document.documentElement.scrollWidth})');
             assert.ok(viewport.layout <= width + 1 && viewport.visual <= width + 1, `${theme} viewport zoomed out at ${width}: ${JSON.stringify(viewport)}`);
+            const edges = await evaluate(page, '(() => {const r=document.querySelector(".featured-banner").getBoundingClientRect();return {left:r.left,right:r.right,width:document.documentElement.clientWidth};})()');
+            assert.ok(edges.left <= 1 && edges.right >= edges.width - 1, `Hero does not span both screen edges at ${width}: ${JSON.stringify(edges)}`);
             const layout = await evaluate(page, `(() => {
                 const hero=document.querySelector('.featured-banner').getBoundingClientRect();
                 return [...document.querySelectorAll('.featured-actions-row button,.featured-cover-showcase,.hero-carousel-controls button')]
@@ -177,18 +179,17 @@ try {
 
     const coverHref = await evaluate(page, 'document.querySelector(".featured-cover-showcase").getAttribute("href")');
     await evaluate(page, 'document.querySelector(".featured-cover-showcase").focus();true');
-    await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }, page);
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13, text: '\r', unmodifiedText: '\r' }, page);
     await until(() => evaluate(page, `location.hash===${JSON.stringify(coverHref)}`), 'Cover link is not keyboard accessible');
     await fixture.db.query("UPDATE chapters SET status = 'draft' WHERE novel_id <> 1");
     const single = await newPage('#/', false, 390);
-    await waitSelector(single, '.hero-motion-toggle');
+    await waitSelector(single, '.featured-info h1');
     assert.equal(await evaluate(single, 'document.querySelector(".hero-progress-bar-track")'), null);
-    await evaluate(single, 'document.querySelector(".hero-motion-toggle").click();true');
-    assert.equal(await evaluate(single, 'document.querySelector(".hero-motion-toggle").getAttribute("aria-pressed")'), 'true');
+    assert.equal(await evaluate(single, 'document.querySelector(".hero-motion-toggle")'), null);
     await screenshot(single, 'single-novel-390');
     const gated = await newPage('#/', false, 390, false);
     await waitSelector(gated, '.mobile-gate-container');
-    console.log('PASS: keyboard cover navigation and animation controls for a single featured novel');
+    console.log('PASS: keyboard cover navigation and the single featured novel');
     assert.deepEqual(exceptions, [], 'Browser runtime exceptions');
     await closePage(page); await closePage(single); await closePage(gated);
 } finally {

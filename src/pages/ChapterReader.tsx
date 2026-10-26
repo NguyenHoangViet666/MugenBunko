@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import DOMPurify from 'dompurify';
 import type { Novel, User } from '../types';
 import { Icons } from '../components/Icons';
 import { PageError, PageLoading, SyncIndicator } from '../components/LoadState';
 import { getReadingProgress, type ReadingProgress } from '../utils/readingProgress';
 import type { SyncStatus } from '../hooks/useReadingSync';
+import { useDialogFocus } from '../hooks/useDialogFocus';
+import '../styles/reader.css';
 
 interface ChapterReaderProps {
     novels: Novel[];
@@ -49,16 +51,35 @@ function ReaderChapter(props: ChapterReaderProps & { novel: Novel; chapterId: nu
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [attempt, setAttempt] = useState(0);
-    const [tocOpen, setTocOpen] = useState(false);
+    const [panel, setPanel] = useState<'toc' | 'settings' | null>(null);
     const [zen, setZen] = useState(false);
     const [progress, setProgress] = useState(0);
     const [completed, setCompleted] = useState(() => getReadingProgress(currentUser?.username, novel)?.completedChapterIds.includes(chapterId) || false);
     const [spacing, setSpacing] = useState(() => localStorage.getItem('mugen_reader_spacing') || 'normal');
     const articleRef = useRef<HTMLElement>(null);
+    const panelRef = useDialogFocus(panel !== null);
+    const reflowAnchor = useRef<{ element: HTMLElement; offset: number } | null>(null);
     const callbacks = useRef(props);
     const ready = useRef(false);
     const lastPosition = useRef('');
     useEffect(() => { callbacks.current = props; });
+
+    const changeReadingLayout = (update: () => void) => {
+        if (ready.current && window.scrollY > 0) {
+            const anchor = [...(articleRef.current?.querySelectorAll<HTMLElement>('p, h1, h2, h3, h4, blockquote, li, figure') || [])]
+                .find(element => element.getBoundingClientRect().bottom > 96);
+            if (anchor) reflowAnchor.current = { element: anchor, offset: (96 - anchor.getBoundingClientRect().top) / Math.max(1, anchor.offsetHeight) };
+        }
+        update();
+    };
+
+    useLayoutEffect(() => {
+        const anchor = reflowAnchor.current;
+        reflowAnchor.current = null;
+        if (anchor?.element.isConnected) {
+            window.scrollTo({ top: Math.max(0, window.scrollY + anchor.element.getBoundingClientRect().top + anchor.element.offsetHeight * anchor.offset - 96), behavior: 'instant' });
+        }
+    }, [readerFont, readerFontSize, spacing]);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -175,56 +196,94 @@ function ReaderChapter(props: ChapterReaderProps & { novel: Novel; chapterId: nu
 
     useEffect(() => {
         const onKey = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                if (panel) setPanel(null);
+                else setZen(false);
+                return;
+            }
             const target = event.target as HTMLElement;
-            if (target.closest('input, textarea, select, [contenteditable="true"]')) return;
-            if (event.key === 'Escape') setTocOpen(false);
+            if (panel || event.altKey || event.ctrlKey || event.metaKey || target.closest('input, textarea, select, [contenteditable="true"]')) return;
             if (event.key === 'ArrowLeft' && activeChapterIndex > 0) callbacks.current.navigateToChapter('prev');
             if (event.key === 'ArrowRight' && activeChapterIndex < chapters.length - 1) callbacks.current.navigateToChapter('next');
         };
         window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey);
-    }, [activeChapterIndex, chapters.length]);
+    }, [activeChapterIndex, chapters.length, panel]);
 
     return <div className={'page-view active reader-page ' + (zen ? 'reader-zen' : '')}>
-        {tocOpen && <div className="reader-toc-backdrop" onClick={() => setTocOpen(false)} />}
-        <aside className={'reader-toc-drawer ' + (tocOpen ? 'open' : '')} aria-label="Mục lục" aria-hidden={!tocOpen} inert={!tocOpen}>
-            <div className="reader-toc-header"><h3>Mục lục</h3><button className="outline-btn small" aria-label="Đóng mục lục" onClick={() => setTocOpen(false)}>✕</button></div>
-            <div className="reader-toc-novel-title">{novel.title}</div>
-            <div className="reader-toc-body">{chapters.map((ch, index) => <div key={ch.id}>
-                {(index === 0 || ch.volume_name !== chapters[index - 1].volume_name) && <div className="reader-toc-volume-header">{ch.volume_name || 'Các chương'}</div>}
-                <button className={'reader-toc-chapter-item ' + (index === activeChapterIndex ? 'active' : '')} aria-current={index === activeChapterIndex ? 'page' : undefined}
-                    onClick={() => { props.startReading(novel.id, index); setTocOpen(false); }}>{ch.title}</button>
-            </div>)}</div>
-        </aside>
-        <div className="reader-toolbar reader-toolbar-polished">
-            <div className="reader-toolbar-group">
-                <button className="outline-btn small" onClick={() => props.openNovelDetail(novel.id)}><Icons.ArrowLeft size={14} /> Thoát</button>
-                <button className="outline-btn small" onClick={() => setTocOpen(true)}><Icons.Book size={14} /> Mục lục</button>
+        {panel && <>
+            <div className="reader-panel-backdrop" onClick={() => setPanel(null)} />
+            <aside ref={panelRef} id="reader-panel" className={'reader-panel ' + (panel === 'toc' ? 'reader-toc-drawer open' : 'reader-settings-drawer')}
+                role="dialog" aria-modal="true" aria-labelledby="reader-panel-title">
+                <div className="reader-panel-heading">
+                    <h2 id="reader-panel-title">{panel === 'toc' ? 'Mục lục' : 'Tùy chỉnh trang đọc'}</h2>
+                    <button className="reader-tool-button reader-icon-button" aria-label={panel === 'toc' ? 'Đóng mục lục' : 'Đóng tùy chỉnh'} onClick={() => setPanel(null)}><Icons.X size={18} /></button>
+                </div>
+                {panel === 'toc' ? <>
+                    <div className="reader-toc-novel-title">{novel.title}</div>
+                    <div className="reader-toc-body">{chapters.map((ch, index) => <div key={ch.id}>
+                        {(index === 0 || ch.volume_name !== chapters[index - 1].volume_name) && <div className="reader-toc-volume-header">{ch.volume_name || 'Các chương'}</div>}
+                        <button className={'reader-toc-chapter-item ' + (index === activeChapterIndex ? 'active' : '')} aria-current={index === activeChapterIndex ? 'page' : undefined}
+                            onClick={() => { setPanel(null); props.startReading(novel.id, index); }}>
+                            <span className="reader-toc-index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span><span>{ch.title}</span>
+                        </button>
+                    </div>)}</div>
+                </> : <div className="reader-settings-body">
+                    <fieldset className="reader-setting"><legend>Màu nền</legend>
+                        <div className="reader-setting-options">{[
+                            { value: 'washi', label: 'Giấy', name: 'Nền giấy Washi' },
+                            { value: 'sepia', label: 'Sepia', name: 'Nền giấy cổ' },
+                            { value: 'charcoal', label: 'Tối', name: 'Nền tối' },
+                        ].map(option => <button key={option.value} className="reader-setting-option" aria-label={option.name} aria-pressed={theme === option.value} onClick={() => props.handleThemeChange(option.value)}>
+                            <span className={'theme-dot theme-dot-' + option.value} aria-hidden="true" />{option.label}
+                        </button>)}</div>
+                    </fieldset>
+                    <fieldset className="reader-setting"><legend>Phông chữ</legend>
+                        <div className="reader-setting-options">{[{ value: 'font-serif', label: 'Có chân' }, { value: 'font-sans', label: 'Không chân' }].map(option =>
+                            <button key={option.value} className={'reader-setting-option ' + option.value} aria-pressed={readerFont === option.value}
+                                onClick={() => changeReadingLayout(() => { props.setReaderFont(option.value); localStorage.setItem(props.DB_KEYS.font, option.value); })}>{option.label}</button>)}</div>
+                    </fieldset>
+                    <fieldset className="reader-setting"><legend>Cỡ chữ</legend>
+                        <div className="reader-font-stepper">
+                            <button className="reader-tool-button" aria-label="Giảm cỡ chữ" disabled={readerFontSize <= 12} onClick={() => changeReadingLayout(() => { const size = Math.max(12, readerFontSize - 2); props.setReaderFontSize(size); localStorage.setItem(props.DB_KEYS.fontSize, String(size)); })}>A−</button>
+                            <output aria-live="polite" aria-label="Cỡ chữ hiện tại">{readerFontSize}<span> px</span></output>
+                            <button className="reader-tool-button" aria-label="Tăng cỡ chữ" disabled={readerFontSize >= 32} onClick={() => changeReadingLayout(() => { const size = Math.min(32, readerFontSize + 2); props.setReaderFontSize(size); localStorage.setItem(props.DB_KEYS.fontSize, String(size)); })}>A+</button>
+                        </div>
+                    </fieldset>
+                    <fieldset className="reader-setting"><legend>Giãn dòng</legend>
+                        <div className="reader-setting-options">{[{ value: 'compact', label: 'Gọn' }, { value: 'normal', label: 'Chuẩn' }, { value: 'relaxed', label: 'Thoáng' }].map(option =>
+                            <button key={option.value} className="reader-setting-option" aria-pressed={spacing === option.value}
+                                onClick={() => changeReadingLayout(() => { setSpacing(option.value); localStorage.setItem('mugen_reader_spacing', option.value); })}>{option.label}</button>)}</div>
+                    </fieldset>
+                    <div className="reader-settings-sync"><SyncIndicator status={syncStatus} onRetry={() => void props.syncNovel(novel)} /></div>
+                </div>}
+            </aside>
+        </>}
+        <div className="reader-workspace" inert={panel !== null}>
+        <div className="reader-toolbar-shell">
+            <div className="reader-toolbar">
+                <a className="reader-tool-button reader-back-link" href={'#/novel/' + novel.id} aria-label="Về trang truyện" onClick={event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) { event.preventDefault(); props.openNovelDetail(novel.id); } }}><Icons.ArrowLeft size={18} /><span>Trang truyện</span></a>
                 <span className="reader-novel-title" title={novel.title}>{novel.title}</span>
+                <div className="reader-toolbar-group">
+                    <button className="reader-tool-button" aria-label="Mục lục" aria-haspopup="dialog" aria-expanded={panel === 'toc'} aria-controls={panel === 'toc' ? 'reader-panel' : undefined} onClick={() => setPanel('toc')}><Icons.List size={18} /><span className="reader-tool-label">Mục lục</span></button>
+                    <button className="reader-tool-button" aria-label="Tùy chỉnh trang đọc" aria-haspopup="dialog" aria-expanded={panel === 'settings'} aria-controls={panel === 'settings' ? 'reader-panel' : undefined} onClick={() => setPanel('settings')}><span className="reader-type-icon" aria-hidden="true">Aa</span><span className="reader-tool-label">Tùy chỉnh</span></button>
+                    <button className="reader-tool-button reader-icon-button" aria-label={zen ? 'Thoát chế độ tập trung' : 'Đọc tập trung'} title="Đọc tập trung" aria-pressed={zen} onClick={event => { setZen(!zen); if (event.detail > 0) event.currentTarget.blur(); }}><Icons.Maximize size={17} /></button>
+                </div>
             </div>
-            <div className="reader-toolbar-group reader-preferences">
-                <select aria-label="Giãn dòng" value={spacing} onChange={e => { setSpacing(e.target.value); localStorage.setItem('mugen_reader_spacing', e.target.value); }}>
-                    <option value="compact">Gọn</option><option value="normal">Chuẩn</option><option value="relaxed">Thoáng</option></select>
-                <select aria-label="Phông chữ" value={readerFont} onChange={e => { props.setReaderFont(e.target.value); localStorage.setItem(props.DB_KEYS.font, e.target.value); }}>
-                    <option value="font-serif">Serif</option><option value="font-sans">Sans</option></select>
-                <button className="outline-btn small" aria-label="Giảm cỡ chữ" onClick={() => { const size = Math.max(12, readerFontSize - 2); props.setReaderFontSize(size); localStorage.setItem(props.DB_KEYS.fontSize, String(size)); }}>A−</button>
-                <span>{readerFontSize}px</span>
-                <button className="outline-btn small" aria-label="Tăng cỡ chữ" onClick={() => { const size = Math.min(32, readerFontSize + 2); props.setReaderFontSize(size); localStorage.setItem(props.DB_KEYS.fontSize, String(size)); }}>A+</button>
-                <button className={'outline-btn small ' + (zen ? 'active' : '')} aria-pressed={zen} onClick={() => setZen(!zen)}><Icons.Maximize size={13} /> Zen</button>
-                <div className="reader-themes">{['washi', 'sepia', 'charcoal'].map(t => <button key={t} className={'theme-dot theme-dot-' + t + (theme === t ? ' active' : '')}
-                    aria-label={t === 'washi' ? 'Nền giấy Washi' : t === 'sepia' ? 'Nền giấy cổ' : 'Nền tối'} aria-pressed={theme === t} onClick={() => props.handleThemeChange(t)} />)}</div>
-            </div>
+            <div className="reader-scroll-progress-line-track" role="progressbar" aria-label="Tiến độ chương" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><div className="reader-scroll-progress-line-fill" style={{ width: progress + '%' }} /></div>
         </div>
-        <div className="reader-scroll-progress-line-track"><div className="reader-scroll-progress-line-fill" style={{ width: progress + '%' }} /></div>
         <div className="reader-container-layout reader-reading-surface">
-            <header className="reader-chapter-heading"><span className="eyebrow">{chapter.volume_name}</span><h1>{chapter.title}</h1>
-                <div className="reader-chapter-meta"><SyncIndicator status={syncStatus} onRetry={() => void props.syncNovel(novel)} /><span>{progress}% {completed ? '· Đã đọc xong' : ''}</span></div>
+            <header className="reader-chapter-heading">{chapter.volume_name && <span className="reader-volume-label">{chapter.volume_name}</span>}<h1>{chapter.title}</h1>
             </header>
+            {(syncStatus === 'offline' || syncStatus === 'error') && <div className="reader-sync-notice"><SyncIndicator status={syncStatus} onRetry={() => void props.syncNovel(novel)} /></div>}
             {loading ? <PageLoading reader /> : error ? <PageError message={error} onRetry={() => setAttempt(a => a + 1)} />
                 : <article ref={articleRef} className={'reader-content-body ' + readerFont + ' reader-spacing-' + spacing} style={{ fontSize: readerFontSize, lineHeight: spacing === 'compact' ? 1.6 : spacing === 'relaxed' ? 2.15 : 1.85 }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }} />}
             <nav className="reader-footer-nav" aria-label="Chuyển chương">
                 <button className="outline-btn" disabled={activeChapterIndex === 0} onClick={() => props.navigateToChapter('prev')}><Icons.ArrowLeft size={14} /> Chương trước</button>
+                <span className="reader-chapter-position">{activeChapterIndex + 1} / {chapters.length}{completed && <span>Đã đọc xong</span>}</span>
                 <button className="primary-btn" disabled={activeChapterIndex >= chapters.length - 1} onClick={() => props.navigateToChapter('next')}>Chương sau <Icons.ArrowRight size={14} /></button>
             </nav>
+        </div>
+        {zen && <button className="reader-zen-exit reader-tool-button" aria-label="Thoát chế độ tập trung" onClick={() => setZen(false)}><Icons.Maximize size={15} /><span>Thoát tập trung</span></button>}
         </div>
     </div>;
 }

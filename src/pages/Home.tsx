@@ -4,15 +4,6 @@ import { calculateUserLevel } from '../utils/levelHelper';
 import { getReadingProgress } from '../utils/readingProgress';
 import '../styles/hero-motion.css';
 
-const HERO_PETALS = [
-    { left: '8%', duration: '15s', delay: '-4s' },
-    { left: '22%', duration: '18s', delay: '-12s' },
-    { left: '42%', duration: '16s', delay: '-7s' },
-    { left: '60%', duration: '19s', delay: '-16s' },
-    { left: '76%', duration: '14s', delay: '-3s' },
-    { left: '88%', duration: '17s', delay: '-10s' },
-];
-
 // ================= MONOCHROME PROFESSIONAL SVG ICONS =================
 const Icons = {
     Tag: () => (
@@ -931,17 +922,15 @@ export default function Home({
     return (
         <div className="page-view active home-page">
             
-            {/* 1. FEATURED HERO BANNER 3.0 (CINEMATIC, THUMBNAIL STRIP & PROGRESS BAR) */}
+            {/* Full-width featured banner, with quieter decoration and the original carousel */}
             {heroNovels.length > 0 && (() => {
                 const currentHero = heroNovels[heroIdx] || heroNovels[0];
                 const isHeroSaved = currentUser && currentUser.bookmarks && currentUser.bookmarks.includes(currentHero.id);
-                const heroStars = computeAverageStars(currentHero.id);
                 const heroPublishedChapters = (currentHero.chapters || []).filter(ch => ch.status === 'published');
                 const firstChapter = heroPublishedChapters[0];
-                const firstChapterIdx = firstChapter ? (currentHero.chapters || []).indexOf(firstChapter) : 0;
                 const heroHistoryItem = readingHistory.find(h => h.novelId === currentHero.id);
                 const heroSavedProgress = getReadingProgress(currentUser?.username, currentHero);
-                const heroResumeIdx = heroSavedProgress?.chapterIndex ?? heroHistoryItem?.chapterIndex ?? firstChapterIdx;
+                const heroResumeIdx = heroSavedProgress?.chapterIndex ?? heroHistoryItem?.chapterIndex ?? 0;
                 const hasHeroProgress = Boolean(heroSavedProgress || heroHistoryItem);
 
                 return (
@@ -957,24 +946,15 @@ export default function Home({
                     >
                         <div key={`scene-${currentHero.id}`} className="featured-bg-cover hero-motion-loop" style={{ backgroundImage: `url(${currentHero.cover})` }} aria-hidden="true" />
                         <div className="featured-overlay-ambient" aria-hidden="true" />
-                        <div className="hero-sakura-petals" aria-hidden="true">
-                            {HERO_PETALS.map((petal, index) => <span key={index} className="hero-petal hero-motion-loop" style={{
-                                '--petal-left': petal.left, '--petal-duration': petal.duration, '--petal-delay': petal.delay,
-                            } as React.CSSProperties} />)}
-                        </div>
-                        <div className="featured-kanji-watermark" aria-hidden="true">無限文庫 • 今週の推薦</div>
-
                         <div className="featured-banner-content" key={currentHero.id}>
                             <div className="featured-info">
                                 <div className="featured-badges-row">
                                     <span className="hero-editorial-badge">
                                         <Icons.Sparkles /> Đề Cử #{heroIdx + 1}
                                     </span>
-                                    <span className="hero-pill-tag">
-                                        {currentHero.type === 'oneshot' ? 'Oneshot' : 'Series'}
-                                    </span>
                                     {currentHero.genre && (
-                                        <span
+                                        <button
+                                            type="button"
                                             className="hero-pill-tag clickable"
                                             onClick={() => {
                                                 setFilterGenre(currentHero.genre);
@@ -983,15 +963,12 @@ export default function Home({
                                             title={`Lọc thể loại ${currentHero.genre}`}
                                         >
                                             {currentHero.genre}
-                                        </span>
+                                        </button>
                                     )}
-                                    <span className="hero-pill-tag" style={{ color: currentHero.status === 'completed' ? '#2ecc71' : 'var(--sakura-pink)' }}>
-                                        {currentHero.status === 'completed' ? 'Hoàn thành' : 'Đang ra'}
-                                    </span>
                                 </div>
 
-                                <h1 onClick={() => openNovelDetail(currentHero.id)} title={currentHero.title}>
-                                    {currentHero.title}
+                                <h1 title={currentHero.title}>
+                                    <a href={`#/novel/${currentHero.id}`}>{currentHero.title}</a>
                                 </h1>
 
                                 <p className="featured-desc">
@@ -1001,14 +978,6 @@ export default function Home({
                                 <div className="featured-meta">
                                     <span className="featured-meta-item">
                                         <Icons.User /> <strong>{currentHero.author || currentHero.author_name || "Ẩn danh"}</strong>
-                                    </span>
-                                    <span className="meta-sep">•</span>
-                                    <span className="featured-meta-item">
-                                        <Icons.Star /> <strong>{heroStars === 'N/A' ? '5.0' : heroStars}</strong> ★
-                                    </span>
-                                    <span className="meta-sep">•</span>
-                                    <span className="featured-meta-item">
-                                        <Icons.Eye /> {Number(currentHero.reads).toLocaleString()} lượt đọc
                                     </span>
                                     <span className="meta-sep">•</span>
                                     <span className="featured-meta-item">
@@ -1041,7 +1010,9 @@ export default function Home({
                                         <button 
                                             className={`hero-bookmark-cta-btn ${isHeroSaved ? 'saved' : ''}`}
                                             onClick={(e) => { e.stopPropagation(); toggleBookmark(currentHero.id); }}
-                                            title={isHeroSaved ? "Đã lưu vào tủ sách" : "Lưu vào tủ sách"}
+                                            aria-pressed={Boolean(isHeroSaved)}
+                                            aria-label={isHeroSaved ? "Xóa khỏi tủ sách" : "Lưu vào tủ sách"}
+                                            title={isHeroSaved ? "Xóa khỏi tủ sách" : "Lưu vào tủ sách"}
                                         >
                                             <Icons.Bookmark filled={Boolean(isHeroSaved)} />
                                         </button>
@@ -1049,17 +1020,14 @@ export default function Home({
                                 </div>
                             </div>
 
-                            {/* Book Showcase (Realistic Physical Light Novel) */}
+                            {/* Original cover showcase, without the extra glow and ribbon */}
                             <a className="featured-cover-showcase" href={`#/novel/${currentHero.id}`} aria-label={`Chi tiết tác phẩm ${currentHero.title}`}>
-                                <div className="hero-book-ambient-glow hero-motion-loop" aria-hidden="true" />
                                 <div className="hero-book-float hero-motion-loop">
                                   <div className="hero-book-wrapper">
                                     <div className="hero-book-cover">
-                                        <div className="hero-book-spine"></div>
-                                        <img src={currentHero.cover} alt={currentHero.title} />
-                                        <span className="hero-book-rank-ribbon">
-                                            <Icons.Flame /> #{heroIdx + 1} Hot
-                                        </span>
+                                        <img src={currentHero.cover || '/assets/default_novel_cover.png'} alt={currentHero.title} onError={event => {
+                                            if (!event.currentTarget.src.endsWith('/assets/default_novel_cover.png')) event.currentTarget.src = '/assets/default_novel_cover.png';
+                                        }} />
                                     </div>
                                   </div>
                                 </div>
@@ -1079,7 +1047,6 @@ export default function Home({
                                         >
                                             <img src={n.cover} alt={n.title} className="hero-thumb-img" />
                                             <div className="hero-thumb-meta">
-                                                <span className="hero-thumb-rank">0{idx + 1}</span>
                                                 <span className="hero-thumb-title">{n.title}</span>
                                             </div>
                                         </button>
@@ -1087,7 +1054,7 @@ export default function Home({
                                 </div>}
 
                                 <div className="hero-carousel-controls">
-                                    {!prefersReducedMotion && <button
+                                    {heroNovels.length > 1 && !prefersReducedMotion && <button
                                         type="button"
                                         className="hero-arrow-btn hero-motion-toggle"
                                         onClick={() => setIsHeroMotionPaused(paused => !paused)}

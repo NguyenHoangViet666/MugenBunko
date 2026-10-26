@@ -6,6 +6,7 @@
   <link rel="icon" type="image/png" href="/favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MUGENBUNKO // 無限文庫</title>
+  <link rel="stylesheet" href="/src/styles/preloader.css" />
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,7 +16,43 @@
 </head>
 
 <body class="theme-washi">
-  <div id="root"></div>
+  <div id="startup-preloader" class="startup-preloader" aria-label="Mở thư viện MugenBunko">
+    <header class="startup-preloader__header">
+      <span class="startup-preloader__wordmark">無限文庫<span>MUGENBUNKO</span></span>
+      <span class="startup-preloader__edition">MỘT THƯ VIỆN. VÔ VÀN THẾ GIỚI.</span>
+    </header>
+    <div class="startup-preloader__scene">
+      <span class="startup-preloader__watermark" aria-hidden="true">物語</span>
+      <div class="startup-preloader__illustration" aria-hidden="true">
+        <span class="startup-preloader__annotation">物語のはじまり</span>
+        <div class="startup-book">
+          <div class="startup-book__binding"></div>
+          <div class="startup-book__page startup-book__page--left"><span>無限<br />文庫</span></div>
+          <div class="startup-book__page startup-book__page--right"></div>
+          <div class="startup-book__leaf startup-book__leaf--one"></div>
+          <div class="startup-book__leaf startup-book__leaf--two"></div>
+          <div class="startup-book__leaf startup-book__leaf--three"></div>
+          <span class="startup-book__bookmark"></span>
+        </div>
+        <span class="startup-preloader__seal">開<br />巻</span>
+        <span class="startup-preloader__petal startup-preloader__petal--one"></span>
+        <span class="startup-preloader__petal startup-preloader__petal--two"></span>
+        <span class="startup-preloader__petal startup-preloader__petal--three"></span>
+      </div>
+      <p class="startup-preloader__eyebrow">LẬT MỘT TRANG SÁCH</p>
+      <p class="startup-preloader__title">Bước vào một<br /><em>thế giới khác.</em></p>
+      <div class="startup-preloader__status" role="status" aria-live="polite">
+        <span id="startup-preloader-status">Đang mở thư viện</span>
+        <span class="startup-preloader__track" aria-hidden="true"><span></span></span>
+      </div>
+    </div>
+    <footer class="startup-preloader__footer">
+      <span>VÔ HẠN VĂN KHỐ<span class="startup-preloader__footer-note">Dành một khoảng lặng cho câu chuyện của bạn.</span></span>
+      <button id="startup-preloader-skip" type="button">Bỏ qua mở đầu <span aria-hidden="true">↗</span></button>
+    </footer>
+  </div>
+  <div id="root" inert aria-hidden="true" aria-busy="true"></div>
+  <script type="module" src="/src/startup.ts"></script>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 

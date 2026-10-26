@@ -1,4 +1,5 @@
 import { fetchArrayPages } from './utils/pagedFetch';
+import { signalStartupReady } from './startup';
 import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -544,6 +545,13 @@ export default function App() {
         }
     }, [currentView, currentUser?.id]);
 
+    // Complete the document entrance once; route changes never recreate it.
+    useEffect(() => {
+        const needsNovels = ['home', 'explore', 'library', 'studio', 'reader', 'collection', 'detail', 'profile', 'admin-dashboard', 'mod-dashboard'].includes(currentView);
+        if (isMobileDevice && !mobileBypassed) signalStartupReady();
+        else if ((!needsNovels || !novelsLoading) && (currentView !== 'event-detail' || !eventsLoading)) signalStartupReady();
+    }, [currentView, novelsLoading, eventsLoading, isMobileDevice, mobileBypassed]);
+
     // ----------------------------------------------------
     // BIDIRECTIONAL HASH ROUTER
     // ----------------------------------------------------
@@ -729,14 +737,33 @@ export default function App() {
 
     // Listen to window hash changes and run initial parse
     useEffect(() => {
+        const previousRestoration = window.history.scrollRestoration;
+        window.history.scrollRestoration = 'manual';
+        let previousPath = window.location.hash.split('?')[0] || '#/';
+        let scrollFrame = 0;
+
         const handleHashChange = () => {
             parseHashAndSetStates();
+            const hash = window.location.hash;
+            const path = hash.split('?')[0] || '#/';
+            if (path === previousPath) return;
+            previousPath = path;
+            cancelAnimationFrame(scrollFrame);
+
+            // Reader and rule links restore their own precise content position.
+            if (/^#\/novel\/\d+\/reader\/\d+$/.test(path) || /^#\/rules\?section=[1-9]\d*$/.test(hash)) return;
+            // Wait for the new page to commit before resetting the document scroll.
+            scrollFrame = requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }));
         };
 
         parseHashAndSetStates(); // Run initial routing checks on mount
 
         window.addEventListener('hashchange', handleHashChange);
-        return () => window.removeEventListener('hashchange', handleHashChange);
+        return () => {
+            window.removeEventListener('hashchange', handleHashChange);
+            cancelAnimationFrame(scrollFrame);
+            window.history.scrollRestoration = previousRestoration;
+        };
     }, [currentUser]);
 
     // Synchronize React States to URL Hash
@@ -2573,7 +2600,7 @@ export default function App() {
             )}
 
             {/* Main Content Layout */}
-            <main className={`app-content-container ${currentView === 'reader' ? '' : ['admin-dashboard', 'mod-dashboard'].includes(currentView) ? 'staff-content' : 'container'}`}>
+            <main className={`app-content-container ${currentView === 'reader' ? 'reader-content-container' : ['admin-dashboard', 'mod-dashboard'].includes(currentView) ? 'staff-content' : 'container'}`}>
                 <ErrorBoundary key={currentView}>
                 <Suspense fallback={<PageLoading reader={currentView === 'reader'} />}>
                 {novelsError && novels.length > 0 && <div className="inline-notice" role="alert">{novelsError} <button className="text-action" onClick={() => void fetchNovels(true)}>Thử lại</button></div>}
@@ -3264,7 +3291,7 @@ export default function App() {
                 </div>
             )}
 
-            {currentUser && currentView !== 'forum' && (
+            {currentUser && !['forum', 'reader'].includes(currentView) && (
                 <ChatWidget 
                     currentUser={currentUser} 
                     fetchWithAuth={fetchWithAuth} 
@@ -3273,7 +3300,7 @@ export default function App() {
             )}
 
             {/* Floating Back to Top Button (Monochrome Arrow) */}
-            {showBackToTop && (
+            {showBackToTop && currentView !== 'reader' && (
                 <button
                     className="back-to-top-btn"
                     onClick={scrollToTop}
