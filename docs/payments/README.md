@@ -13,6 +13,8 @@ Nhánh: `codex/payment-integration`. Checkpoint hiện tại: **DB02, 28/10/2026
 5. [Checklist merchant VNPAY Sandbox](VNPAY_SANDBOX_CHECKLIST.md).
 6. [Kế hoạch tổng thể](../PAYMENT_INTEGRATION_PLAN.md) và bộ Word trong `artifacts/payment-documents/`.
 
+Tài liệu triển khai hiện tại: [Word DB02 về migration số dư và opening balance](../../artifacts/payment-documents/11_DB02_Migration_so_du_va_opening_balance.docx). Báo cáo ngày mới nhất: [bản cập nhật sau DB02](../../artifacts/payment-reports/2026-10-28_Bao_cao_tien_do_thanh_toan_MugenBunko_DB02.docx). Các bản kế hoạch và báo cáo trước DB02 được giữ làm lịch sử.
+
 ## Các lệnh hiện chạy được
 
 ```powershell
