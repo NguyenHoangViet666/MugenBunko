@@ -1,8 +1,9 @@
-import mysql, { Pool, PoolConnection } from 'mysql2/promise';
+import mysql, { Pool, PoolConnection, type Connection } from 'mysql2/promise';
 import { readerSchema } from './readerSchema.js';
 import { electionSchema } from './electionSchema.js';
 import { initializeCommunityRules } from './communityRulesMigration.js';
 import { migrateEmailOtpSchema } from './otpSchemaMigration.js';
+import { assertPaymentSchemaReady, migratePaymentSchema } from './paymentSchemaMigration.js';
 import { production } from './config.js';
 import { invalidatePublicReads } from './utils/readCache.js';
 import { databaseMetrics } from './metrics.js';
@@ -41,6 +42,7 @@ export async function initializeDbConnection(options: { migrate?: boolean } = {}
         !Number.isSafeInteger(queueLimit) || queueLimit < 1 || queueLimit > 10000) throw new Error('Invalid database pool limits.');
     const openPool = () => mysql.createPool({ ...dbConfig, database, waitForConnections: true,
         connectionLimit, queueLimit, maxIdle: Math.min(5, connectionLimit), idleTimeout: 60000 });
+    let migrationConnection: Connection | undefined;
     try {
         if (!migrate) {
             if (!process.env.DB_USER || process.env.DB_USER === 'root') throw new Error('Production requires a restricted DB_USER.');
@@ -55,13 +57,15 @@ export async function initializeDbConnection(options: { migrate?: boolean } = {}
                 await pool.execute(`SELECT * FROM ${table} LIMIT 0`);
             }
             await pool.execute('SELECT action FROM election_audit LIMIT 0');
+            const schemaConnection = await pool.getConnection();
+            try { await assertPaymentSchemaReady(schemaConnection); }
+            finally { schemaConnection.release(); }
             return;
         }
         console.log(`Connecting to MySQL server at ${dbConfig.host}:${dbConfig.port}...`);
         const connection = await mysql.createConnection(dbConfig);
-        
-        await connection.query(`CREATE DATABASE IF NOT EXISTS \`${process.env.DB_NAME || 'mugenbunko'}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
-        await connection.end();
+        try { await connection.query(`CREATE DATABASE IF NOT EXISTS \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`); }
+        finally { await connection.end(); }
         console.log(`Database "${process.env.DB_NAME || 'mugenbunko'}" verified/created successfully.`);
 
         const connectionWithDb = await mysql.createConnection({
@@ -69,6 +73,7 @@ export async function initializeDbConnection(options: { migrate?: boolean } = {}
             database: process.env.DB_NAME || 'mugenbunko',
             multipleStatements: true
         });
+        migrationConnection = connectionWithDb;
 
         const [tables] = await connectionWithDb.query<any[]>(`SHOW TABLES LIKE 'users'`);
         if (tables.length === 0) {
@@ -358,16 +363,22 @@ export async function initializeDbConnection(options: { migrate?: boolean } = {}
         await connectionWithDb.query(electionSchema);
         await ensureIndexExists('election_candidates', 'idx_election_candidate_term', 'CREATE INDEX idx_election_candidate_term ON election_candidates (user_id, decision, ended_at, term_ends_at)');
         await ensureIndexExists('election_candidates', 'idx_election_term_expiry', 'CREATE INDEX idx_election_term_expiry ON election_candidates (decision, ended_at, term_ends_at, election_id)');
+        const payments = await migratePaymentSchema(connectionWithDb);
+        await assertPaymentSchemaReady(connectionWithDb);
+        if (payments.applied.length) console.log(`Payment schema migrated to version ${payments.currentVersion}; balances unchanged.`);
         await connectionWithDb.end();
+        migrationConnection = undefined;
 
         pool = openPool();
 
         console.log("MySQL connection pool established.");
     } catch (err: any) {
+        // Failed readiness must not leave a usable half-initialized pool.
+        if (pool) { await pool.end(); pool = null; }
         console.error("❌ MySQL connection failure! Please ensure MySQL is running locally and credentials in server/.env are correct.");
         console.error("Error details:", err.message);
         throw err;
-    }
+    } finally { await migrationConnection?.end(); }
 }
 
 export async function query<T = any>(sql: string, params?: any[]): Promise<T> {

@@ -1,6 +1,6 @@
 # Schema và contract chốt tại T01
 
-Ngày: **28/10/2026**. Định nghĩa có thể thực thi ở `server/paymentSchema.ts`; DTO và giới hạn ở `server/payments/contracts.ts`. Schema đã có fixture để kiểm tra, chưa được áp dụng lên database ứng dụng hoặc mount vào startup.
+Ngày: **28/10/2026**. Định nghĩa có thể thực thi ở `server/paymentSchema.ts`; DTO và giới hạn ở `server/payments/contracts.ts`. DB01 đã tích hợp schema vào migration và startup probe, có kiểm thử bằng fixture. Chưa chạy migration lên database ứng dụng đang dùng; xem [checkpoint DB01](DB01_STATUS.md).
 
 ## Quy tắc số liệu
 
@@ -29,6 +29,8 @@ Giá và hạn mức được giữ từ plan. Client gửi `packageCode`, `clie
 
 `wallet_entries.opening_user_id` là cột generated: trả `user_id` chỉ với opening, còn topup là NULL. Unique trên cột này bảo đảm một opening/user ngay cả khi key migration khác nhau. Không đưa cột này vào DTO.
 
+DB01 bổ sung bảng kỹ thuật `payment_schema_migrations` để lưu version, tên, checksum, trạng thái applying/applied và thời gian. Đây không phải bảng nghiệp vụ thứ sáu và không xuất qua API.
+
 FK `(payment_order_id, user_id)` trỏ tới unique `(payment_orders.id, payment_orders.user_id)` để một entry không thể gắn vào đơn của người khác. FK này không khai báo cascade; thao tác xóa bị chặn. Không thêm action CASCADE/SET NULL vào cột đang dùng trong CHECK. Xem [quy tắc CHECK của MySQL](https://dev.mysql.com/doc/refman/8.0/en/create-table-check-constraints.html).
 
 ## Trạng thái nhất quán
@@ -51,7 +53,7 @@ Schema không thể tự kiểm tra tổng ledger bằng `users.coins`, số xu 
 6. Seed/reset phải tách khỏi DB có lịch sử thanh toán. Mọi writer cũ cần chuyển trước khi bật checkout.
 7. Đối chiếu ledger từng user và tổng; tích hợp startup probe cho production không tự migrate.
 
-`CREATE TABLE IF NOT EXISTS` hiện tại chỉ bootstrap bảng, không nâng cấp cột/ràng buộc của bảng có sẵn. DB01 cần đường migration theo phiên bản và kiểm tra drift; T01 không quảng bá việc chạy lại DDL là đã hoàn thành migration.
+`CREATE TABLE IF NOT EXISTS` chỉ bootstrap bảng, không nâng cấp cột/ràng buộc của bảng có sẵn. DB01 đã bổ sung bản ghi version/checksum và đối chiếu metadata để ngăn việc nhận nhầm schema cũ. Migration v1 cố định DDL và seed; thay đổi tiếp theo cần một version mới, không sửa nội dung v1 đã phát hành. Đổi default/nullability của `users.coins` được gom với backfill và chuyển writer ở DB02 theo checkpoint T01, thay vì đổi độc lập trong lúc writer cũ vẫn tồn tại.
 
 ## Contract API để nối ở BE01 đến BE04
 

@@ -1,10 +1,7 @@
-import { PAYMENT_LIMITS } from './payments/contracts.js';
-
 /**
- * T01 executable schema contract, exercised ONLY in isolated payment fixtures.
- * Not mounted in db.ts yet: DB01/DB02 must first handle users.coins, existing
- * writers, opening balances, versioned upgrades and production readiness.
- * CREATE IF NOT EXISTS is a bootstrap, not an upgrade strategy.
+ * Immutable payment migration v1 (DB01). Change the schema in a NEW version.
+ * Literal limits deliberately do not follow mutable runtime configuration.
+ * users.coins and opening balances belong to the separate DB02 migration.
  */
 export const paymentSchema = `
 CREATE TABLE IF NOT EXISTS coin_packages (
@@ -17,10 +14,10 @@ CREATE TABLE IF NOT EXISTS coin_packages (
     sort_order INT NOT NULL DEFAULT 0,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    CONSTRAINT chk_coin_package_amount CHECK (amount_vnd BETWEEN 1 AND ${PAYMENT_LIMITS.maxAmountVnd}),
-    CONSTRAINT chk_coin_package_coins CHECK (coin_amount BETWEEN 1 AND ${PAYMENT_LIMITS.maxBalanceCoins}),
+    CONSTRAINT chk_coin_package_amount CHECK (amount_vnd BETWEEN 1 AND 500000),
+    CONSTRAINT chk_coin_package_coins CHECK (coin_amount BETWEEN 1 AND 2000000000),
     CONSTRAINT chk_coin_package_active CHECK (active IN (0, 1))
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS payment_orders (
     id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
@@ -64,8 +61,8 @@ CREATE TABLE IF NOT EXISTS payment_orders (
     CONSTRAINT chk_payment_provider CHECK (provider = 'vnpay'),
     CONSTRAINT chk_payment_environment CHECK (environment IN ('sandbox', 'live')),
     CONSTRAINT chk_payment_currency CHECK (currency = 'VND'),
-    CONSTRAINT chk_payment_amount CHECK (amount_vnd BETWEEN 1 AND ${PAYMENT_LIMITS.maxAmountVnd}),
-    CONSTRAINT chk_payment_coins CHECK (coin_amount BETWEEN 1 AND ${PAYMENT_LIMITS.maxBalanceCoins}),
+    CONSTRAINT chk_payment_amount CHECK (amount_vnd BETWEEN 1 AND 500000),
+    CONSTRAINT chk_payment_coins CHECK (coin_amount BETWEEN 1 AND 2000000000),
     CONSTRAINT chk_payment_status CHECK (status IN ('created','pending','paid','failed','cancelled','expired')),
     CONSTRAINT chk_payment_fulfillment CHECK (fulfillment_status IN ('pending','credited','needs_review')),
     CONSTRAINT chk_payment_state CHECK (
@@ -94,7 +91,7 @@ CREATE TABLE IF NOT EXISTS payment_orders (
         (lease_owner IS NULL AND lease_until IS NULL) OR
         (lease_owner IS NOT NULL AND lease_until IS NOT NULL)
     )
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS wallet_entries (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -116,14 +113,14 @@ CREATE TABLE IF NOT EXISTS wallet_entries (
     CONSTRAINT fk_wallet_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT,
     CONSTRAINT fk_wallet_order_owner FOREIGN KEY (payment_order_id, user_id)
         REFERENCES payment_orders(id, user_id),
-    CONSTRAINT chk_wallet_balance CHECK (balance_after BETWEEN 0 AND ${PAYMENT_LIMITS.maxBalanceCoins}),
+    CONSTRAINT chk_wallet_balance CHECK (balance_after BETWEEN 0 AND 2000000000),
     CONSTRAINT chk_wallet_entry CHECK (
         (entry_type = 'opening_balance' AND payment_order_id IS NULL AND migration_key IS NOT NULL
             AND CHAR_LENGTH(migration_key) > 0 AND delta_coins >= 0 AND balance_after = delta_coins) OR
         (entry_type = 'topup' AND payment_order_id IS NOT NULL AND migration_key IS NULL
             AND delta_coins > 0 AND balance_after >= delta_coins)
     )
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS payment_events (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -146,7 +143,7 @@ CREATE TABLE IF NOT EXISTS payment_events (
     CONSTRAINT chk_payment_event_source CHECK (source IN ('ipn','reconciliation','return')),
     CONSTRAINT chk_payment_event_fingerprint CHECK (CHAR_LENGTH(event_fingerprint) = 64),
     CONSTRAINT chk_payment_event_payload CHECK (safe_payload IS NULL OR JSON_TYPE(safe_payload) = 'OBJECT')
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS payment_audit (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -159,5 +156,5 @@ CREATE TABLE IF NOT EXISTS payment_audit (
     INDEX idx_payment_audit_order (order_id, created_at, id),
     CONSTRAINT fk_payment_audit_order FOREIGN KEY (order_id) REFERENCES payment_orders(id) ON DELETE RESTRICT,
     CONSTRAINT fk_payment_audit_actor FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE SET NULL
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 `;

@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { localDatabaseOptions, readLocalEnvironment, workspaceRoot } from '../payments/localDatabase.js';
 
-export async function createPaymentFixture() {
+export async function createPaymentFixture(settings: { bootstrap?: boolean } = {}) {
     const options = localDatabaseOptions(readLocalEnvironment(), 'test');
     const database = `mugenbunko_payment_test_${randomBytes(8).toString('hex')}`;
     const admin = await mysql.createConnection(options);
@@ -30,6 +30,7 @@ export async function createPaymentFixture() {
         owned = true;
         connection = await mysql.createConnection({ ...options, database, multipleStatements: true });
         await connection.query("SET time_zone = '+00:00'");
+        if (settings.bootstrap === false) return { database, connection, options, close };
         const rawSchema = fs.readFileSync(path.join(workspaceRoot, 'server/schema.sql'), 'utf8');
         const marker = '-- Disable constraints';
         if (!rawSchema.includes(marker)) throw new Error('Schema seed boundary not found.');
@@ -39,6 +40,6 @@ export async function createPaymentFixture() {
             throw new Error('Payment fixture bootstrap must contain table definitions only.');
         }
         await connection.query(schema);
-        return { database, connection, close };
+        return { database, connection, options, close };
     } catch (error) { await close(); throw error; }
 }

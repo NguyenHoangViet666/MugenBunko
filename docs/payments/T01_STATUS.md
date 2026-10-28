@@ -1,5 +1,7 @@
 # Checkpoint T01 ngày 28 tháng 10 năm 2026
 
+> Bản ghi lịch sử lúc kết thúc T01. Phần tích hợp schema/startup đã được triển khai tiếp ở [DB01](DB01_STATUS.md).
+
 Nhánh: `codex/payment-integration`. Baseline tài liệu đã được lưu ở commit `bde6fa2` trước khi bắt đầu công việc này.
 
 ## Đầu ra đã chuẩn bị

@@ -94,7 +94,7 @@ Backend là một ứng dụng Express chia theo module nghiệp vụ. Khi build
 | Web | React 19.2, Vite 8, TypeScript 6, CSS thuần |
 | Mobile | Expo SDK 57, React Native 0.86, Expo Router, TypeScript 6 |
 | Backend | Node.js 24, Express 4, TypeScript 5, `tsx` |
-| Cơ sở dữ liệu | MySQL 8.x, `mysql2/promise`, connection pool; Compose dùng MySQL 8.4 |
+| Cơ sở dữ liệu | MySQL 8.4+, `mysql2/promise`, connection pool; Compose dùng MySQL 8.4 |
 | Xác thực | JWT, bcrypt, cookie HttpOnly trên web; SecureStore trên native |
 | Thời gian thực | Socket.IO 4.8 |
 | Email và ảnh | Nodemailer qua SMTP; Cloudinary hoặc thư mục upload cục bộ |
@@ -106,7 +106,7 @@ Web điều hướng bằng URL hash trong `src/App.tsx` (ví dụ `#/login`), c
 
 ### Yêu cầu
 
-- Node.js **24.x**, npm và MySQL **8.0 trở lên** đang chạy.
+- Node.js **24.x**, npm và MySQL **8.4 trở lên** đang chạy (yêu cầu của schema thanh toán trên nhánh này).
 - Tài khoản MySQL development có quyền tạo database/bảng và cập nhật schema. Các bộ kiểm thử API cần thêm quyền tạo/xóa database thử nghiệm.
 - Mobile: thiết bị hoặc emulator phù hợp; build native Android cần Android SDK, build iOS cần macOS/Xcode. Expo Go chỉ dùng khi tương thích SDK và các module của dự án.
 
@@ -284,7 +284,7 @@ Build Vite không thay thế kiểm tra TypeScript. Các bộ kiểm thử có s
 
 Kiểm thử integration/browser đọc cấu hình kết nối MySQL từ `server/.env`, dùng database tạm `mugenbunko_test_*` và tự dọn sau khi chạy; SMTP được tắt trong fixture, không gửi email thật. Tài khoản DB test cần quyền tạo/xóa database. Trình duyệt mặc định là Edge headless trên Windows; đặt `UPGRADE_BROWSER_PATH` để dùng executable Chromium khác. Ảnh kiểm tra được lưu dưới `artifacts/` và các thư mục ảnh sinh tự động đã được Git bỏ qua.
 
-Phần thanh toán đang ở checkpoint T01: có contract/schema thử nghiệm, fixture riêng `mugenbunko_payment_test_*` và công cụ kiểm kê số dư chỉ đọc. Chạy `npm --prefix server run test:payments:foundation` hoặc `npm --prefix server run payments:preflight`; xem [hướng dẫn và trạng thái thanh toán](docs/payments/README.md). Các công cụ này chưa bật checkout hoặc áp dụng migration thanh toán lên database ứng dụng.
+Phần thanh toán đang ở checkpoint DB01: có schema v1, migration theo version/checksum, probe schema khi startup production và fixture riêng `mugenbunko_payment_test_*`. Chạy `npm --prefix server run test:payments:foundation`, `test:payments:migration` hoặc `payments:preflight`; xem [hướng dẫn và trạng thái thanh toán](docs/payments/README.md). Startup local có migration và `migrate:production` nay tạo bảng thanh toán; production startup chỉ kiểm tra và dừng nếu thiếu/sai schema. Chưa có checkout hoặc backfill số dư.
 
 Mobile có các lệnh đóng gói riêng: `npm --prefix mobile run export:web`, `export:android`, `export:ios`. Kết quả là bundle JavaScript; APK/IPA ký phát hành cần quy trình build native. Kiểm thử trình duyệt không thay thế kiểm tra Android/iOS thật.
 
