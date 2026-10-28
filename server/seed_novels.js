@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
+import { acquireDemoWriteGuard } from './paymentResetGuard.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -246,6 +247,7 @@ async function main() {
     const connection = await mysql.createConnection(dbConfig);
 
     try {
+        await acquireDemoWriteGuard(connection);
         // Clear old novels, user_roles, chapters, comments, reviews, tags, users except admin
         console.log("Cleaning up database...");
         await connection.query("SET FOREIGN_KEY_CHECKS = 0");

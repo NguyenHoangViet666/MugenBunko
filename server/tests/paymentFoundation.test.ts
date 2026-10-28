@@ -15,7 +15,7 @@ describe('Payment T01 schema and isolated migration environment', () => {
     let fixture: Awaited<ReturnType<typeof createPaymentFixture>>;
     let packageId: number;
     before(async () => {
-        fixture = await createPaymentFixture();
+        fixture = await createPaymentFixture({ legacyCoins: true });
         await fixture.connection.query(`INSERT INTO users (id,username,password,displayname,coins) VALUES
             (2,'payment_reader','fixture-only','Payment reader',0),
             (3,'payment_other','fixture-only','Payment other',1250)`);

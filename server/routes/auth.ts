@@ -16,6 +16,7 @@ import { registrationOtpEmail } from '../emails/registrationOtp.js';
 import { clearSessionCookie, revokeSession, setSessionCookie } from '../utils/sessions.js';
 import { validPassword } from '../utils/passwordPolicy.js';
 import passwordRoutes from './passwords.js';
+import { recordNewUserOpening } from '../payments/walletOpening.js';
 
 const router = Router();
 router.use((_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
@@ -103,6 +104,7 @@ router.post('/register', async (req, res) => {
         const userId = await db.transaction(async connection => {
             const [insert] = await connection.execute<any>(`INSERT INTO users (username, password, displayname, email, coins, avatar_seed, author_request)
                 VALUES (?, ?, ?, ?, 0, ?, ?)`, [username, passwordHash, displayname.trim(), email || null, username, req.body.role === 'author' ? 'pending' : null]);
+            await recordNewUserOpening(connection, insert.insertId);
             await connection.execute("INSERT INTO user_roles (user_id, role) VALUES (?, 'reader')", [insert.insertId]);
             await connection.execute("INSERT INTO notifications (user_id, text) VALUES (?, 'Chào mừng bạn đến MugenBunko!')", [insert.insertId]);
             return insert.insertId;

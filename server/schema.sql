@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `username` VARCHAR(50) UNIQUE NOT NULL,
     `password` VARCHAR(255) NOT NULL, -- Store plain text for test / hashed for prod
     `displayname` VARCHAR(100) NOT NULL,
-    `coins` INT DEFAULT 1000,
+    `coins` INT NOT NULL DEFAULT 0,
     `level` INT DEFAULT 1,
     `xp` INT DEFAULT 0,
     `bio` TEXT NULL,
@@ -238,50 +238,6 @@ CREATE TABLE IF NOT EXISTS `deleted_novels` (
     `deleted_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- ========================================================
--- SEED DATA: Exactly One Admin account named "Nguyễn Hoàng Việt"
--- ========================================================
-
--- Disable constraints temporarily to guarantee clean insert
-SET FOREIGN_KEY_CHECKS = 0;
-TRUNCATE TABLE `read_cooldowns`;
-TRUNCATE TABLE `forum_post_likes`;
-TRUNCATE TABLE `messages`;
-TRUNCATE TABLE `friends`;
-TRUNCATE TABLE `forum_comments`;
-TRUNCATE TABLE `forum_posts`;
-TRUNCATE TABLE `notifications`;
-TRUNCATE TABLE `announcements`;
-TRUNCATE TABLE `events`;
-TRUNCATE TABLE `reports`;
-TRUNCATE TABLE `reviews`;
-TRUNCATE TABLE `comments`;
-TRUNCATE TABLE `follows`;
-TRUNCATE TABLE `bookmarks`;
-TRUNCATE TABLE `chapters`;
-TRUNCATE TABLE `novel_tags`;
-TRUNCATE TABLE `novels`;
-TRUNCATE TABLE `user_roles`;
-TRUNCATE TABLE `users`;
-TRUNCATE TABLE `genres`;
-SET FOREIGN_KEY_CHECKS = 1;
-
--- Seed default genres
-INSERT INTO `genres` (`name`) VALUES 
-('Isekai'), 
-('Fantasy'), 
-('Romance'), 
-('Sci-Fi'), 
-('Slice of Life');
-
--- Seed Single Admin account (ID: 1)
-INSERT INTO `users` (`id`, `username`, `password`, `displayname`, `coins`, `level`, `xp`, `bio`, `avatar_seed`, `status`) 
-VALUES (1, 'MugenBunko', '$2b$10$lejcU/gpgZ7KjK9ZLBac4etcyiaTCWowsOrN9Pt/qvEsipLAlx/Sq', 'Nguyễn Hoàng Việt', 1000, 1, 0, 'Nhà sáng lập tối cao của thư viện điện tử MugenBunko.', 'adminUser', 'active');
-
--- Add roles for the admin user (Inherits reader and admin)
-INSERT INTO `user_roles` (`user_id`, `role`) VALUES (1, 'reader');
-INSERT INTO `user_roles` (`user_id`, `role`) VALUES (1, 'admin');
-
-
-
-
+-- Disable constraints boundary retained for old bootstrap readers.
+-- This file contains table definitions only. Destructive resets and sample
+-- accounts are deliberately excluded. Use create:admin for a real administrator.

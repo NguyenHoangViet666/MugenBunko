@@ -17,7 +17,8 @@
     "test:elections": "npm run build && node --test dist/tests/elections.test.js",
     "payments:preflight": "npm run build && node dist/payments/preflight.js",
     "test:payments:foundation": "npm run build && node --test dist/tests/paymentFoundation.test.js",
-    "test:payments:migration": "npm run build && node --test dist/tests/paymentMigration.test.js"
+    "test:payments:migration": "npm run build && node --test dist/tests/paymentMigration.test.js dist/tests/paymentBalanceMigration.test.js",
+    "test:payments:opening": "npm run build && node --test dist/tests/paymentOpening.test.js"
   },
   "dependencies": {
     "@socket.io/redis-adapter": "^8.3.0",

@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs';
 import mysql, { type Connection } from 'mysql2/promise';
 import nodemailer from 'nodemailer';
 import { io as connectSocket } from 'socket.io-client';
-import { startFixture } from './fixture.js';
+import { startFixture, seedFixtureUser } from './fixture.js';
 import { issueOtp, verifyOtp } from '../utils/otp.js';
 import { JWT_SECRET } from '../config.js';
 
@@ -27,8 +27,8 @@ describe('Password recovery and authenticated password changes', () => {
             user: process.env.DB_USER || 'root', password: process.env.DB_PASSWORD || '', database: process.env.DB_NAME });
         const hash = await bcrypt.hash(initialPassword, 12);
         for (const id of [10, 11, 12, 13, 14, 15, 16, 17, 18]) {
-            await fixture.db.query("INSERT INTO users (id, username, displayname, password, email, status) VALUES (?, ?, 'Độc giả kiểm tra mật khẩu', ?, ?, ?)",
-                [id, `password_reader_${id}`, hash, id === 12 ? null : `password-${id}@example.test`, id === 13 ? 'suspended' : 'active']);
+            await seedFixtureUser(fixture.db, "INSERT INTO users (id, username, displayname, password, email, status, coins) VALUES (?, ?, 'Độc giả kiểm tra mật khẩu', ?, ?, ?, 0)",
+                [id, `password_reader_${id}`, hash, id === 12 ? null : `password-${id}@example.test`, id === 13 ? 'suspended' : 'active'], id);
             await fixture.db.query("INSERT INTO user_roles (user_id, role) VALUES (?, 'reader')", [id]);
         }
     });

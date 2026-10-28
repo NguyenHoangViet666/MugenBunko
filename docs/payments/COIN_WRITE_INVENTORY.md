@@ -1,5 +1,7 @@
 # Kiểm kê đường ghi xu
 
+> Inventory baseline T01. Trạng thái xử lý hiện tại xem [DB02](DB02_STATUS.md): schema.sql đã bỏ reset/admin mẫu; đăng ký/admin và fixture đã dùng opening; seed/reset bị chặn sau khi v2 bắt đầu hoặc có lịch sử thanh toán.
+
 Ngày khảo sát: **28/10/2026**, bắt đầu từ baseline `bde6fa2`. Phạm vi: SQL, route, CLI, seed và fixture trong repo; chưa bao gồm job hoặc câu SQL do người vận hành chạy ngoài repo.
 
 ## Đường ghi trực tiếp và ngầm

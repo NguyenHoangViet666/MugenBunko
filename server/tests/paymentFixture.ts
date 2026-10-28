@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { localDatabaseOptions, readLocalEnvironment, workspaceRoot } from '../payments/localDatabase.js';
 
-export async function createPaymentFixture(settings: { bootstrap?: boolean } = {}) {
+export async function createPaymentFixture(settings: { bootstrap?: boolean; legacyCoins?: boolean } = {}) {
     const options = localDatabaseOptions(readLocalEnvironment(), 'test');
     const database = `mugenbunko_payment_test_${randomBytes(8).toString('hex')}`;
     const admin = await mysql.createConnection(options);
@@ -40,6 +40,7 @@ export async function createPaymentFixture(settings: { bootstrap?: boolean } = {
             throw new Error('Payment fixture bootstrap must contain table definitions only.');
         }
         await connection.query(schema);
+        if (settings.legacyCoins) await connection.query('ALTER TABLE users MODIFY coins INT NULL DEFAULT 1000');
         return { database, connection, options, close };
     } catch (error) { await close(); throw error; }
 }

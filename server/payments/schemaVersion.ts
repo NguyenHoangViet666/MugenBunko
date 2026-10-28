@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { paymentSchema } from '../paymentSchema.js';
 
-export const PAYMENT_SCHEMA_VERSION = 1;
+export const PAYMENT_SCHEMA_VERSION = 2;
 export const PAYMENT_MIGRATION_NAME = 'initial_payment_tables';
 // Immutable v1 seed: subsequent price/catalog changes must not rewrite v1.
 export const PAYMENT_V1_PACKAGES = [

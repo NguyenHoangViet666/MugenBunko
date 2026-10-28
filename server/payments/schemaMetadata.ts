@@ -1,7 +1,7 @@
 import type { Connection, RowDataPacket } from 'mysql2/promise';
 
 export const PAYMENT_TABLES = [
-    'coin_packages', 'payment_orders', 'wallet_entries', 'payment_events', 'payment_audit', 'payment_schema_migrations',
+    'coin_packages', 'payment_orders', 'wallet_entries', 'payment_events', 'payment_audit', 'payment_schema_migrations', 'payment_balance_migration',
 ] as const;
 
 type Cell = string | number | null;

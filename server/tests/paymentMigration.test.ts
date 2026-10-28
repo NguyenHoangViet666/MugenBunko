@@ -6,7 +6,7 @@ import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { paymentSchema } from '../paymentSchema.js';
-import { assertPaymentSchemaReady, migratePaymentSchema, paymentMigrationLockName } from '../paymentSchemaMigration.js';
+import { assertPaymentSchemaReady as assertLatestSchemaReady, migratePaymentSchema as migrateLatestSchema, paymentMigrationLockName } from '../paymentSchemaMigration.js';
 import {
     PAYMENT_MIGRATION_CHECKSUM, PAYMENT_MIGRATION_NAME, paymentMigrationTableSchema,
 } from '../payments/schemaVersion.js';
@@ -14,9 +14,13 @@ import { inspectCoinBalances } from '../payments/preflight.js';
 import { createPaymentFixture } from './paymentFixture.js';
 
 type Fixture = Awaited<ReturnType<typeof createPaymentFixture>>;
+// Keep DB01 regression coverage on immutable v1; production always uses latest.
+const assertPaymentSchemaReady = (connection: Fixture['connection']) => assertLatestSchemaReady(connection, 1);
+const migratePaymentSchema = (connection: Fixture['connection'], options: { lockTimeoutSeconds?: number } = {}) =>
+    migrateLatestSchema(connection, { ...options, targetVersion: 1 });
 const code = (expected: string) => (error: unknown) => (error as { code?: string }).code === expected;
 const withDatabase = async (work: (fixture: Fixture) => Promise<void>, bootstrap = true) => {
-    const fixture = await createPaymentFixture({ bootstrap });
+    const fixture = await createPaymentFixture({ bootstrap, legacyCoins: true });
     try { await work(fixture); } finally { await fixture.close(); }
 };
 const history = async (fixture: Fixture) => (await fixture.connection.query<RowDataPacket[]>(
@@ -188,7 +192,7 @@ describe('Payment DB01 versioned migration and startup', () => {
         const result = await startup(fixture, 'migrate');
         assert.equal(result.exitCode, 0, result.stderr);
         assert.match(result.stdout, /"paymentStartup":"ready"/);
-        await assertPaymentSchemaReady(fixture.connection);
+        await assertLatestSchemaReady(fixture.connection);
         const [users] = await fixture.connection.query<RowDataPacket[]>('SELECT COUNT(*) AS count FROM users');
         assert.equal(Number(users[0].count), 0, 'bootstrap must not load sample admin or seed users');
 

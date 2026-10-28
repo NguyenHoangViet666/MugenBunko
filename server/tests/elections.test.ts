@@ -1,6 +1,6 @@
 import { before, after, describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { startFixture } from "./fixture.js";
+import { startFixture, seedFixtureUser } from "./fixture.js";
 import { expireElectionTerms } from "../routes/elections.js";
 
 describe("Moderator elections: policy, ballots, decisions and tenure", () => {
@@ -116,9 +116,9 @@ describe("Moderator elections: policy, ballots, decisions and tenure", () => {
       [13, "election_other"],
       [14, "election_noemail"],
     ] as const) {
-      await f.db.query(
-        "INSERT INTO users (id,username,password,displayname,email,date_joined) VALUES (?,?,'test-only',?,?,CURRENT_TIMESTAMP - INTERVAL 60 DAY)",
-        [uid, name, name, uid === 14 ? null : name + "@example.test"],
+      await seedFixtureUser(f.db,
+        "INSERT INTO users (id,username,password,displayname,email,date_joined,coins) VALUES (?,?,'test-only',?,?,CURRENT_TIMESTAMP - INTERVAL 60 DAY,0)",
+        [uid, name, name, uid === 14 ? null : name + "@example.test"], uid,
       );
       await f.db.query("INSERT INTO user_roles (user_id,role) VALUES (?,?)", [
         uid,

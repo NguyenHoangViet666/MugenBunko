@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
+import { acquireDemoWriteGuard } from './paymentResetGuard.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -622,6 +623,7 @@ async function seedForum50() {
     const connection = await mysql.createConnection(dbConfig);
 
     try {
+        await acquireDemoWriteGuard(connection);
         const defaultPasswordHash = await bcrypt.hash('password123', 10);
         const userIds = [];
 

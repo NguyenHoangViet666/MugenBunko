@@ -2,6 +2,7 @@ import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { acquireDemoWriteGuard } from './paymentResetGuard.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,9 +20,16 @@ async function main() {
     console.log(`Connecting to MySQL to drop database...`);
     const connection = await mysql.createConnection(dbConfig);
     const dbName = process.env.DB_NAME || 'mugenbunko';
-    await connection.query(`DROP DATABASE IF EXISTS \`${dbName}\`;`);
+    if (!/^[a-zA-Z0-9_]{1,64}$/.test(dbName)) throw new Error('Invalid DB_NAME.');
+    try {
+        const [databases] = await connection.query('SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME=?', [dbName]);
+        if (databases.length) {
+            await connection.query(`USE \`${dbName}\``);
+            await acquireDemoWriteGuard(connection);
+            await connection.query(`DROP DATABASE \`${dbName}\``);
+        }
+    } finally { await connection.end(); }
     console.log(`Database "${dbName}" dropped successfully.`);
-    await connection.end();
     process.exit(0);
 }
 

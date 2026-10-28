@@ -1,5 +1,7 @@
 # Checkpoint DB01 ngày 28 tháng 10 năm 2026
 
+> Bản ghi lịch sử trước DB02. Migration dữ liệu và writer đã được triển khai tiếp ở [DB02](DB02_STATUS.md).
+
 Nhánh: `codex/payment-integration`. Bắt đầu từ checkpoint T01 `a18b0c4`.
 
 ## Kết quả triển khai

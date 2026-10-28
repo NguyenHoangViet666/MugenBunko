@@ -31,7 +31,7 @@ const dbConfig = {
 
 let pool: Pool | null = null;
 
-export async function initializeDbConnection(options: { migrate?: boolean } = {}): Promise<void> {
+export async function initializeDbConnection(options: { migrate?: boolean; allowBalanceMigration?: boolean } = {}): Promise<void> {
     invalidatePublicReads();
     const database = process.env.DB_NAME || 'mugenbunko';
     if (!/^[a-zA-Z0-9_]{1,64}$/.test(database)) throw new Error('Invalid DB_NAME');
@@ -363,7 +363,7 @@ export async function initializeDbConnection(options: { migrate?: boolean } = {}
         await connectionWithDb.query(electionSchema);
         await ensureIndexExists('election_candidates', 'idx_election_candidate_term', 'CREATE INDEX idx_election_candidate_term ON election_candidates (user_id, decision, ended_at, term_ends_at)');
         await ensureIndexExists('election_candidates', 'idx_election_term_expiry', 'CREATE INDEX idx_election_term_expiry ON election_candidates (decision, ended_at, term_ends_at, election_id)');
-        const payments = await migratePaymentSchema(connectionWithDb);
+        const payments = await migratePaymentSchema(connectionWithDb, { allowBalanceMigration: options.allowBalanceMigration ?? false });
         await assertPaymentSchemaReady(connectionWithDb);
         if (payments.applied.length) console.log(`Payment schema migrated to version ${payments.currentVersion}; balances unchanged.`);
         await connectionWithDb.end();

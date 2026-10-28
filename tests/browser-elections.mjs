@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { spawn } from "node:child_process";
-import { startFixture } from "../server/dist/tests/fixture.js";
+import { startFixture, seedFixtureUser } from "../server/dist/tests/fixture.js";
 
 const mobile = process.argv.includes("--mobile");
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -179,9 +179,9 @@ try {
     [11, "election_voter", "Cử tri cộng đồng", "reader"],
     [12, "election_mod", "Hội đồng mod", "moderator"],
   ]) {
-    await fixture.db.query(
-      "INSERT INTO users (id,username,password,displayname,email,date_joined) VALUES (?,?,'test-only',?,?,CURRENT_TIMESTAMP-INTERVAL 60 DAY)",
-      [id, username, name, username + "@example.test"],
+    await seedFixtureUser(fixture.db,
+      "INSERT INTO users (id,username,password,displayname,email,date_joined,coins) VALUES (?,?,'test-only',?,?,CURRENT_TIMESTAMP-INTERVAL 60 DAY,0)",
+      [id, username, name, username + "@example.test"], id,
     );
     await fixture.db.query(
       "INSERT INTO user_roles (user_id,role) VALUES (?,?)",

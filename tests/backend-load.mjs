@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
-import { startFixture } from '../server/dist/tests/fixture.js';
+import { startFixture, seedFixtureUser } from '../server/dist/tests/fixture.js';
 
 // This runner only targets its own disposable database and loopback HTTP server.
 const levels = (process.env.LOAD_CONCURRENCY || '10,50,100').split(',').map(Number);
@@ -10,7 +10,7 @@ if (levels.some(n => !Number.isSafeInteger(n) || n < 1 || n > 200) || !Number.is
 const fixture = await startFixture();
 try {
     for (let index = 0; index < Math.max(...levels); index++) {
-        await fixture.db.query("INSERT INTO users (id,username,password,displayname,status) VALUES (?,?,'load-test-only',?,'active')", [20 + index, 'load_reader_' + index, 'Load reader ' + index]);
+        await seedFixtureUser(fixture.db, "INSERT INTO users (id,username,password,displayname,status,coins) VALUES (?,?,'load-test-only',?,'active',0)", [20 + index, 'load_reader_' + index, 'Load reader ' + index], 20 + index);
         await fixture.db.query("INSERT INTO user_roles (user_id,role) VALUES (?,'reader')", [20 + index]);
     }
     for (let index = 0; index < 100; index++) {

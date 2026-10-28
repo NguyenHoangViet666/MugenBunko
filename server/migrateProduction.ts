@@ -1,6 +1,6 @@
 import db from './db.js';
 try {
-    await db.initializeDbConnection({ migrate: true });
+    await db.initializeDbConnection({ migrate: true, allowBalanceMigration: true });
     const appUser = process.env.DB_APP_USER;
     const database = process.env.DB_NAME || 'mugenbunko';
     if (appUser) {

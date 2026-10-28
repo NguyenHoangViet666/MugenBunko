@@ -8,6 +8,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes } from 'node:crypto';
+import { recordNewUserOpening } from '../payments/walletOpening.js';
+
+export async function seedFixtureUser(db: typeof import('../db.js').default, sql: string, params: any[], userId?: number) {
+    return db.transaction(async connection => {
+        const [insert] = await connection.execute<any>(sql, params);
+        const id = userId ?? insert.insertId;
+        await recordNewUserOpening(connection, id);
+        return id;
+    });
+}
 
 export async function startFixture(options: { webRoot?: string; legacyOtpSchema?: boolean } = {}) {
     const base = fileURLToPath(new URL('../../', import.meta.url));
@@ -40,11 +50,13 @@ export async function startFixture(options: { webRoot?: string; legacyOtpSchema?
     }
     const { default: db } = await import('../db.js');
     const { JWT_SECRET } = await import('../config.js');
-    await db.initializeDbConnection();
-    await db.query(`INSERT INTO users (id, username, password, displayname, xp, status) VALUES
-        (2, 'upgrade_reader', 'test-only', 'Độc giả thử nghiệm', 0, 'active'),
-        (3, 'upgrade_other', 'test-only', 'Độc giả khác', 0, 'active')`);
-    await db.query("INSERT INTO user_roles (user_id, role) VALUES (2, 'reader'), (2, 'author'), (3, 'reader')");
+    // Fixture accounts exist before backfill; they are never production seeds.
+    await admin.query(`INSERT INTO users (id,username,password,displayname,coins,xp,status) VALUES
+        (1,'fixture_admin','test-only','Quản trị thử nghiệm',0,0,'active'),
+        (2,'upgrade_reader','test-only','Độc giả thử nghiệm',0,0,'active'),
+        (3,'upgrade_other','test-only','Độc giả khác',0,0,'active')`);
+    await admin.query("INSERT INTO user_roles (user_id,role) VALUES (1,'reader'),(1,'admin'),(2,'reader'),(2,'author'),(3,'reader')");
+    await db.initializeDbConnection({ allowBalanceMigration: true });
     await db.query(`INSERT INTO novels (id, title, author_id, genre, summary, status, type, \`reads\`) VALUES
         (1, 'Những ngày dưới tán anh đào', 2, 'Fantasy', 'Một câu chuyện dành cho những buổi chiều yên tĩnh. Hành trình tìm về thư viện vô tận và những ký ức đã đánh rơi.', 'ongoing', 'series', 42),
         (2, 'Bản thảo riêng tư', 3, 'Fantasy', 'Một bản thảo chưa xuất bản.', 'ongoing', 'series', 0)`);

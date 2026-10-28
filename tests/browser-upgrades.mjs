@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
-import { startFixture } from '../server/dist/tests/fixture.js';
+import { startFixture, seedFixtureUser } from '../server/dist/tests/fixture.js';
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function until(work, message, timeout = 20000) {
@@ -236,7 +236,7 @@ try {
 
     // Shared staff scenarios use only the isolated fixture database.
     for (let i = 0; i < 12; i++) {
-        await fixture.db.query("INSERT INTO users (username, password, displayname, status) VALUES (?, 'test-only', ?, 'active')", [`admin_smoke_${i}`, `Thành viên thử nghiệm ${i + 1}`]);
+        await seedFixtureUser(fixture.db, "INSERT INTO users (username, password, displayname, status, coins) VALUES (?, 'test-only', ?, 'active', 0)", [`admin_smoke_${i}`, `Thành viên thử nghiệm ${i + 1}`]);
     }
     await fixture.db.query("INSERT INTO user_roles (user_id, role) SELECT id, 'reader' FROM users WHERE username LIKE 'admin_smoke_%'");
 

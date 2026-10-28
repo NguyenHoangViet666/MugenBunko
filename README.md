@@ -148,7 +148,7 @@ npm run dev
 - API: `http://localhost:5000/api`.
 - Kiểm tra kết nối backend/database: `http://localhost:5000/healthz`.
 
-Backend development tự tạo database/schema còn thiếu và chạy các migration bổ sung. **Không cần import `server/schema.sql` để khởi động một database mới.** File SQL có phần seed/reset dành cho development/test; import toàn bộ có thể xóa dữ liệu hiện có. Khởi tạo tự động không tạo tài khoản admin hay dữ liệu truyện mẫu.
+Backend development tự tạo database/schema còn thiếu và chạy các migration bổ sung. **Không cần import `server/schema.sql` để khởi động một database mới.** File SQL hiện chỉ chứa DDL, không reset hoặc tạo admin mẫu. Với database đã có user, DB02 yêu cầu chạy migration tường minh sau backup/restore rehearsal; mở API không tự backfill số dư. Tạo admin bằng `create:admin` sau khi migration hoàn tất.
 
 Web mặc định gọi `http://localhost:5000/api` khi development và `/api` khi build. Nếu đổi API, đặt `VITE_API_BASE` trong `.env` ở thư mục gốc rồi khởi động lại Vite/build lại web. Chỉ đưa cấu hình công khai vào biến `VITE_*`.
 
@@ -284,7 +284,7 @@ Build Vite không thay thế kiểm tra TypeScript. Các bộ kiểm thử có s
 
 Kiểm thử integration/browser đọc cấu hình kết nối MySQL từ `server/.env`, dùng database tạm `mugenbunko_test_*` và tự dọn sau khi chạy; SMTP được tắt trong fixture, không gửi email thật. Tài khoản DB test cần quyền tạo/xóa database. Trình duyệt mặc định là Edge headless trên Windows; đặt `UPGRADE_BROWSER_PATH` để dùng executable Chromium khác. Ảnh kiểm tra được lưu dưới `artifacts/` và các thư mục ảnh sinh tự động đã được Git bỏ qua.
 
-Phần thanh toán đang ở checkpoint DB01: có schema v1, migration theo version/checksum, probe schema khi startup production và fixture riêng `mugenbunko_payment_test_*`. Chạy `npm --prefix server run test:payments:foundation`, `test:payments:migration` hoặc `payments:preflight`; xem [hướng dẫn và trạng thái thanh toán](docs/payments/README.md). Startup local có migration và `migrate:production` nay tạo bảng thanh toán; production startup chỉ kiểm tra và dừng nếu thiếu/sai schema. Chưa có checkout hoặc backfill số dư.
+Phần thanh toán đang ở checkpoint DB02: schema v2 giữ số dư cũ, backfill opening theo batch và chuyển đăng ký/admin sang ghi ledger cùng transaction. Chạy `npm --prefix server run test:payments:foundation`, `test:payments:migration`, `test:payments:opening` hoặc `payments:preflight`; xem [hướng dẫn và trạng thái thanh toán](docs/payments/README.md). `migrate:production` là đường chuyển dữ liệu tường minh cho database có user; production startup chỉ probe schema. Seed/reset cũ bị chặn khi có lịch sử thanh toán hoặc v2 đã bắt đầu. Chưa có checkout.
 
 Mobile có các lệnh đóng gói riêng: `npm --prefix mobile run export:web`, `export:android`, `export:ios`. Kết quả là bundle JavaScript; APK/IPA ký phát hành cần quy trình build native. Kiểm thử trình duyệt không thay thế kiểm tra Android/iOS thật.
 

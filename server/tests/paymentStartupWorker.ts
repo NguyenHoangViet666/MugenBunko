@@ -1,9 +1,9 @@
 /** Subprocess used by paymentMigration.test.ts with an owned random database. */
 import db from '../db.js';
 
-if (!['migrate', 'probe'].includes(process.argv[2])) throw new Error('Expected migrate or probe.');
+if (!['migrate', 'migrate-balances', 'probe'].includes(process.argv[2])) throw new Error('Expected migrate, migrate-balances or probe.');
 try {
-    await db.initializeDbConnection({ migrate: process.argv[2] === 'migrate' });
+    await db.initializeDbConnection({ migrate: process.argv[2] !== 'probe', allowBalanceMigration: process.argv[2] === 'migrate-balances' });
     console.log(JSON.stringify({ paymentStartup: 'ready' }));
 } catch (error) {
     let poolClosed = false;
