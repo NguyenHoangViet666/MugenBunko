@@ -284,6 +284,8 @@ Build Vite không thay thế kiểm tra TypeScript. Các bộ kiểm thử có s
 
 Kiểm thử integration/browser đọc cấu hình kết nối MySQL từ `server/.env`, dùng database tạm `mugenbunko_test_*` và tự dọn sau khi chạy; SMTP được tắt trong fixture, không gửi email thật. Tài khoản DB test cần quyền tạo/xóa database. Trình duyệt mặc định là Edge headless trên Windows; đặt `UPGRADE_BROWSER_PATH` để dùng executable Chromium khác. Ảnh kiểm tra được lưu dưới `artifacts/` và các thư mục ảnh sinh tự động đã được Git bỏ qua.
 
+Phần thanh toán đang ở checkpoint T01: có contract/schema thử nghiệm, fixture riêng `mugenbunko_payment_test_*` và công cụ kiểm kê số dư chỉ đọc. Chạy `npm --prefix server run test:payments:foundation` hoặc `npm --prefix server run payments:preflight`; xem [hướng dẫn và trạng thái thanh toán](docs/payments/README.md). Các công cụ này chưa bật checkout hoặc áp dụng migration thanh toán lên database ứng dụng.
+
 Mobile có các lệnh đóng gói riêng: `npm --prefix mobile run export:web`, `export:android`, `export:ios`. Kết quả là bundle JavaScript; APK/IPA ký phát hành cần quy trình build native. Kiểm thử trình duyệt không thay thế kiểm tra Android/iOS thật.
 
 Kiểm tra dependency riêng cho từng phần: `npm audit`, `npm --prefix server audit`, `npm --prefix mobile audit`. Xem kết quả tại thời điểm bàn giao/triển khai; không dùng `audit fix --force` để ép đổi Expo sang phiên bản không tương thích. Mobile có script `postinstall` vá bộ giải mã query; nếu cài bằng `--ignore-scripts`, chạy `npm --prefix mobile run postinstall` trước khi build/test.

@@ -14,7 +14,9 @@
     "create:admin": "node dist/createAdmin.js",
     "test:security": "npm run build && node --test dist/tests/security.test.js dist/tests/hardening.test.js dist/tests/otpMigration.test.js dist/tests/otpEmail.test.js dist/tests/passwords.test.js",
     "test:passwords": "npm run build && node --test dist/tests/passwords.test.js",
-    "test:elections": "npm run build && node --test dist/tests/elections.test.js"
+    "test:elections": "npm run build && node --test dist/tests/elections.test.js",
+    "payments:preflight": "npm run build && node dist/payments/preflight.js",
+    "test:payments:foundation": "npm run build && node --test dist/tests/paymentFoundation.test.js"
   },
   "dependencies": {
     "@socket.io/redis-adapter": "^8.3.0",
