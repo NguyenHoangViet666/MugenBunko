@@ -3,6 +3,7 @@ import { Novel, User, ForumPost, SystemEvent, HomeFeed } from '../types';
 import { calculateUserLevel } from '../utils/levelHelper';
 import { getReadingProgress } from '../utils/readingProgress';
 import '../styles/hero-motion.css';
+import '../styles/home.css';
 import { publishedChapterCount } from '../utils/novelSummary';
 
 // ================= MONOCHROME PROFESSIONAL SVG ICONS =================
@@ -451,14 +452,8 @@ export default function Home({
         });
 
         if (interestedGenres.size === 0 && interestedTags.size === 0) {
-            return [...published]
-                .sort((a, b) => {
-                    const starsA = parseFloat(computeAverageStars(a.id)) || 0;
-                    const starsB = parseFloat(computeAverageStars(b.id)) || 0;
-                    if (starsB !== starsA) return starsB - starsA;
-                    return (parseInt(String(b.reads)) || 0) - (parseInt(String(a.reads)) || 0);
-                })
-                .slice(0, 5);
+            // General discovery already has a shelf; personalize only with real reading signals.
+            return [];
         }
 
         const scored = published
@@ -497,7 +492,7 @@ export default function Home({
     const scrollToDiscoveryHub = () => {
         const el = document.getElementById('interactive-discovery-hub');
         if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            el.scrollIntoView({ behavior: prefersReducedMotion ? 'instant' : 'smooth', block: 'start' });
         }
     };
 
@@ -565,6 +560,15 @@ export default function Home({
             .sort((a, b) => (parseInt(String(b.reads)) || 0) - (parseInt(String(a.reads)) || 0))
             .slice(0, 10);
     }, [filteredPublishedNovels, feed]);
+
+    const discoveryNovels = {
+        trending: trendingNovels,
+        newest: newestNovels,
+        'top-rated': topRatedNovels,
+        oneshot: oneshotFilteredNovels,
+        completed: completedNovels,
+    }[activeDiscoveryTab];
+    const visibleDiscoveryCount = Math.min(discoveryNovels.length, showAllDiscovery ? 10 : 5);
 
     // Live Chapter Feed: newly published chapters across novels
     const latestChapters = React.useMemo(() => {
@@ -832,21 +836,33 @@ export default function Home({
         const targetChapterIdx = historyItem ? historyItem.chapterIndex : 0;
 
         return (
-            <div key={novel.id} className="novel-card-v2" onClick={() => openNovelDetail(novel.id)}>
+            <article key={novel.id} className="novel-card-v2">
                 <div className="novel-cover-wrapper-v2">
-                    <img src={novel.cover} alt={novel.title} className="novel-cover-img-v2" loading="lazy" />
-                    <div className="novel-badges-overlay">
-                        <span className="novel-badge-status">
-                            {novel.status === 'completed' ? 'Hoàn thành' : novel.status === 'paused' ? 'Tạm ngưng' : novel.status === 'suspended' ? 'Đã khóa' : 'Đang ra'}
-                        </span>
-                        <span className="novel-badge-format">
-                            {novel.type === 'oneshot' ? 'Oneshot' : 'Series'}
-                        </span>
-                    </div>
+                    <a className="home-novel-cover-link" href={`#/novel/${novel.id}`} aria-label={`Chi tiết: ${novel.title}`}>
+                        <img
+                            src={novel.cover || '/assets/default_novel_cover.png'}
+                            alt=""
+                            className="novel-cover-img-v2"
+                            loading="lazy"
+                            onError={event => {
+                                if (event.currentTarget.getAttribute('src') !== '/assets/default_novel_cover.png') {
+                                    event.currentTarget.src = '/assets/default_novel_cover.png';
+                                }
+                            }}
+                        />
+                        <div className="novel-badges-overlay">
+                            <span className="novel-badge-status">
+                                {novel.status === 'completed' ? 'Hoàn thành' : novel.status === 'paused' ? 'Tạm ngưng' : novel.status === 'suspended' ? 'Đã khóa' : 'Đang ra'}
+                            </span>
+                            <span className="novel-badge-format">
+                                {novel.type === 'oneshot' ? 'Oneshot' : 'Series'}
+                            </span>
+                        </div>
 
-                    <span className="novel-badge-chapters">
-                        <Icons.Book /> {publishedChapterCount(novel)} ch
-                    </span>
+                        <span className="novel-badge-chapters">
+                            <Icons.Book /> {publishedChapterCount(novel)} ch
+                        </span>
+                    </a>
 
                     {hasChapters && (
                         <div className="novel-card-quick-read-overlay">
@@ -857,6 +873,7 @@ export default function Home({
                                     startReading(novel.id, targetChapterIdx);
                                 }}
                                 title={historyItem ? `Đọc tiếp: ${historyItem.chapterTitle || `Chương ${targetChapterIdx + 1}`}` : 'Bắt đầu đọc'}
+                                aria-label={`${historyItem ? 'Đọc tiếp' : 'Đọc ngay'}: ${novel.title}`}
                             >
                                 <Icons.Play />
                                 <span>{historyItem ? `Đọc tiếp C.${targetChapterIdx + 1}` : 'Đọc ngay'}</span>
@@ -867,7 +884,7 @@ export default function Home({
 
                 <div className="novel-info-block-v2">
                     <h4 className="novel-card-title-v2" title={novel.title}>
-                        {novel.title}
+                        <a href={`#/novel/${novel.id}`}>{novel.title}</a>
                     </h4>
                     
                     <div className="novel-card-author-v2">
@@ -876,12 +893,14 @@ export default function Home({
                     </div>
 
                     <div className="novel-card-tags-v2">
-                        {(novel.tags || []).slice(0, 3).map(t => {
+                        {(novel.tags || []).slice(0, 2).map(t => {
                             const isTagSelected = selectedTags.includes(t);
                             return (
-                                <span
+                                <button
+                                    type="button"
                                     key={t}
                                     className={`novel-tag-pill-v2 ${isTagSelected ? 'active' : ''}`}
+                                    aria-pressed={isTagSelected}
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         handleTagClick(t);
@@ -891,7 +910,7 @@ export default function Home({
                                     style={{ cursor: 'pointer' }}
                                 >
                                     #{t}
-                                </span>
+                                </button>
                             );
                         })}
                     </div>
@@ -911,6 +930,8 @@ export default function Home({
                                 className={`novel-bookmark-btn-v2 ${isSaved ? 'saved' : ''}`}
                                 onClick={(e) => { e.stopPropagation(); toggleBookmark(novel.id); }}
                                 title={isSaved ? 'Xóa khỏi tủ sách' : 'Lưu vào tủ sách'}
+                                aria-label={`${isSaved ? 'Xóa khỏi tủ sách' : 'Lưu vào tủ sách'}: ${novel.title}`}
+                                aria-pressed={Boolean(isSaved)}
                             >
                                 <Icons.Bookmark filled={Boolean(isSaved)} />
                                 <span>{isSaved ? 'Đã Lưu' : 'Lưu Tủ'}</span>
@@ -918,7 +939,7 @@ export default function Home({
                         )}
                     </div>
                 </div>
-            </div>
+            </article>
         );
     };
 
@@ -929,6 +950,8 @@ export default function Home({
         setFilterType('all');
         setFilterStatus('all');
         setSelectedTags([]);
+        setActiveDiscoveryTab('trending');
+        setShowAllDiscovery(false);
     };
 
     return (
@@ -964,19 +987,20 @@ export default function Home({
                                     <span className="hero-editorial-badge">
                                         <Icons.Sparkles /> Đề Cử #{heroIdx + 1}
                                     </span>
-                                    {currentHero.genre && (
+                                    {(currentHero.genre || '').split(',').map(genre => genre.trim()).filter(Boolean).map(genre => (
                                         <button
+                                            key={genre}
                                             type="button"
                                             className="hero-pill-tag clickable"
                                             onClick={() => {
-                                                setFilterGenre(currentHero.genre);
+                                                setFilterGenre(genre);
                                                 scrollToDiscoveryHub();
                                             }}
-                                            title={`Lọc thể loại ${currentHero.genre}`}
+                                            title={`Lọc thể loại ${genre}`}
                                         >
-                                            {currentHero.genre}
+                                            {genre}
                                         </button>
-                                    )}
+                                    ))}
                                 </div>
 
                                 <h1 title={currentHero.title}>
@@ -1123,11 +1147,13 @@ export default function Home({
 
             {/* 2. QUICK DISCOVERY & TRENDING BAR (MONOCHROME REFINED + LIVE FILTER) */}
             <div className="home-discovery-bar">
-                <div className="discovery-genres-row">
+                <div className="discovery-genres-row" role="group" aria-label="Lọc theo thể loại">
                     <button
                         className={`discovery-genre-pill ${!filterGenre || filterGenre === 'Tất cả' ? 'active' : ''}`}
+                        aria-pressed={!filterGenre || filterGenre === 'Tất cả'}
                         onClick={() => {
                             setFilterGenre('Tất cả');
+                            scrollToDiscoveryHub();
                         }}
                     >
                         <Icons.Compass /> Tất cả
@@ -1136,6 +1162,7 @@ export default function Home({
                         <button
                             key={genre}
                             className={`discovery-genre-pill ${filterGenre === genre ? 'active' : ''}`}
+                            aria-pressed={filterGenre === genre}
                             onClick={() => {
                                 setFilterGenre(filterGenre === genre ? 'Tất cả' : genre);
                                 scrollToDiscoveryHub();
@@ -1148,7 +1175,7 @@ export default function Home({
 
                 <div className="discovery-tags-row">
                     <div className="discovery-tags-list">
-                        <span style={{ color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                        <span className="discovery-tags-label">
                             <Icons.Tag /> Xu hướng:
                         </span>
                         {['Isekai', 'Chuyển sinh', 'Romance', 'Hài hước', 'Slice of Life', 'Học đường', 'Trinh thám'].map(tag => {
@@ -1157,6 +1184,7 @@ export default function Home({
                                 <button
                                     key={tag}
                                     className={`discovery-tag-item ${isSelected ? 'active' : ''}`}
+                                    aria-pressed={isSelected}
                                     onClick={() => {
                                         handleTagClick(tag);
                                         scrollToDiscoveryHub();
@@ -1177,13 +1205,13 @@ export default function Home({
                         )}
                     </div>
 
-                    <div
+                    <a
                         className="discovery-all-link"
-                        onClick={() => setCurrentView('explore')}
+                        href="#/explore"
                     >
                         <span>Khám phá toàn bộ thư viện</span>
                         <Icons.ArrowRight />
-                    </div>
+                    </a>
                 </div>
             </div>
 
@@ -1431,49 +1459,67 @@ export default function Home({
                     )}
 
                     {/* SECTION: INTERACTIVE DISCOVERY HUB (TABBED SHOWCASE + LIVE FILTERING) */}
-                    <div id="interactive-discovery-hub" className="interactive-discovery-hub">
+                    <section id="interactive-discovery-hub" className="interactive-discovery-hub" aria-labelledby="home-discovery-title">
+                        <div className="home-section-header">
+                            <h2 id="home-discovery-title" className="home-section-title">
+                                <span className="section-icon-mono"><Icons.Compass /></span>
+                                Khám phá truyện
+                            </h2>
+                            <span className="home-discovery-count" role="status" aria-live="polite" aria-atomic="true">
+                                {visibleDiscoveryCount > 0 ? `Đang xem ${visibleDiscoveryCount} tác phẩm` : 'Chưa có tác phẩm phù hợp'}
+                            </span>
+                        </div>
                         <div className="discovery-tabs-header">
-                            <div className="discovery-tabs-nav">
+                            <div className="discovery-tabs-nav" role="group" aria-label="Chọn danh mục truyện">
                                 <button
                                     className={`discovery-tab-btn ${activeDiscoveryTab === 'trending' ? 'active' : ''}`}
+                                    aria-pressed={activeDiscoveryTab === 'trending'}
                                     onClick={() => setActiveDiscoveryTab('trending')}
                                 >
                                     <Icons.Flame /> Thịnh Hành
                                 </button>
                                 <button
                                     className={`discovery-tab-btn ${activeDiscoveryTab === 'newest' ? 'active' : ''}`}
+                                    aria-pressed={activeDiscoveryTab === 'newest'}
                                     onClick={() => setActiveDiscoveryTab('newest')}
                                 >
                                     <Icons.Clock /> Mới Nhất
                                 </button>
                                 <button
                                     className={`discovery-tab-btn ${activeDiscoveryTab === 'top-rated' ? 'active' : ''}`}
+                                    aria-pressed={activeDiscoveryTab === 'top-rated'}
                                     onClick={() => setActiveDiscoveryTab('top-rated')}
                                 >
                                     <Icons.Star /> Đánh Giá Cao
                                 </button>
                                 <button
                                     className={`discovery-tab-btn ${activeDiscoveryTab === 'oneshot' ? 'active' : ''}`}
+                                    aria-pressed={activeDiscoveryTab === 'oneshot'}
                                     onClick={() => setActiveDiscoveryTab('oneshot')}
                                 >
                                     <Icons.Book /> Truyện Ngắn
                                 </button>
                                 <button
                                     className={`discovery-tab-btn ${activeDiscoveryTab === 'completed' ? 'active' : ''}`}
+                                    aria-pressed={activeDiscoveryTab === 'completed'}
                                     onClick={() => setActiveDiscoveryTab('completed')}
                                 >
                                     <Icons.CheckCircle /> Hoàn Thành
                                 </button>
                             </div>
 
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <button
-                                    className="outline-btn small"
-                                    onClick={() => setShowAllDiscovery(prev => !prev)}
-                                    style={{ borderRadius: '20px', padding: '4px 12px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                                >
-                                    <span>{showAllDiscovery ? 'Thu gọn (5)' : 'Mở rộng (10)'}</span>
-                                </button>
+                            <div className="home-discovery-actions">
+                                {discoveryNovels.length > 5 && (
+                                    <button
+                                        className="outline-btn small"
+                                        aria-expanded={showAllDiscovery}
+                                        aria-controls="home-discovery-grid"
+                                        onClick={() => setShowAllDiscovery(prev => !prev)}
+                                        style={{ borderRadius: '20px', padding: '4px 12px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                    >
+                                        <span>{showAllDiscovery ? 'Thu gọn' : `Xem thêm (${Math.min(discoveryNovels.length, 10) - 5})`}</span>
+                                    </button>
+                                )}
                                 <button
                                     className="outline-btn small"
                                     onClick={() => {
@@ -1496,24 +1542,24 @@ export default function Home({
                                 <div className="discovery-active-filter-chips">
                                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Đang lọc:</span>
                                     {filterGenre && filterGenre !== 'Tất cả' && (
-                                        <span className="active-filter-chip" onClick={() => setFilterGenre('Tất cả')}>
+                                        <button className="active-filter-chip" onClick={() => setFilterGenre('Tất cả')} aria-label={`Bỏ lọc thể loại ${filterGenre}`}>
                                             Thể loại: {filterGenre} <Icons.Close />
-                                        </span>
+                                        </button>
                                     )}
                                     {filterType && filterType !== 'all' && (
-                                        <span className="active-filter-chip" onClick={() => setFilterType('all')}>
+                                        <button className="active-filter-chip" onClick={() => setFilterType('all')} aria-label="Bỏ lọc định dạng">
                                             Định dạng: {filterType === 'oneshot' ? 'Oneshot' : 'Series'} <Icons.Close />
-                                        </span>
+                                        </button>
                                     )}
                                     {filterStatus && filterStatus !== 'all' && (
-                                        <span className="active-filter-chip" onClick={() => setFilterStatus('all')}>
+                                        <button className="active-filter-chip" onClick={() => setFilterStatus('all')} aria-label="Bỏ lọc trạng thái">
                                             Trạng thái: {filterStatus === 'completed' ? 'Hoàn thành' : 'Đang ra'} <Icons.Close />
-                                        </span>
+                                        </button>
                                     )}
                                     {selectedTags.map(t => (
-                                        <span key={t} className="active-filter-chip" onClick={() => handleTagClick(t)}>
+                                        <button key={t} className="active-filter-chip" onClick={() => handleTagClick(t)} aria-label={`Bỏ lọc thẻ ${t}`}>
                                             #{t} <Icons.Close />
-                                        </span>
+                                        </button>
                                     ))}
                                 </div>
                                 <button className="discovery-clear-filter-btn" onClick={clearAllHomeFilters}>
@@ -1522,33 +1568,22 @@ export default function Home({
                             </div>
                         )}
 
-                        <div className="novel-grid home-novel-grid">
+                        <div id="home-discovery-grid" className="novel-grid home-novel-grid">
                             {(() => {
-                                let list: Novel[] = [];
-                                if (activeDiscoveryTab === 'trending') list = trendingNovels;
-                                else if (activeDiscoveryTab === 'newest') list = newestNovels;
-                                else if (activeDiscoveryTab === 'top-rated') list = topRatedNovels;
-                                else if (activeDiscoveryTab === 'oneshot') list = oneshotFilteredNovels;
-                                else if (activeDiscoveryTab === 'completed') list = completedNovels;
-
-                                const displayCount = showAllDiscovery ? 10 : 5;
-
-                                if (list.length === 0) {
+                                if (discoveryNovels.length === 0) {
                                     return (
                                         <div style={{ color: 'var(--text-muted)', fontSize: '0.88rem', padding: '32px 16px', textAlign: 'center', gridColumn: '1 / -1', background: 'var(--bg-card)', border: '1px dashed var(--border-color)', borderRadius: 'var(--border-radius-md)' }}>
                                             <div style={{ marginBottom: '8px' }}>Chưa có tác phẩm phù hợp với bộ lọc trong danh mục này.</div>
-                                            {hasActiveHomeFilter && (
-                                                <button className="outline-btn small" onClick={clearAllHomeFilters}>
-                                                    Xóa bộ lọc để xem tất cả
-                                                </button>
-                                            )}
+                                            <button className="outline-btn small" onClick={clearAllHomeFilters}>
+                                                {hasActiveHomeFilter ? 'Xóa bộ lọc để xem tất cả' : 'Xem truyện thịnh hành'}
+                                            </button>
                                         </div>
                                     );
                                 }
-                                return list.slice(0, displayCount).map(renderNovelCard);
+                                return discoveryNovels.slice(0, visibleDiscoveryCount).map(renderNovelCard);
                             })()}
                         </div>
-                    </div>
+                    </section>
 
                     {/* SECTION: LITERARY SPOTLIGHT & AUTHOR CARD */}
                     <div className="literary-spotlight-bento">

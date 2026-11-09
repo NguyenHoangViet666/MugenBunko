@@ -375,7 +375,7 @@ export async function initializeDbConnection(options: { migrate?: boolean; allow
     } catch (err: any) {
         // Failed readiness must not leave a usable half-initialized pool.
         if (pool) { await pool.end(); pool = null; }
-        console.error("❌ MySQL connection failure! Please ensure MySQL is running locally and credentials in server/.env are correct.");
+        console.error("❌ Database initialization failed.", err.code || 'DATABASE_INITIALIZATION_ERROR');
         console.error("Error details:", err.message);
         throw err;
     } finally { await migrationConnection?.end(); }

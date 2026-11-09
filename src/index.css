@@ -6905,6 +6905,7 @@ h1, h2, h3, h4 {
 @media (max-width: 380px) {
     .header-container {
         padding: 0 8px !important;
+        column-gap: 4px;
     }
 
     .header-left {
@@ -6922,10 +6923,32 @@ h1, h2, h3, h4 {
 
     .header-logo .kanji {
         font-size: 1rem !important;
+        letter-spacing: 1px;
     }
 
     .header-logo .alphabet {
         display: none !important;
+    }
+
+    .header-actions .theme-toggle-btn {
+        padding: 4px;
+        min-height: 44px;
+    }
+
+    .guest-buttons-wrapper {
+        gap: 2px;
+    }
+
+    .guest-buttons-wrapper .text-link-btn {
+        padding: 4px 0;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .guest-buttons-wrapper .outline-btn.small {
+        padding: 6px;
+        min-height: 44px;
     }
 
     .footer-grid {
@@ -8728,9 +8751,9 @@ h1, h2, h3, h4 {
     }
 
     .novel-grid.home-novel-grid .novel-card-title-v2 {
-        font-size: 0.84rem !important;
-        line-height: 1.32 !important;
-        height: 2.64em !important;
+        font-size: 0.94rem !important;
+        line-height: 1.35 !important;
+        height: 4.05em !important;
         margin-bottom: 4px !important;
     }
 
@@ -8741,7 +8764,7 @@ h1, h2, h3, h4 {
 
     .novel-grid.home-novel-grid .novel-card-tags-v2 {
         display: flex !important;
-        height: 19px !important;
+        height: auto !important;
         margin-bottom: 8px !important;
     }
 
@@ -8777,7 +8800,7 @@ h1, h2, h3, h4 {
     .novel-grid.home-novel-grid > .novel-card-v2:first-child:nth-last-child(odd) .novel-card-title-v2 {
         font-size: 0.96rem !important;
         height: auto !important;
-        max-height: 2.65em !important;
+        max-height: 4.05em !important;
     }
 
     /* 3. Horizontal Touch-Snap Carousels for Curated Collections & Rising Gems on Mobile */
