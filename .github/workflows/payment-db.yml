@@ -48,7 +48,6 @@ jobs:
       SMTP_USER: ''
       SMTP_PASS: ''
       API_REPLICAS: '1'
-      MYSQL_TEST_CONTAINER: ${{ job.services.mysql.id }}
       MYSQLDUMP_PATH: ${{ github.workspace }}/server/tests/tools/mysqldump-ci.sh
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -82,6 +81,8 @@ jobs:
           } finally { await connection.end(); }
           JS
       - name: Run payment and backend regressions sequentially
+        env:
+          MYSQL_TEST_CONTAINER: ${{ job.services.mysql.id }}
         run: |
           node --test --test-concurrency=1 \
             server/dist/tests/paymentFoundation.test.js \
