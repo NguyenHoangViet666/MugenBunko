@@ -4,7 +4,9 @@ Nhánh: `codex/payment-integration`. Checkpoint code hiện tại: **DB03, 16/11
 
 Đã có migration v1/v2, opening balance, writer đăng ký/admin cùng transaction, UTC runtime, contract truy vấn có EXPLAIN và audit ledger chỉ đọc. Kiểm tra chỉ đọc ngày 16/11 cho thấy database ứng dụng đã applied v2 từ 02/11, 23 user và 26.000 xu khớp ledger. DB03 không chạy migration lên database đó. Chưa có checkout, adapter VNPAY hoặc service cấp xu.
 
-Code DB03 đạt 26/26 ca nghiệm thu trên MySQL 9.2.0 riêng; 118 ca hồi quy cũ cũng đạt. Toàn bộ **144/144** ca đã đạt trên **MySQL 8.4.13** trong [GitHub Actions](https://github.com/NguyenHoangViet666/MugenBunko/actions/runs/43817285917). Dịch vụ Windows MySQL92 hiện cần bật lại bằng quyền Administrator sau sự cố thiếu bộ nhớ; xem quy trình trong DB03. Chưa chạy audit CLI mới lên database ứng dụng sau sự cố.
+Code DB03 đạt 26/26 ca nghiệm thu trên MySQL 9.2.0 riêng; 118 ca hồi quy cũ cũng đạt. Toàn bộ **144/144** ca đã đạt trên **MySQL 8.4.13** trong [GitHub Actions](https://github.com/NguyenHoangViet666/MugenBunko/actions/runs/43817285917). Chủ dự án đã chọn **giữ dịch vụ Windows MySQL92 tắt và xử lý sau**; chưa chạy audit CLI mới lên database ứng dụng sau sự cố.
+
+Quyết định ngày 16/11: **chưa đăng ký merchant Sandbox, dùng tunnel HTTPS cho demo**. Chưa mở tunnel hoặc cấp URL public. Xem [chuẩn bị merchant và tunnel demo](SANDBOX_DEMO_SETUP.md).
 
 ## Đọc theo thứ tự
 
@@ -14,7 +16,8 @@ Code DB03 đạt 26/26 ca nghiệm thu trên MySQL 9.2.0 riêng; 118 ca hồi qu
 4. [Kiểm kê đường ghi xu](COIN_WRITE_INVENTORY.md).
 5. [Quyết định schema và contract](SCHEMA_CONTRACT.md).
 6. [Checklist merchant VNPAY Sandbox](VNPAY_SANDBOX_CHECKLIST.md).
-7. [Kế hoạch tổng thể](../PAYMENT_INTEGRATION_PLAN.md) và bộ Word trong `artifacts/payment-documents/`.
+7. [Chuẩn bị merchant và tunnel demo](SANDBOX_DEMO_SETUP.md).
+8. [Kế hoạch tổng thể](../PAYMENT_INTEGRATION_PLAN.md) và bộ Word trong `artifacts/payment-documents/`.
 
 Tài liệu triển khai hiện tại: [Word DB03 về UTC index và audit ledger](../../artifacts/payment-documents/12_DB03_UTC_index_va_audit_ledger.docx). [Word DB02](../../artifacts/payment-documents/11_DB02_Migration_so_du_va_opening_balance.docx) và [báo cáo ngày 28/10](../../artifacts/payment-reports/2026-10-28_Bao_cao_tien_do_thanh_toan_MugenBunko_DB02.docx) được giữ làm lịch sử; nhận định database chưa migrate trong các bản đó chỉ áp dụng tại thời điểm báo cáo.
 

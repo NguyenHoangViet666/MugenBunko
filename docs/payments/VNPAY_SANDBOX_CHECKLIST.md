@@ -2,6 +2,10 @@
 
 Đối chiếu tài liệu chính thức ngày **28/10/2026**. T01 chỉ chuẩn bị checklist; chưa đăng ký tài khoản merchant, gửi thông tin đăng ký hoặc gọi gateway.
 
+## Quyết định ngày 16 tháng 11 năm 2026
+
+Chủ dự án xác nhận **chưa đăng ký merchant**, chọn **tunnel HTTPS cho demo** và **giữ MySQL92 local tắt để xử lý sau**. Chưa có URL tunnel thực tế; không khởi động backend hoặc gửi đăng ký trong bước ghi nhận này. Hướng dẫn chuẩn bị ở [SANDBOX_DEMO_SETUP.md](SANDBOX_DEMO_SETUP.md).
+
 ## Thông tin cần chuẩn bị
 
 - [ ] Người sở hữu merchant chọn email nhận thông tin và thông tin website/dịch vụ dùng đăng ký.
