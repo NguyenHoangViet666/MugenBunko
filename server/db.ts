@@ -8,6 +8,7 @@ import { production } from './config.js';
 import { invalidatePublicReads } from './utils/readCache.js';
 import { databaseMetrics } from './metrics.js';
 import { performance } from 'node:perf_hooks';
+import { acquireUtcConnection, databaseTimeOptions, setDatabaseSessionUtc } from './databaseTime.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -27,6 +28,7 @@ const dbConfig = {
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
     connectTimeout: 10000,
+    ...databaseTimeOptions,
 };
 
 let pool: Pool | null = null;
@@ -47,19 +49,20 @@ export async function initializeDbConnection(options: { migrate?: boolean; allow
         if (!migrate) {
             if (!process.env.DB_USER || process.env.DB_USER === 'root') throw new Error('Production requires a restricted DB_USER.');
             pool = openPool();
-            await pool.execute('SELECT id, email, auth_version FROM users LIMIT 0');
-            await pool.execute('SELECT sort_order FROM chapters LIMIT 0');
-            await pool.execute('SELECT email, purpose, code_hash, expires_at, sent_at, attempts FROM email_otps LIMIT 0');
-            await pool.execute('SELECT token_hash FROM revoked_tokens LIMIT 0');
-            await pool.execute('SELECT id, result_snapshot FROM elections LIMIT 0');
-            await pool.execute('SELECT id, term_ends_at, ended_at FROM election_candidates LIMIT 0');
-            for (const table of ['election_voters','election_ballots','election_reviews','election_complaints']) {
-                await pool.execute(`SELECT * FROM ${table} LIMIT 0`);
-            }
-            await pool.execute('SELECT action FROM election_audit LIMIT 0');
-            const schemaConnection = await pool.getConnection();
-            try { await assertPaymentSchemaReady(schemaConnection); }
-            finally { schemaConnection.release(); }
+            const schemaConnection = await acquireUtcConnection(pool);
+            try {
+                await schemaConnection.execute('SELECT id, email, auth_version FROM users LIMIT 0');
+                await schemaConnection.execute('SELECT sort_order FROM chapters LIMIT 0');
+                await schemaConnection.execute('SELECT email, purpose, code_hash, expires_at, sent_at, attempts FROM email_otps LIMIT 0');
+                await schemaConnection.execute('SELECT token_hash FROM revoked_tokens LIMIT 0');
+                await schemaConnection.execute('SELECT id, result_snapshot FROM elections LIMIT 0');
+                await schemaConnection.execute('SELECT id, term_ends_at, ended_at FROM election_candidates LIMIT 0');
+                for (const table of ['election_voters','election_ballots','election_reviews','election_complaints']) {
+                    await schemaConnection.execute(`SELECT * FROM ${table} LIMIT 0`);
+                }
+                await schemaConnection.execute('SELECT action FROM election_audit LIMIT 0');
+                await assertPaymentSchemaReady(schemaConnection);
+            } finally { schemaConnection.release(); }
             return;
         }
         console.log(`Connecting to MySQL server at ${dbConfig.host}:${dbConfig.port}...`);
@@ -74,6 +77,7 @@ export async function initializeDbConnection(options: { migrate?: boolean; allow
             multipleStatements: true
         });
         migrationConnection = connectionWithDb;
+        await setDatabaseSessionUtc(connectionWithDb);
 
         const [tables] = await connectionWithDb.query<any[]>(`SHOW TABLES LIKE 'users'`);
         if (tables.length === 0) {
@@ -397,7 +401,7 @@ export async function query<T = any>(sql: string, params?: any[]): Promise<T> {
 async function acquireConnection() {
     if (!pool) throw new Error('Database pool not initialized.');
     const start = performance.now(); databaseMetrics.waiting++;
-    try { const connection = await pool.getConnection(); databaseMetrics.active++; return connection; }
+    try { const connection = await acquireUtcConnection(pool); databaseMetrics.active++; return connection; }
     finally { databaseMetrics.waiting--; databaseMetrics.waitMs += performance.now() - start; }
 }
 

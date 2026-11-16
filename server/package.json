@@ -16,6 +16,9 @@
     "test:passwords": "npm run build && node --test dist/tests/passwords.test.js",
     "test:elections": "npm run build && node --test dist/tests/elections.test.js",
     "payments:preflight": "npm run build && node dist/payments/preflight.js",
+    "payments:audit": "npm run build && node dist/payments/ledgerAuditCli.js",
+    "test:payments": "npm run build && node --test --test-concurrency=1 dist/tests/paymentFoundation.test.js dist/tests/paymentMigration.test.js dist/tests/paymentBalanceMigration.test.js dist/tests/paymentOpening.test.js dist/tests/paymentRuntime.test.js dist/tests/paymentLedgerAudit.test.js dist/tests/paymentQueryPlans.test.js",
+    "test:payments:acceptance": "npm run build && node --test --test-concurrency=1 dist/tests/paymentRuntime.test.js dist/tests/paymentLedgerAudit.test.js dist/tests/paymentQueryPlans.test.js",
     "test:payments:foundation": "npm run build && node --test dist/tests/paymentFoundation.test.js",
     "test:payments:migration": "npm run build && node --test dist/tests/paymentMigration.test.js dist/tests/paymentBalanceMigration.test.js",
     "test:payments:opening": "npm run build && node --test dist/tests/paymentOpening.test.js"

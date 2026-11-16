@@ -1,0 +1,100 @@
+name: Payment database acceptance
+
+on:
+  push:
+    branches: [codex/payment-integration]
+    paths:
+      - server/**
+      - .github/workflows/payment-db.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: payment-db-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mysql84:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          # Disposable CI instance only; never use application credentials here.
+          MYSQL_ROOT_PASSWORD: ci_payment_fixture_only
+          MYSQL_ROOT_HOST: '%'
+        ports:
+          - 33306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h127.0.0.1 --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+          --health-start-period=30s
+          --memory=1g
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: '33306'
+      DB_USER: root
+      DB_PASSWORD: ci_payment_fixture_only
+      TEST_DB_HOST: 127.0.0.1
+      TEST_DB_PORT: '33306'
+      TEST_DB_USER: root
+      TEST_DB_PASSWORD: ci_payment_fixture_only
+      REDIS_URL: ''
+      SMTP_USER: ''
+      SMTP_PASS: ''
+      API_REPLICAS: '1'
+      MYSQL_TEST_CONTAINER: ${{ job.services.mysql.id }}
+      MYSQLDUMP_PATH: ${{ github.workspace }}/server/tests/tools/mysqldump-ci.sh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - name: Install backend dependencies
+        run: npm --prefix server ci
+      - name: Build backend
+        run: npm --prefix server run build
+      - name: Prepare matching server backup client
+        run: chmod +x server/tests/tools/mysqldump-ci.sh
+      - name: Verify MySQL target version
+        working-directory: server
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import mysql from 'mysql2/promise';
+          const connection = await mysql.createConnection({
+            host: process.env.TEST_DB_HOST, port: Number(process.env.TEST_DB_PORT),
+            user: process.env.TEST_DB_USER, password: process.env.TEST_DB_PASSWORD,
+          });
+          try {
+            const [rows] = await connection.query('SELECT VERSION() AS version');
+            assert.match(rows[0].version, /^8\.4\./);
+            console.log(JSON.stringify({ databaseVersion: rows[0].version }));
+          } finally { await connection.end(); }
+          JS
+      - name: Run payment and backend regressions sequentially
+        run: |
+          node --test --test-concurrency=1 \
+            server/dist/tests/paymentFoundation.test.js \
+            server/dist/tests/paymentMigration.test.js \
+            server/dist/tests/paymentBalanceMigration.test.js \
+            server/dist/tests/paymentOpening.test.js \
+            server/dist/tests/paymentRuntime.test.js \
+            server/dist/tests/paymentLedgerAudit.test.js \
+            server/dist/tests/paymentQueryPlans.test.js \
+            server/dist/tests/security.test.js \
+            server/dist/tests/hardening.test.js \
+            server/dist/tests/otpMigration.test.js \
+            server/dist/tests/otpEmail.test.js \
+            server/dist/tests/passwords.test.js \
+            server/dist/tests/elections.test.js \
+            server/dist/tests/upgrades.test.js
